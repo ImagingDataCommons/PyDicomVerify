@@ -26,6 +26,10 @@ function indentforwrite(count)
 		printf("\";\n")
 	}
 }
+function get_suffix_for_seq(seq_depth)
+{
+	return seq_depth == 0? "" : seq_depth
+}
 
 NR==1	{
 	print "# Automatically generated from template - EDITS WILL BE LOST"
@@ -72,6 +76,7 @@ NR==1	{
 		print "\t\tlog.append( MMsgDC(\"Verifying\") + MMsgDC(\"" macroormodule "\") +\""module"\")"
 		print ""
 	sequencenestingdepth=0;
+	seq_depth_counter=0;
 }
 
 /^[ 	]*ModuleEnd/ || /^[ 	]*MacroEnd/{
@@ -149,14 +154,18 @@ NR==1	{
 			#else {
 			#	printf("\t{ Attribute *a = (*list)[TagFromName(" sequence ")]; if (a) a->setUsed(); }\n")
 			#}
+			
+			suffix = get_suffix_for_seq(seq_depth_counter)
+
 			indentcode(sequencenestingdepth)
 			printf("\tpartial_success = ")
 			if (length(type) > 0) {
-				print "verifyType" type "(ds, "
+				print "verifyType" type "(ds"suffix", "
 			}
 			else {
-				print "verifyRequired(ds, "
+				print "verifyRequired(ds"suffix", "
 			}
+			
 
 			indentcode(sequencenestingdepth)
 			print "\t\t\t\""module "\", "
@@ -180,7 +189,7 @@ NR==1	{
 					print "\t\t\t"(mbpo=="true"? "True":"False")", "
 				}
 				indentcode(sequencenestingdepth)
-				print "\t\t\tparent_ds, root_ds, "
+				print "\t\t\tparent_ds"suffix", root_ds"suffix", "
 			}
 			else {
 				if (length(condition) > 0) {
@@ -199,30 +208,35 @@ NR==1	{
 		}
 
 		# create new state for subsequent stuff enclosed in sequence ...
-		
+		seq_depth_counter++
+		suffix = get_suffix_for_seq(seq_depth_counter)
 		indentcode(sequencenestingdepth)
-		print "\tif \""sequence"\" in ds:"
+		print "\tif \""sequence"\" in ds"get_suffix_for_seq(seq_depth_counter-1)":"
 		indentcode(sequencenestingdepth)
-		print "\t\t"sequence"_data = ds."sequence
+		print "\t\t"sequence"_data = ds"get_suffix_for_seq(seq_depth_counter-1)"."sequence
 		indentcode(sequencenestingdepth)
 		print "\t\tif type("sequence"_data) == Sequence:"
 		indentcode(sequencenestingdepth)
-		print "\t\t\tfor i"sequencenestingdepth" in range(0, len("sequence"_data)):"
+		print "\t\t\tfor i"suffix" in range(0, len("sequence"_data)):"
 		indentcode(sequencenestingdepth)
 		print "\t\t\t\tif verbose:"
 		indentcode(sequencenestingdepth)
-		print "\t\t\t\t\tlog.append( \" " sequence " item [{}]\".format(i"sequencenestingdepth"+1))";
+		print "\t\t\t\t\tlog.append( \" " sequence " item [{}]\".format(i"suffix"+1))";
 		indentcode(sequencenestingdepth)
-		print "\t\t\t\tparent_ds = ds"			
+		print "\t\t\t\tparent_ds"suffix" = ds"get_suffix_for_seq(seq_depth_counter-1)""		
 		indentcode(sequencenestingdepth)
-		print "\t\t\t\tds = "sequence"_data[i"sequencenestingdepth"]"
-		++sequencenestingdepth
+		print "\t\t\t\tds"suffix" = "sequence"_data[i"suffix"]"
+		sequencenestingdepth+=3
+
+		
 	
 }
 
 /^[ 	]*SequenceEnd/ {
 
-	--sequencenestingdepth
+	sequencenestingdepth-=3
+	seq_depth_counter--
+	
 
 	# take down nesting for stuff enclosed in sequence ...
 
@@ -390,9 +404,9 @@ NR==1	{
 			indentcode(sequencenestingdepth)
 			printf("\tpartial_success =  ");
 			if (length(type) > 0) 
-				print "verifyType" type"(ds, "
+				print "\t\tverifyType" type"(ds"get_suffix_for_seq(seq_depth_counter)", "
 			else 
-				print "verifyRequired(ds , "
+				print "\t\tverifyRequired(ds"get_suffix_for_seq(seq_depth_counter)" , "
 			indentcode(sequencenestingdepth)
 			print "\t\t\t\"" module "\", \"" name "\", "
 			indentcode(sequencenestingdepth)
@@ -411,7 +425,7 @@ NR==1	{
 					print "\t\t\t" (mbpo=="true"? "True":"False") ", "
 				}
 				indentcode(sequencenestingdepth)
-				print "\t\t\tparent_ds, root_ds, "
+				print "\t\t\tparent_ds"get_suffix_for_seq(seq_depth_counter)", root_ds, "
 			}
 			else {
 				if (length(condition) > 0) 
@@ -433,17 +447,17 @@ NR==1	{
 			print ""
 			if (length(condition) > 0) {
 				indentcode(sequencenestingdepth)
-				print "\tif not Condition_" condition "(ds, parent_ds, root_ds):"
+				print "\tif not Condition_" condition "(ds"get_suffix_for_seq(seq_depth_counter)", parent_ds"get_suffix_for_seq(seq_depth_counter)", root_ds):"
 				sequencenestingdepth++
 			}
 			indentcode(sequencenestingdepth)
-			print "\tif \""name"\" not in ds: "
+			print "\tif \""name"\" not in ds"get_suffix_for_seq(seq_depth_counter)": "
 			indentcode(sequencenestingdepth)
 			print "\t\tpartial_success = False "
 			indentcode(sequencenestingdepth)
 			print "\telse: "
 			indentcode(sequencenestingdepth)
-			print "\t\tpartial_success = verifyVM(ds[\"name\"], "
+			print "\t\tpartial_success = verifyVM(ds"get_suffix_for_seq(seq_depth_counter)"[\"name\"], "
 			indentcode(sequencenestingdepth)
 			print "\t\t\t\"" module "\", \"" name "\", log, ElementDictionary, "vmmin ", "vmmax ", \"" condition "\")"	# use condition as source
 			if (length(condition) > 0) 
@@ -453,17 +467,17 @@ NR==1	{
 			print ""
 			if (length(condition) > 0) {
 				indentcode(sequencenestingdepth)
-				print "\tif Condition_" condition "(ds, parent_ds, root_ds):"
+				print "\tif Condition_" condition "(ds"get_suffix_for_seq(seq_depth_counter)", parent_ds"get_suffix_for_seq(seq_depth_counter)", root_ds):"
 				sequencenestingdepth++
 			}
 			indentcode(sequencenestingdepth)
-			print "\tif \""name"\" not in ds: "
+			print "\tif \""name"\" not in ds"get_suffix_for_seq(seq_depth_counter)": "
 			indentcode(sequencenestingdepth)
 			print "\t\tpartial_success = False "
 			indentcode(sequencenestingdepth)
 			print "\telse: "
 			indentcode(sequencenestingdepth)
-			print "\t\tpartial_success = verifyDefinedTerms(ds[\""name"\"], "
+			print "\t\tpartial_success = verifyDefinedTerms(ds"get_suffix_for_seq(seq_depth_counter)"[\""name"\"], "
 			indentcode(sequencenestingdepth)
 			print "\t\t\tStringValueTable_" stringdefinedterms ", "
 			indentcode(sequencenestingdepth)
@@ -481,17 +495,17 @@ NR==1	{
 			print ""
 			if (length(condition) > 0) {
 				indentcode(sequencenestingdepth)
-				print "\tif Condition_" condition "(ds, parent_ds, root_ds):"
+				print "\tif Condition_" condition "(ds"get_suffix_for_seq(seq_depth_counter)", parent_ds"get_suffix_for_seq(seq_depth_counter)", root_ds):"
 				sequencenestingdepth++
 			}
 			indentcode(sequencenestingdepth)
-			print "\tif \""name"\" not in ds: "
+			print "\tif \""name"\" not in ds"get_suffix_for_seq(seq_depth_counter)": "
 			indentcode(sequencenestingdepth)
 			print "\t\tpartial_success = False "
 			indentcode(sequencenestingdepth)
 			print "\telse:" 
 			indentcode(sequencenestingdepth)
-			print "\t\tpartial_success = verifyEnumValues(ds[\""name"\"], "
+			print "\t\tpartial_success = verifyEnumValues(ds"get_suffix_for_seq(seq_depth_counter)"[\""name"\"], "
 			indentcode(sequencenestingdepth)
 			print "\t\t\tStringValueTable_" stringenumvalues ", "
 			indentcode(sequencenestingdepth)
@@ -510,18 +524,18 @@ NR==1	{
 			
 			if (length(condition) > 0) {
 				indentcode(sequencenestingdepth)
-				print "\tif Condition_" condition "(ds, parent_ds, root_ds):"
+				print "\tif Condition_" condition "(ds"get_suffix_for_seq(seq_depth_counter)", parent_ds"get_suffix_for_seq(seq_depth_counter)", root_ds):"
 				sequencenestingdepth++
 				
 			}
 			indentcode(sequencenestingdepth)
-			print "\tif \""name"\" not in ds: "
+			print "\tif \""name"\" not in ds"get_suffix_for_seq(seq_depth_counter)": "
 			indentcode(sequencenestingdepth)
 			print "\t\tpartial_success = False "
 			indentcode(sequencenestingdepth)
 			print "\telse:" 
 			indentcode(sequencenestingdepth)
-			print "\t\tpartial_success = verifyEnumValues_uint16(ds[\""name"\"], "
+			print "\t\tpartial_success = verifyEnumValues_uint16(ds"get_suffix_for_seq(seq_depth_counter)"[\""name"\"], "
 			indentcode(sequencenestingdepth)
 			print "\t\t\tBinaryValueDescription_" binaryenumvalues ", "
 			indentcode(sequencenestingdepth)
@@ -539,17 +553,17 @@ NR==1	{
 			print ""
 			if (length(condition) > 0) {
 				indentcode(sequencenestingdepth)
-				print "\tif Condition_" condition "(ds, parent_ds, root_ds):"
+				print "\tif Condition_" condition "(ds"get_suffix_for_seq(seq_depth_counter)", parent_ds"get_suffix_for_seq(seq_depth_counter)", root_ds):"
 				sequencenestingdepth++
 			}
 			indentcode(sequencenestingdepth)
-			print "\tif \""name"\" not in ds: "
+			print "\tif \""name"\" not in ds"get_suffix_for_seq(seq_depth_counter)": "
 			indentcode(sequencenestingdepth)
 			print "\t\tpartial_success = False "
 			indentcode(sequencenestingdepth)
 			print "\telse:" 
 			indentcode(sequencenestingdepth)
-			print "\t\tpartial_success = verifyEnumValues_tag(ds[\""name"\"], "
+			print "\t\tpartial_success = verifyEnumValues_tag(ds"get_suffix_for_seq(seq_depth_counter)"[\""name"\"], "
 			indentcode(sequencenestingdepth)
 			print "\t\t\tTagValueDescription_" tagenumvalues ", "
 			indentcode(sequencenestingdepth)
@@ -567,17 +581,17 @@ NR==1	{
 			print ""
 			if (length(condition) > 0) {
 				indentcode(sequencenestingdepth)
-				print "\tif Condition_" condition "(ds, parent_ds, root_ds):"
+				print "\tif Condition_" condition "(ds"get_suffix_for_seq(seq_depth_counter)", parent_ds"get_suffix_for_seq(seq_depth_counter)", root_ds):"
 				sequencenestingdepth++
 			}
 			indentcode(sequencenestingdepth)
-			print "\tif \""name"\" not in ds: "
+			print "\tif \""name"\" not in ds"get_suffix_for_seq(seq_depth_counter)": "
 			indentcode(sequencenestingdepth)
 			print "\t\tpartial_success = False "
 			indentcode(sequencenestingdepth)
 			print "\telse:" 
 			indentcode(sequencenestingdepth)
-			print "\t\tpartial_success = verifyEnumValues_uint16(ds[\""name"\"], "
+			print "\t\tpartial_success = verifyEnumValues_uint16(ds"get_suffix_for_seq(seq_depth_counter)"[\""name"\"], "
 			indentcode(sequencenestingdepth)
 			print "\t\t\tBinaryBitMapDescription_" binarybitmap ", "
 			indentcode(sequencenestingdepth)
@@ -595,17 +609,17 @@ NR==1	{
 			print ""
 			if (length(condition) > 0) {
 				indentcode(sequencenestingdepth)
-				print "\tif Condition_" condition "(ds, parent_ds, root_ds):"
+				print "\tif Condition_" condition "(ds"get_suffix_for_seq(seq_depth_counter)", parent_ds"get_suffix_for_seq(seq_depth_counter)", root_ds):"
 				sequencenestingdepth++
 			}
 			indentcode(sequencenestingdepth)
-			print "\tif \""name"\" not in ds: "
+			print "\tif \""name"\" not in ds"get_suffix_for_seq(seq_depth_counter)": "
 			indentcode(sequencenestingdepth)
 			print "\t\tpartial_success = False "
 			indentcode(sequencenestingdepth)
 			print "\telse: "
 			indentcode(sequencenestingdepth)
-			print "\t\tpartial_success = verifyNotZero(ds[\""name"\"], "
+			print "\t\tpartial_success = verifyNotZero(ds"get_suffix_for_seq(seq_depth_counter)"[\""name"\"], "
 			indentcode(sequencenestingdepth)
 			print "\t\t\tverbose, log, "selector ", "(notzero == "warning" ? "True" : "False") ")"
 			if (length(condition) > 0) 
@@ -615,7 +629,7 @@ NR==1	{
 			print ""
 			if (length(condition) > 0) {
 				indentcode(sequencenestingdepth)
-				print "\tif " messageConditionModifier "Condition_" condition "(ds, parent_ds, root_ds):"
+				print "\tif " messageConditionModifier "Condition_" condition "(ds"get_suffix_for_seq(seq_depth_counter)", parent_ds"get_suffix_for_seq(seq_depth_counter)", root_ds):"
 				sequencenestingdepth++
 			}
 			
@@ -652,12 +666,12 @@ NR==1	{
 
 			if (length(condition) > 0) {
 				indentcode(sequencenestingdepth)
-				print "\tif Condition_" condition "(ds, parent_ds, root_ds):"
+				print "\tif Condition_" condition "(ds"get_suffix_for_seq(seq_depth_counter)", parent_ds"get_suffix_for_seq(seq_depth_counter)", root_ds):"
 				sequencenestingdepth++
 
 			}
 			indentcode(sequencenestingdepth)
-			print "\tpartial_success =  Macro_" invokedmacro "_verify(ds, parent_ds, root_ds, verbose, log, ElementDictionary)"
+			print "\tpartial_success =  Macro_" invokedmacro "_verify(ds"get_suffix_for_seq(seq_depth_counter)", parent_ds"get_suffix_for_seq(seq_depth_counter)", root_ds, verbose, log, ElementDictionary)"
 			if (length(condition) > 0)
 				sequencenestingdepth--
 			print ""

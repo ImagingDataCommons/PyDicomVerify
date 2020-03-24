@@ -2,14 +2,44 @@ from pydicom import *
 import pydicom.datadict as Dic
 import pydicom.dataelem as Elm
 import pydicom.sequence as Seq
+import re
 from condn_cc import *
+from dicom_prechecks import *
 import os
 from numpy import *
 
 # import condn_cc
 dicom_file = "E:\\output\\HighDcm\\TCGA-HNSC\\TCGA-CQ-5323\\08-08-1985-Head and Neck-22718\\1-2.0-39411\\CT_00_.dcm"
+log = []
+
 ds = dcmread(dicom_file)
-xxx= ds["PatientName"]
+if "PerFrameFunctionalGroupsSequence" in ds:
+    print('sth')
+
+
+
+keyword ="PatientOrientation"
+ttag = Dic.tag_for_keyword(keyword)
+elem = DataElement(Dic.tag_for_keyword(keyword), keyword, "AP")
+if ttag not in ds:
+    print("it is not in ds")
+Dic.dictionary_is_retired(ttag)
+xxx= ds.add(elem)
+m =ds[ttag]
+checkPatientOrientationValuesForBiped(ds,log)
+print(log)
+
+elem = DataElement(Dic.tag_for_keyword(keyword), keyword, "DDI")
+ds[keyword] = elem
+checkPatientOrientationValuesForQuadruped(ds,log)
+print(log)
+
+x = getElementFromDataset(ds,"PixelData")
+vl = len(x.value)
+
+
+
+
 aa = xxx.value
 
 VMUNLIMITED = iinfo(uint32).max

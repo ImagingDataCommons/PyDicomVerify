@@ -94,11 +94,18 @@ def verifyType1(
     err_empty = False
     err_not_exists = False
     reason = ""
-    try:
+    if element in ds:
         elem = ds[element]
-    except (KeyError, ValueError):
+    else:
         reason = MMsgDC("MissingAttribute")
         err_not_exists = True
+
+
+    # try:
+    #     elem = ds[element]
+    # except (KeyError, ValueError):
+    #     reason = MMsgDC("MissingAttribute")
+    #     err_not_exists = True
     if not err_not_exists:
         if elem.is_empty:
             reason = MMsgDC("EmptyAttribute")
@@ -150,7 +157,7 @@ def verifyType1C(
             reason = MMsgDC("MissingAttribute")
         err_not_exists = True
     if not err_not_exists:
-        if conditionNotSatisfied and not mbpo:
+        if condition_function != 0 and conditionNotSatisfied and not mbpo:
             ViolationMessage(
                 MMsgDC("AttributePresentWhenConditionUnsatisfied"
                        "WithoutMayBePresentOtherwise"),
@@ -249,7 +256,7 @@ def verifyType2C(
         err_not_exists = True
     if not err_not_exists:
 
-        if conditionNotSatisfied and not mbpo:
+        if condition_function != 0 and conditionNotSatisfied and not mbpo:
             ViolationMessage(MMsgDC(
                 "AttributePresentWhenConditionUnsatisfiedWithoutMayBePresentOtherwise"),
                              MMsgDC("Type2C"), module, element, log, verbose)
@@ -333,7 +340,7 @@ def verifyType3C(
         err_not_exists = True
         return True
 
-    if conditionNotSatisfied and not mbpo:
+    if condition_function != 0 and conditionNotSatisfied and not mbpo:
         WarningMessage(MMsgDC("Unexpected"),
                        MMsgDC("Type3C"), module, element, log, verbose)
 

@@ -2,6 +2,7 @@ from pydicom import *
 from pydicom.datadict import *
 from pydicom.dataelem import DataElement
 from pydicom.multival import MultiValue
+from pydicom.valuerep import *
 from mesgtext_cc import *
 from numpy import *
 from strval_h import *
@@ -342,6 +343,7 @@ def verifyNotZero(elem: DataElement, verbose: bool, log: list,
                   which: int, warningNotError: bool) -> bool:
     success = True
     val = elem.value
+
     vm = elem.VM
     if type(val) == MultiValue:
         if which == -1:
@@ -358,7 +360,9 @@ def verifyNotZero(elem: DataElement, verbose: bool, log: list,
             candidate = [val]
 
     for i, count in zip(candidate, range(0, len(candidate))):
-        if not (type(i) == int or type(i) == float ):
+        if not (type(i) == int or type(i) == DSfloat or
+                type(i) == DSdecimal or type(i) == IS or
+                type(i) == float):
             log.append(
                 EMsgDC("TriedToVerifyNotZeroForNonNumericAttribute") + \
                 MMsgDC("ForAttribute") + "  <" + elem.description() + ">")

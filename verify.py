@@ -3,6 +3,7 @@ from iodcomp_select_h import SelectAndRunCompositeIOD
 from pydicom import *
 from condn_cc import *
 import argparse
+import dicom_prechecks
 import sys
 def PrintLog(log):
     for item in log:
@@ -12,8 +13,17 @@ def verify(dicom_file_path, verbose:bool, profile:str):
     fm = ds.file_meta
     for [k,v] in fm.items():
         ds[k] = v
-
     log = []
+    for i in dir(dicom_prechecks):
+        if i.startswith("check") or i.startswith("validate"):
+            item = getattr(dicom_prechecks, i)
+            if callable(item):
+                item(ds, log)
+
+    dicom_prechecks.precheckInstanceReferencesAreIncludedInHierarchicalEvidenceSequences(
+        ds, ds, log)
+
+
     SelectAndRunCompositeIOD(ds, verbose, log , Dic.DicomDictionary, profile)
     PrintLog(log)
 
