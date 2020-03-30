@@ -7,198 +7,83 @@ from condn_cc import *
 from dicom_prechecks import *
 import os
 from numpy import *
+from fix_frequent_errors import *
+import curses.ascii
+from verify import *
+import pydicom.charset
+import subprocess
+
 
 # import condn_cc
-dicom_file = "E:\\output\\HighDcm\\TCGA-HNSC\\TCGA-CQ-5323\\08-08-1985-Head and Neck-22718\\1-2.0-39411\\CT_00_.dcm"
-log = []
+def run_exe(arg_list, stderr_file, stdout_file):
+    # print(str(arg_list))
+    out_text = ""
+    for a in arg_list:
+        has_ws = False
+        for ch in a:
+            if ch.isspace():
+                has_ws = True
+                break
+        if has_ws:
+            out_text += "\"{}\" ".format(a)
+        else:
+            out_text += "{} ".format(a)
+    print(out_text)
 
-ds = dcmread(dicom_file)
-if "PerFrameFunctionalGroupsSequence" in ds:
-    print('sth')
+    proc = subprocess.run(arg_list, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    _error = proc.stderr
+    if len(stderr_file) != 0:
+        write_str_to_text(stderr_file, _error.decode("ascii"))
+        print( _error.decode("ascii"))
+    _output = proc.stdout
+    if len(stdout_file) != 0:
+        write_str_to_text(stdout_file, _output.decode("ascii"))
 
+    return proc.returncode
+def VER(file:str, out_folder:str):
+    print('{:=^120}'.format("DAVID'S"))
+    dcm_verify = "D:\\ThirdParty\\dicom3tools\\dicom3tools_winexe_1.00.snapshot.20191225060430\\dciodvfy.exe"
+    out = os.path.join(out_folder, "devids.txt")
+    run_exe([dcm_verify,'-filename', file], out, '')
+    print('{:=^120}'.format("MY CODE"))
+    log = verify(file, False, '')
+    write_str_to_text(out, '{:=^120}\n'.format("MY CODE"), True)
+    write_str_to_text(out, log, True)
+    toxml_exe_file = "D:\\ThirdParty\\DCMTK\\3.6.5\\Bin\\MSVC2017\\Release\\bin\\dcm2xml.bat"
+    run_exe([toxml_exe_file, file, os.path.join(out_folder,'xml.xml')],'','')
+# =========================================================================
+def write_str_to_text(file_name, content, append = False):
+    if append:
+        text_file = open(file_name, "a")
+    else:
+        text_file = open(file_name, "w")
+    n = text_file.write(content)
+    text_file.close()
+out_folder = "E:\\work\\dicom_xmls\\"
+dicom_file = "E:\\Dropbox\\IDC-MF_DICOM\\data\\TCGA-BLCA\\TCGA-4Z-AA89\\12-21-2005-RESSONANCIA MAGNETICA DE ABDOME INFERIOR-58797\\1-3Plane Loc-95291\\000000.dcm"
+if os.path.isdir(dicom_file):
+    files = os.listdir(dicom_file)
+    for f in files:
+        if f.endswith(".dcm"):
+            dicom_file = os.path.join(dicom_file,f)
+            break
+fix_it = True
+ds = read_file(dicom_file)
 
-
-keyword ="PatientOrientation"
-ttag = Dic.tag_for_keyword(keyword)
-elem = DataElement(Dic.tag_for_keyword(keyword), keyword, "AP")
-if ttag not in ds:
-    print("it is not in ds")
-Dic.dictionary_is_retired(ttag)
-xxx= ds.add(elem)
-m =ds[ttag]
-checkPatientOrientationValuesForBiped(ds,log)
-print(log)
-
-elem = DataElement(Dic.tag_for_keyword(keyword), keyword, "DDI")
-ds[keyword] = elem
-checkPatientOrientationValuesForQuadruped(ds,log)
-print(log)
-
-x = getElementFromDataset(ds,"PixelData")
-vl = len(x.value)
-
-
-
-
-aa = xxx.value
-
-VMUNLIMITED = iinfo(uint32).max
-tt: uint32 = 0xffffffff
-VMNONE = 0
-xx = getattr(ds, "PatientName")
-elem = ds['PatientName']
-elem.VM
-attrname = "GraphicData"
-ttag = Dic.tag_for_keyword(attrname)
-
-ttag1 = elem.tag
-x = ttag1.group
-seq_elem = ds['DeidentificationMethodCodeSequence']
-x = seq_elem.value
-T = type(x)
-print("type is = {}".format(type(x)))
-if type(x) == Seq.Sequence:
-    print("it is sequence")
-for d in x:
-    print(type(d))
-
-s = ds["seq"]
-
-
-
-
-
-
-is_private = ttag1.is_private
-vvmm = Dic.dictionary_VM(ttag)
-x = vvmm.split('-')
-
-validmask = uint16(0)
-ost = ""
-validmask = validmask | (1 << 0)
-value = uint16(0)
-bitvalue = value & uint16(1 << 0)
-ost += "Priority({})".format("Low" if bitvalue else "High")
-Dic.tag
-
-print("VM = {}".format(Dic.dictionary_VM(ttag)))
-print("VR = {}".format(Dic.dictionary_VR(ttag)))
-print("description = {}".format(Dic.dictionary_description(ttag)))
-print("has tag = {}".format(Dic.dictionary_has_tag(ttag)))
-
-# condn_cc.
-
-try:
-    yy = ds["Laterality"]
-except BaseException as err:
-    print('couldn\'t find')
-    print(type(err))
-    print(err)
-if "Laterality" not in ds:
-    print("Laterality is not in ds")
+if fix_it:
+    for ffix in dir(fix_frequent_errors):
+        if ffix.startswith("fix_"):
+            item = getattr(fix_frequent_errors, ffix)
+            if callable(item):
+                item(ds)
+        fixed_file = os.path.join(out_folder, 'fixed.dcm')
+    write_file(fixed_file, ds)
+    VER(fixed_file, out_folder)
+else:
+    VER(dicom_file, out_folder)
 
 
-# Condition="NotLegacyConvertedCTOrMROrPET"
-# # 	Element="SOPClassUID"						Modifier="Not" StringConstantFromRootAttribute="LegacyConvertedEnhancedCTImageStorageSOPClassUID"
-# # 	Element="SOPClassUID"		Operator="And"	Modifier="Not" StringConstantFromRootAttribute="LegacyConvertedEnhancedMRImageStorageSOPClassUID"
-# # 	Element="SOPClassUID"		Operator="And"	Modifier="Not" StringConstantFromRootAttribute="LegacyConvertedEnhancedPETImageStorageSOPClassUID"
-# # ConditionEnd
-# def StringValueMatch(ds, tagname, value, idx) -> bool:
-#     match = False
-#     candidate = 0
-#     try:
-#         elem = ds[tagname]
-#         if idx == -1:
-#             candidate = elem.value()
-#
-#         if (idx >= elem.VM):
-#             return False
-#         else:
-#             candidate = [elem.value[idx]]
-#         for v in candidate:
-#             if v != value:
-#                 return False
-#     except KeyError:
-#         return False
-#
-#
-# def ConditionNotLegacyConvertedCTOrMROrPET(ds) -> bool:
-#     cond = True
-#     cond = cond and not StringValueMatch(ds, "SOPClassUID",
-#                                          "LegacyConvertedEnhancedCTImageStorageSOPClassUID",
-#                                          -1)
-#
-#     return cond
 
-
-def BinaryBitMapDescription_RegionFlags(value: uint16):
-    validmask = uint16(0)
-    ost = ""
-    validmask = validmask | (1 << 0)
-    bitvalue = value & uint16(1 << 0)
-    ost += "Priority({})".formt("Low" if bitvalue else "High")
-
-    # ost << "Priority(" << (bitvalue ? "Low" : "High") << ") " << ends
-
-
-# xx = "Priority({})".format(bitvalu	# {
-# 	validmask|=(1<<1)
-# 	Uint16 bitvalue=value&(1<<1)
-# 	ost << "Scaling Protection(" << (bitvalue ? "Protected" : "Not Protected") << ") " << ends
-# }
-# {
-# 	validmask|=(1<<2)
-# 	Uint16 bitvalue=value&(1<<2)
-# 	ost << "Doppler Scale Type(" << (bitvalue ? "Frequency" : "Velocity") << ") " << ends
-# }
-# {
-# 	validmask|=(1<<3)
-# 	Uint16 bitvalue=value&(1<<3)
-# 	ost << "Scrolling Region(" << (bitvalue ? "Scrolling" : "Not Scrolling") << ") " << ends
-# }
-# {
-# 	validmask|=(1<<4)
-# 	Uint16 bitvalue=value&(1<<4)
-# 	ost << "Sweeping Region(" << (bitvalue ? "Sweeping" : "Not Sweeping") << ") " << ends
-# }
-# if (value&~validmask)
-# 	return 0
-# else
-# 	return ost.str()e ? "Low" : "High")
-
-# BinaryBitMapDescription_RegionFlags(Uint16 value)
-# {
-# 	Uint16 validmask=0
-# 	ostrstream ost
-# 	{
-# 		validmask|=(1<<0)
-# 		Uint16 bitvalue=value&(1<<0)
-# 		ost << "Priority(" << (bitvalue ? "Low" : "High") << ") " << ends
-# 	}
-# 	{
-# 		validmask|=(1<<1)
-# 		Uint16 bitvalue=value&(1<<1)
-# 		ost << "Scaling Protection(" << (bitvalue ? "Protected" : "Not Protected") << ") " << ends
-# 	}
-# 	{
-# 		validmask|=(1<<2)
-# 		Uint16 bitvalue=value&(1<<2)
-# 		ost << "Doppler Scale Type(" << (bitvalue ? "Frequency" : "Velocity") << ") " << ends
-# 	}
-# 	{
-# 		validmask|=(1<<3)
-# 		Uint16 bitvalue=value&(1<<3)
-# 		ost << "Scrolling Region(" << (bitvalue ? "Scrolling" : "Not Scrolling") << ") " << ends
-# 	}
-# 	{
-# 		validmask|=(1<<4)
-# 		Uint16 bitvalue=value&(1<<4)
-# 		ost << "Sweeping Region(" << (bitvalue ? "Sweeping" : "Not Sweeping") << ") " << ends
-# 	}
-# 	if (value&~validmask)
-# 		return 0
-# 	else
-# 		return ost.str()
 
 
 

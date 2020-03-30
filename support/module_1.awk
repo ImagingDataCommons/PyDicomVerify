@@ -189,7 +189,7 @@ NR==1	{
 					print "\t\t\t"(mbpo=="true"? "True":"False")", "
 				}
 				indentcode(sequencenestingdepth)
-				print "\t\t\tparent_ds"suffix", root_ds"suffix", "
+				print "\t\t\tparent_ds"suffix", root_ds, "
 			}
 			else {
 				if (length(condition) > 0) {
@@ -638,7 +638,7 @@ NR==1	{
 			if (showValueWithMessage == "true") {
 				print "+\\"
 				indentcode(sequencenestingdepth)
-				print "\t\t\t\" = <{}>\".format( tag_for_keyword(\"" name "\")))"
+				print "\t\t\t\" = <{}>\".format( ds." name "))"
 			}
 			else
 				print ")"

@@ -357,7 +357,7 @@ def Macro_BasicCodeSequenceMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:
 
 	if Condition_CodeValueIllegalOrDeprecated(ds, parent_ds, root_ds):
 			log.append( EMsgDC("Null") +" Code Value is illegal or deprecated - attribute <CodeValue>"+\
-				" = <{}>".format( tag_for_keyword("CodeValue")))
+				" = <{}>".format( ds.CodeValue))
 
 	partial_success =  		verifyType1C(ds, 
 			"BasicCodeSequenceMacro", "CodingSchemeDesignator", 
@@ -384,7 +384,7 @@ def Macro_BasicCodeSequenceMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:
 
 	if Condition_CodingSchemeDesignatorDeprecated(ds, parent_ds, root_ds):
 			log.append( WMsgDC("Null") +" Coding Scheme Designator is deprecated - attribute <CodingSchemeDesignator>"+\
-				" = <{}>".format( tag_for_keyword("CodingSchemeDesignator")))
+				" = <{}>".format( ds.CodingSchemeDesignator))
 
 	partial_success =  		verifyType1C(ds, 
 			"BasicCodeSequenceMacro", "CodingSchemeVersion", 
@@ -408,7 +408,7 @@ def Macro_BasicCodeSequenceMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:
 
 	if Condition_CodeMeaningIllegalOrDeprecated(ds, parent_ds, root_ds):
 			log.append( EMsgDC("Null") +" Code Meaning is illegal or deprecated - attribute <CodeMeaning>"+\
-				" = <{}>".format( tag_for_keyword("CodeMeaning")))
+				" = <{}>".format( ds.CodeMeaning))
 
 	partial_success =  		verifyType1C(ds, 
 			"BasicCodeSequenceMacro", "LongCodeValue", 
@@ -627,7 +627,7 @@ def Macro_CodeSequenceMeaningOptionalMacro_verify(ds:Dataset , parent_ds:Dataset
 
 	if Condition_CodeValueIllegalOrDeprecated(ds, parent_ds, root_ds):
 			log.append( EMsgDC("Null") +" Code Value is illegal or deprecated - attribute <CodeValue>"+\
-				" = <{}>".format( tag_for_keyword("CodeValue")))
+				" = <{}>".format( ds.CodeValue))
 
 	partial_success =  		verifyType1(ds, 
 			"CodeSequenceMeaningOptionalMacro", "CodingSchemeDesignator", 
@@ -650,7 +650,7 @@ def Macro_CodeSequenceMeaningOptionalMacro_verify(ds:Dataset , parent_ds:Dataset
 
 	if Condition_CodingSchemeDesignatorDeprecated(ds, parent_ds, root_ds):
 			log.append( WMsgDC("Null") +" Coding Scheme Designator is deprecated - attribute <CodingSchemeDesignator>"+\
-				" = <{}>".format( tag_for_keyword("CodingSchemeDesignator")))
+				" = <{}>".format( ds.CodingSchemeDesignator))
 
 	partial_success =  		verifyType1C(ds, 
 			"CodeSequenceMeaningOptionalMacro", "CodingSchemeVersion", 
@@ -773,7 +773,7 @@ def Macro_CodeSequence99SDMMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:
 
 	if Condition_CodeValueIllegalOrDeprecated(ds, parent_ds, root_ds):
 			log.append( EMsgDC("Null") +" Code Value is illegal or deprecated - attribute <CodeValue>"+\
-				" = <{}>".format( tag_for_keyword("CodeValue")))
+				" = <{}>".format( ds.CodeValue))
 
 	partial_success =  		verifyType1(ds, 
 			"CodeSequence99SDMMacro", "CodingSchemeDesignator", 
@@ -3131,7 +3131,7 @@ def Macro_PatientOrientationMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds
 						verbose, log, ElementDictionary, 
 						0, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -3363,7 +3363,7 @@ def Macro_MandatoryViewAndSliceProgressionDirectionMacro_verify(ds:Dataset , par
 						verbose, log, ElementDictionary, 
 						0, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						0, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -5989,7 +5989,7 @@ def Module_GeneralImage_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, 
 
 	if Condition_LossyImageCompressionMethodInconsistentWithTransferSyntax(ds, parent_ds, root_ds):
 			log.append( WMsgDC("Null") +" method inconsistent with transfer syntax - attribute <LossyImageCompressionMethod>"+\
-				" = <{}>".format( tag_for_keyword("LossyImageCompressionMethod")))
+				" = <{}>".format( ds.LossyImageCompressionMethod))
 
 	partial_success = verifyType3(ds, 
 			"GeneralImage", 
@@ -8168,7 +8168,7 @@ def Macro_ReferencedImageMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Da
 						verbose, log, ElementDictionary, 
 						Condition_NotLegacyConvertedCTOrMROrPET, 
 						True, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -8224,7 +8224,7 @@ def Macro_DerivationImageMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Da
 						verbose, log, ElementDictionary, 
 						Condition_NotLegacyConvertedCTOrMROrPET, 
 						True, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -8267,7 +8267,7 @@ def Macro_DerivationImageMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Da
 									verbose, log, ElementDictionary, 
 									Condition_NotLegacyConvertedCTOrMROrPET, 
 									True, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 1)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -8554,7 +8554,7 @@ def Macro_FrameVOILUTMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Datase
 
 				if Condition_WindowWidthIsNegative(ds1, parent_ds1, root_ds):
 						log.append( EMsgDC("Null") +" Not permitted to be negative - attribute <WindowWidth>"+\
-							" = <{}>".format( tag_for_keyword("WindowWidth")))
+							" = <{}>".format( ds.WindowWidth))
 
 				partial_success =  		verifyType3(ds1, 
 						"FrameVOILUTMacro", "WindowCenterWidthExplanation", 
@@ -11848,12 +11848,12 @@ def Module_MRImage_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbo
 
 	if Condition_RescaleInterceptPresentAndNotIdentity(ds, parent_ds, root_ds):
 			log.append( WMsgDC("Null") +" Non-identity Modality LUT not expected to be present in standard MR IOD - may cause windowing problems - attribute <RescaleIntercept>"+\
-				" = <{}>".format( tag_for_keyword("RescaleIntercept")))
+				" = <{}>".format( ds.RescaleIntercept))
 
 
 	if Condition_RescaleSlopePresentAndNotIdentity(ds, parent_ds, root_ds):
 			log.append( WMsgDC("Null") +" Non-identity Modality LUT not expected to be present in standard MR IOD - may cause windowing problems - attribute <RescaleSlope>"+\
-				" = <{}>".format( tag_for_keyword("RescaleSlope")))
+				" = <{}>".format( ds.RescaleSlope))
 
 	return global_success
 
@@ -11890,7 +11890,7 @@ def Module_NMPETPatientOrientation_verify(ds:Dataset , parent_ds:Dataset, root_d
 						verbose, log, ElementDictionary, 
 						0, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						0, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -13299,7 +13299,7 @@ def Module_NMDetector_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, ve
 									verbose, log, ElementDictionary, 
 									0, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									0, 1)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -13608,7 +13608,7 @@ def Module_NMMultiGatedAcquisition_verify(ds:Dataset , parent_ds:Dataset, root_d
 									verbose, log, ElementDictionary, 
 									Condition_FrameIncrementPointerContainsTimeSlotVector, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									0, 0xFFFFFFFF)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -14151,7 +14151,7 @@ def Module_USRegionCalibration_verify(ds:Dataset , parent_ds:Dataset, root_ds:Da
 						verbose, log, ElementDictionary, 
 						Condition_PixelComponentOrganizationIs3, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -16341,7 +16341,7 @@ def Macro_ModalityLUTMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Datase
 
 	if  not Condition_PhotometricInterpretationIsGrayscaleOrAbsent(ds, parent_ds, root_ds):
 			log.append( WMsgDC("Null") +" Modality LUT Module (Rescale Slope and Intercept) not appropriate for non-grayscale images - attribute <PhotometricInterpretation>"+\
-				" = <{}>".format( tag_for_keyword("PhotometricInterpretation")))
+				" = <{}>".format( ds.PhotometricInterpretation))
 
 	return global_success
 
@@ -16452,17 +16452,17 @@ def Macro_VOILUTMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, ve
 
 	if Condition_WindowWidthIsNegative(ds, parent_ds, root_ds):
 			log.append( EMsgDC("Null") +" Not permitted to be negative - attribute <WindowWidth>"+\
-				" = <{}>".format( tag_for_keyword("WindowWidth")))
+				" = <{}>".format( ds.WindowWidth))
 
 
 	if Condition_WindowWidthIsLessThanOneAndNotExact(ds, parent_ds, root_ds):
 			log.append( EMsgDC("Null") +" Not permitted to be < 1 unless VOI LUT Function is LINEAR_EXACT or SIGMOID - attribute <WindowWidth>"+\
-				" = <{}>".format( tag_for_keyword("WindowWidth")))
+				" = <{}>".format( ds.WindowWidth))
 
 
 	if Condition_WindowWidthIsZeroAndSigmoid(ds, parent_ds, root_ds):
 			log.append( EMsgDC("Null") +" Not permitted to be 0 when VOI LUT Function is SIGMOID - attribute <WindowWidth>"+\
-				" = <{}>".format( tag_for_keyword("WindowWidth")))
+				" = <{}>".format( ds.WindowWidth))
 
 	partial_success =  		verifyType3(ds, 
 			"VOILUTMacro", "WindowCenterWidthExplanation", 
@@ -16493,7 +16493,7 @@ def Macro_VOILUTMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, ve
 
 	if  not Condition_PhotometricInterpretationIsGrayscaleOrAbsent(ds, parent_ds, root_ds):
 			log.append( WMsgDC("Null") +" VOI LUT Module (Window Center and Width) not appropriate for non-grayscale images - attribute <PhotometricInterpretation>"+\
-				" = <{}>".format( tag_for_keyword("PhotometricInterpretation")))
+				" = <{}>".format( ds.PhotometricInterpretation))
 
 	return global_success
 
@@ -18736,17 +18736,17 @@ def Module_MultiframeTrueColorSCImagePseudo_verify(ds:Dataset , parent_ds:Datase
 
 	if Condition_JPEGTransferSyntaxButNotYBR_FULL_422(ds, parent_ds, root_ds):
 			log.append( EMsgDC("Null") +" JPEG transfer syntax is required to have Photometric Interpretation of YBR_FULL422 - attribute <PhotometricInterpretation>"+\
-				" = <{}>".format( tag_for_keyword("PhotometricInterpretation")))
+				" = <{}>".format( ds.PhotometricInterpretation))
 
 
 	if Condition_JPEG2000LosslessTransferSyntaxButNotYBR_RCT(ds, parent_ds, root_ds):
 			log.append( EMsgDC("Null") +" JPEG 2000 reversible transfer syntax is required to have Photometric Interpretation of YBR_RCT - attribute <PhotometricInterpretation>"+\
-				" = <{}>".format( tag_for_keyword("PhotometricInterpretation")))
+				" = <{}>".format( ds.PhotometricInterpretation))
 
 
 	if Condition_JPEG2000TransferSyntaxButNotYBR_RCTorYBR_ICT(ds, parent_ds, root_ds):
 			log.append( EMsgDC("Null") +" JPEG 2000 transfer syntax is required to have Photometric Interpretation of YBR_RCT or YBR_ICT - attribute <PhotometricInterpretation>"+\
-				" = <{}>".format( tag_for_keyword("PhotometricInterpretation")))
+				" = <{}>".format( ds.PhotometricInterpretation))
 
 	partial_success =  		verifyType1(ds, 
 			"MultiframeTrueColorSCImagePseudo", "BitsAllocated", 
@@ -19245,7 +19245,7 @@ def Module_SegmentationImage_verify(ds:Dataset , parent_ds:Dataset, root_ds:Data
 
 	if Condition_LossyImageCompressionMethodInconsistentWithTransferSyntax(ds, parent_ds, root_ds):
 			log.append( WMsgDC("Null") +" method inconsistent with transfer syntax - attribute <LossyImageCompressionMethod>"+\
-				" = <{}>".format( tag_for_keyword("LossyImageCompressionMethod")))
+				" = <{}>".format( ds.LossyImageCompressionMethod))
 
 	partial_success =  		verifyType1(ds, 
 			"SegmentationImage", "SegmentationType", 
@@ -20131,7 +20131,7 @@ def Module_SurfaceMesh_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, v
 						verbose, log, ElementDictionary, 
 						Condition_SurfaceProcessingIsYes, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						0, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -20486,7 +20486,7 @@ def Module_SpatialRegistration_verify(ds:Dataset , parent_ds:Dataset, root_ds:Da
 						verbose, log, ElementDictionary, 
 						Condition_FrameOfReferenceUIDNotPresent, 
 						True, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -20704,7 +20704,7 @@ def Module_DeformableSpatialRegistration_verify(ds:Dataset , parent_ds:Dataset, 
 						verbose, log, ElementDictionary, 
 						0, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -20755,7 +20755,7 @@ def Module_DeformableSpatialRegistration_verify(ds:Dataset , parent_ds:Dataset, 
 						verbose, log, ElementDictionary, 
 						0, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -20800,7 +20800,7 @@ def Module_DeformableSpatialRegistration_verify(ds:Dataset , parent_ds:Dataset, 
 						verbose, log, ElementDictionary, 
 						0, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -20845,7 +20845,7 @@ def Module_DeformableSpatialRegistration_verify(ds:Dataset , parent_ds:Dataset, 
 						verbose, log, ElementDictionary, 
 						0, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -21015,7 +21015,7 @@ def Module_SpatialFiducials_verify(ds:Dataset , parent_ds:Dataset, root_ds:Datas
 						verbose, log, ElementDictionary, 
 						Condition_FrameOfReferenceUIDNotPresent, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -21082,7 +21082,7 @@ def Module_SpatialFiducials_verify(ds:Dataset , parent_ds:Dataset, root_ds:Datas
 									verbose, log, ElementDictionary, 
 									Condition_FiducialIdentifierNotPresent, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 1)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -21176,7 +21176,7 @@ def Module_SpatialFiducials_verify(ds:Dataset , parent_ds:Dataset, root_ds:Datas
 									verbose, log, ElementDictionary, 
 									Condition_ContourDataNotPresent, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 0xFFFFFFFF)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -23451,7 +23451,7 @@ def Module_ParametricMapImage_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dat
 
 	if Condition_LossyImageCompressionMethodInconsistentWithTransferSyntax(ds, parent_ds, root_ds):
 			log.append( WMsgDC("Null") +" method inconsistent with transfer syntax - attribute <LossyImageCompressionMethod>"+\
-				" = <{}>".format( tag_for_keyword("LossyImageCompressionMethod")))
+				" = <{}>".format( ds.LossyImageCompressionMethod))
 
 	partial_success =  		verifyType1(ds, 
 			"ParametricMapImage", "BurnedInAnnotation", 
@@ -25852,7 +25852,7 @@ def Macro_HangingProtocolDirectoryRecord_verify(ds:Dataset , parent_ds:Dataset, 
 						verbose, log, ElementDictionary, 
 						Condition_ModalityIsNotPresent, 
 						True, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -29781,7 +29781,7 @@ def Module_EnhancedPETImage_verify(ds:Dataset , parent_ds:Dataset, root_ds:Datas
 
 	if Condition_LossyImageCompressionMethodInconsistentWithTransferSyntax(ds, parent_ds, root_ds):
 			log.append( WMsgDC("Null") +" method inconsistent with transfer syntax - attribute <LossyImageCompressionMethod>"+\
-				" = <{}>".format( tag_for_keyword("LossyImageCompressionMethod")))
+				" = <{}>".format( ds.LossyImageCompressionMethod))
 
 	partial_success =  		verifyType1(ds, 
 			"EnhancedPETImage", "PresentationLUTShape", 
@@ -31160,7 +31160,7 @@ def Module_RTImage_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbo
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfBlocksNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						0, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -31788,7 +31788,7 @@ def Module_RTDose_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbos
 						verbose, log, ElementDictionary, 
 						Condition_NeedReferencedFractionGroupSequence, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -31815,7 +31815,7 @@ def Module_RTDose_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbos
 									verbose, log, ElementDictionary, 
 									Condition_NeedReferencedBeamSequence, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 0xFFFFFFFF)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -31842,7 +31842,7 @@ def Module_RTDose_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbos
 												verbose, log, ElementDictionary, 
 												Condition_DoseSummationTypeControlPoint, 
 												False, 
-												parent_ds3, root_ds3, 
+												parent_ds3, root_ds, 
 												1, 1)
 										global_success = global_success and partial_success 
 										if verbose:
@@ -31877,7 +31877,7 @@ def Module_RTDose_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbos
 									verbose, log, ElementDictionary, 
 									Condition_NeedReferencedBrachyApplicationSetupSequence, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 0xFFFFFFFF)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -32995,7 +32995,7 @@ def Module_RTROIObservations_verify(ds:Dataset , parent_ds:Dataset, root_ds:Data
 									verbose, log, ElementDictionary, 
 									Condition_ROIPhysicalPropertyIsElemFraction, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 0xFFFFFFFF)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -34295,7 +34295,7 @@ def Module_RTFractionScheme_verify(ds:Dataset , parent_ds:Dataset, root_ds:Datas
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfBeamsNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -34490,7 +34490,7 @@ def Module_RTFractionScheme_verify(ds:Dataset , parent_ds:Dataset, root_ds:Datas
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfBrachyApplicationSetupsNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -35059,7 +35059,7 @@ def Module_RTBeams_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbo
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfWedgesNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -35168,7 +35168,7 @@ def Module_RTBeams_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbo
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfCompensatorsNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -35360,7 +35360,7 @@ def Module_RTBeams_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbo
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfBoliNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -35427,7 +35427,7 @@ def Module_RTBeams_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbo
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfBlocksNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -35803,7 +35803,7 @@ def Module_RTBeams_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbo
 									verbose, log, ElementDictionary, 
 									Condition_DoseSummationTypeControlPoint, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 0xFFFFFFFF)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -35884,7 +35884,7 @@ def Module_RTBeams_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbo
 									verbose, log, ElementDictionary, 
 									0, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 0xFFFFFFFF)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -37904,7 +37904,7 @@ def Module_RTBeamsSessionRecord_verify(ds:Dataset , parent_ds:Dataset, root_ds:D
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfWedgesNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -38569,7 +38569,7 @@ def Module_RTBeamsSessionRecord_verify(ds:Dataset , parent_ds:Dataset, root_ds:D
 									verbose, log, ElementDictionary, 
 									0, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 0xFFFFFFFF)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -40910,7 +40910,7 @@ def Module_RTIonBeams_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, ve
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfWedgesNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -41011,7 +41011,7 @@ def Module_RTIonBeams_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, ve
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfCompensatorsNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -41209,7 +41209,7 @@ def Module_RTIonBeams_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, ve
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfBoliNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -41260,7 +41260,7 @@ def Module_RTIonBeams_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, ve
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfBlocksNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -41577,7 +41577,7 @@ def Module_RTIonBeams_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, ve
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfRangeShiftersNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -41654,7 +41654,7 @@ def Module_RTIonBeams_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, ve
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfLateralSpreadingDevicesNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -41731,7 +41731,7 @@ def Module_RTIonBeams_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, ve
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfRangeModulatorsNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -41944,7 +41944,7 @@ def Module_RTIonBeams_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, ve
 									verbose, log, ElementDictionary, 
 									0, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 0xFFFFFFFF)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -42000,7 +42000,7 @@ def Module_RTIonBeams_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, ve
 									verbose, log, ElementDictionary, 
 									0, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 0xFFFFFFFF)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -42051,7 +42051,7 @@ def Module_RTIonBeams_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, ve
 									verbose, log, ElementDictionary, 
 									0, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 0xFFFFFFFF)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -42102,7 +42102,7 @@ def Module_RTIonBeams_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, ve
 									verbose, log, ElementDictionary, 
 									0, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 0xFFFFFFFF)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -42839,7 +42839,7 @@ def Module_RTIonBeamsSessionRecord_verify(ds:Dataset , parent_ds:Dataset, root_d
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfWedgesNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -42924,7 +42924,7 @@ def Module_RTIonBeamsSessionRecord_verify(ds:Dataset , parent_ds:Dataset, root_d
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfCompensatorsNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -42993,7 +42993,7 @@ def Module_RTIonBeamsSessionRecord_verify(ds:Dataset , parent_ds:Dataset, root_d
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfBoliNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -43036,7 +43036,7 @@ def Module_RTIonBeamsSessionRecord_verify(ds:Dataset , parent_ds:Dataset, root_d
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfBlocksNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -43087,7 +43087,7 @@ def Module_RTIonBeamsSessionRecord_verify(ds:Dataset , parent_ds:Dataset, root_d
 						verbose, log, ElementDictionary, 
 						0, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -43122,7 +43122,7 @@ def Module_RTIonBeamsSessionRecord_verify(ds:Dataset , parent_ds:Dataset, root_d
 						verbose, log, ElementDictionary, 
 						0, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -43257,7 +43257,7 @@ def Module_RTIonBeamsSessionRecord_verify(ds:Dataset , parent_ds:Dataset, root_d
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfRangeShiftersNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -43300,7 +43300,7 @@ def Module_RTIonBeamsSessionRecord_verify(ds:Dataset , parent_ds:Dataset, root_d
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfLateralSpreadingDevicesNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -43351,7 +43351,7 @@ def Module_RTIonBeamsSessionRecord_verify(ds:Dataset , parent_ds:Dataset, root_d
 						verbose, log, ElementDictionary, 
 						Condition_NumberOfRangeModulatorsNotZero, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -43663,7 +43663,7 @@ def Module_RTIonBeamsSessionRecord_verify(ds:Dataset , parent_ds:Dataset, root_d
 									verbose, log, ElementDictionary, 
 									0, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 0xFFFFFFFF)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -43723,7 +43723,7 @@ def Module_RTIonBeamsSessionRecord_verify(ds:Dataset , parent_ds:Dataset, root_d
 									verbose, log, ElementDictionary, 
 									0, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 0xFFFFFFFF)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -43758,7 +43758,7 @@ def Module_RTIonBeamsSessionRecord_verify(ds:Dataset , parent_ds:Dataset, root_d
 									verbose, log, ElementDictionary, 
 									0, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 0xFFFFFFFF)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -43793,7 +43793,7 @@ def Module_RTIonBeamsSessionRecord_verify(ds:Dataset , parent_ds:Dataset, root_d
 									verbose, log, ElementDictionary, 
 									0, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 0xFFFFFFFF)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -44438,7 +44438,7 @@ def Module_AcquisitionContext_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dat
 						verbose, log, ElementDictionary, 
 						Condition_NeedMeasurementUnitsCodeSequence, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -44509,7 +44509,7 @@ def Module_AcquisitionContext_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dat
 						verbose, log, ElementDictionary, 
 						Condition_AcquisitionContextItemIsConceptCodeSequence, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -44895,7 +44895,7 @@ def Macro_SpecimenMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, 
 						verbose, log, ElementDictionary, 
 						0, 
 						True, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -46371,7 +46371,7 @@ def Module_DXImage_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbo
 
 	if Condition_WindowWidthIsNegative(ds, parent_ds, root_ds):
 			log.append( EMsgDC("Null") +" Not permitted to be negative - attribute <WindowWidth>"+\
-				" = <{}>".format( tag_for_keyword("WindowWidth")))
+				" = <{}>".format( ds.WindowWidth))
 
 	partial_success =  		verifyType3(ds, 
 			"DXImage", "WindowCenterWidthExplanation", 
@@ -47615,7 +47615,7 @@ def Module_IntraoralImage_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset
 						verbose, log, ElementDictionary, 
 						Condition_NoPrimaryAnatomicStructureSequence, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -49951,7 +49951,7 @@ def Module_EnhancedMammographyImage_verify(ds:Dataset , parent_ds:Dataset, root_
 
 	if Condition_LossyImageCompressionMethodInconsistentWithTransferSyntax(ds, parent_ds, root_ds):
 			log.append( WMsgDC("Null") +" method inconsistent with transfer syntax - attribute <LossyImageCompressionMethod>"+\
-				" = <{}>".format( tag_for_keyword("LossyImageCompressionMethod")))
+				" = <{}>".format( ds.LossyImageCompressionMethod))
 
 	partial_success =  		verifyType1(ds, 
 			"EnhancedMammographyImage", "OrganDose", 
@@ -51121,7 +51121,7 @@ def Module_VLImage_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbo
 
 	if Condition_WindowWidthIsNegative(ds, parent_ds, root_ds):
 			log.append( EMsgDC("Null") +" Not permitted to be negative - attribute <WindowWidth>"+\
-				" = <{}>".format( tag_for_keyword("WindowWidth")))
+				" = <{}>".format( ds.WindowWidth))
 
 	partial_success =  		verifyType3(ds, 
 			"VLImage", "ImageLaterality", 
@@ -51892,7 +51892,7 @@ def Module_OphthalmicPhotographyImage_verify(ds:Dataset , parent_ds:Dataset, roo
 
 	if Condition_LossyImageCompressionMethodInconsistentWithTransferSyntax(ds, parent_ds, root_ds):
 			log.append( WMsgDC("Null") +" method inconsistent with transfer syntax - attribute <LossyImageCompressionMethod>"+\
-				" = <{}>".format( tag_for_keyword("LossyImageCompressionMethod")))
+				" = <{}>".format( ds.LossyImageCompressionMethod))
 
 	partial_success =  		verifyType1C(ds, 
 			"OphthalmicPhotographyImage", "PresentationLUTShape", 
@@ -52332,7 +52332,7 @@ def Macro_OphthalmicAcquisitionParametersMacro_verify(ds:Dataset , parent_ds:Dat
 						verbose, log, ElementDictionary, 
 						Condition_MydriaticAgentConcentrationIsPresent, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -52921,7 +52921,7 @@ def Module_OphthalmicTomographyImage_verify(ds:Dataset , parent_ds:Dataset, root
 
 	if Condition_LossyImageCompressionMethodInconsistentWithTransferSyntax(ds, parent_ds, root_ds):
 			log.append( WMsgDC("Null") +" method inconsistent with transfer syntax - attribute <LossyImageCompressionMethod>"+\
-				" = <{}>".format( tag_for_keyword("LossyImageCompressionMethod")))
+				" = <{}>".format( ds.LossyImageCompressionMethod))
 
 	partial_success =  		verifyType1(ds, 
 			"OphthalmicTomographyImage", "BurnedInAnnotation", 
@@ -54009,7 +54009,7 @@ def Module_WholeSlideMicroscopyImage_verify(ds:Dataset , parent_ds:Dataset, root
 
 	if Condition_LossyImageCompressionMethodInconsistentWithTransferSyntax(ds, parent_ds, root_ds):
 			log.append( WMsgDC("Null") +" method inconsistent with transfer syntax - attribute <LossyImageCompressionMethod>"+\
-				" = <{}>".format( tag_for_keyword("LossyImageCompressionMethod")))
+				" = <{}>".format( ds.LossyImageCompressionMethod))
 
 	partial_success =  		verifyType1C(ds, 
 			"WholeSlideMicroscopyImage", "PresentationLUTShape", 
@@ -54320,7 +54320,7 @@ def Module_OpticalPath_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, v
 						verbose, log, ElementDictionary, 
 						Condition_IlluminationWaveLengthNotPresent, 
 						True, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -54521,7 +54521,7 @@ def Module_OpticalPath_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, v
 						verbose, log, ElementDictionary, 
 						0, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 3)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -56691,7 +56691,7 @@ def Macro_OphthalmicAxialMeasurementsMacro_verify(ds:Dataset , parent_ds:Dataset
 						verbose, log, ElementDictionary, 
 						Condition_MydriaticAgentConcentrationPresent, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -56748,7 +56748,7 @@ def Macro_OphthalmicAxialMeasurementsMacro_verify(ds:Dataset , parent_ds:Dataset
 						verbose, log, ElementDictionary, 
 						Condition_OphthalmicAxialLengthMeasurementsTypeIsTotalLength, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -56817,7 +56817,7 @@ def Macro_OphthalmicAxialMeasurementsMacro_verify(ds:Dataset , parent_ds:Dataset
 						verbose, log, ElementDictionary, 
 						Condition_OphthalmicAxialLengthMeasurementsTypeIsLengthSummation, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -56902,7 +56902,7 @@ def Macro_OphthalmicAxialMeasurementsMacro_verify(ds:Dataset , parent_ds:Dataset
 						verbose, log, ElementDictionary, 
 						Condition_OphthalmicAxialLengthMeasurementsTypeIsSegmentalLength, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -57217,7 +57217,7 @@ def Macro_OphthalmicAxialMeasurementsSelectedMacro_verify(ds:Dataset , parent_ds
 						verbose, log, ElementDictionary, 
 						Condition_OphthalmicAxialLengthMeasurementsTypeAboveIsLengthSummation, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -57275,7 +57275,7 @@ def Macro_OphthalmicAxialMeasurementsSelectedMacro_verify(ds:Dataset , parent_ds
 						verbose, log, ElementDictionary, 
 						Condition_OphthalmicAxialLengthMeasurementsTypeAboveIsTotalLength, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -57342,7 +57342,7 @@ def Macro_OphthalmicAxialMeasurementsSelectedMacro_verify(ds:Dataset , parent_ds
 						verbose, log, ElementDictionary, 
 						Condition_OphthalmicAxialLengthMeasurementsTypeAboveIsSegmentalLength, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -57716,7 +57716,7 @@ def Macro_IntraocularLensCalculationsMacro_verify(ds:Dataset , parent_ds:Dataset
 						verbose, log, ElementDictionary, 
 						0, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -57783,7 +57783,7 @@ def Macro_IntraocularLensCalculationsMacro_verify(ds:Dataset , parent_ds:Dataset
 						verbose, log, ElementDictionary, 
 						0, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -57850,7 +57850,7 @@ def Macro_IntraocularLensCalculationsMacro_verify(ds:Dataset , parent_ds:Dataset
 						verbose, log, ElementDictionary, 
 						0, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -57949,7 +57949,7 @@ def Macro_IntraocularLensCalculationsMacro_verify(ds:Dataset , parent_ds:Dataset
 									verbose, log, ElementDictionary, 
 									0, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 1)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -58202,7 +58202,7 @@ def Macro_IOLOphthalmicAxialLengthMacro_verify(ds:Dataset , parent_ds:Dataset, r
 						verbose, log, ElementDictionary, 
 						0, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -58225,7 +58225,7 @@ def Macro_IOLOphthalmicAxialLengthMacro_verify(ds:Dataset , parent_ds:Dataset, r
 						verbose, log, ElementDictionary, 
 						Condition_OphthalmicAxialMeasurementsDeviceTypeIsUltrasound, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -59477,7 +59477,7 @@ def Module_VisualFieldStaticPerimetryTestMeasurements_verify(ds:Dataset , parent
 						verbose, log, ElementDictionary, 
 						Condition_TestPointNormalsDataFlagIsYes, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -59639,7 +59639,7 @@ def Module_VisualFieldStaticPerimetryTestResults_verify(ds:Dataset , parent_ds:D
 						verbose, log, ElementDictionary, 
 						Condition_GlobalDeviationProbabilityNormalsFlagIsYes, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -59696,7 +59696,7 @@ def Module_VisualFieldStaticPerimetryTestResults_verify(ds:Dataset , parent_ds:D
 						verbose, log, ElementDictionary, 
 						Condition_LocalDeviationProbabilityNormalsFlagIsYes, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -60395,7 +60395,7 @@ def Module_Waveform_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verb
 									verbose, log, ElementDictionary, 
 									0, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 0xFFFFFFFF)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -60465,7 +60465,7 @@ def Module_Waveform_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verb
 									verbose, log, ElementDictionary, 
 									Condition_ChannelSensitivityIsPresent, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 1)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -60845,7 +60845,7 @@ def Module_WaveformAnnotation_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dat
 						verbose, log, ElementDictionary, 
 						Condition_UnformattedTextValueNotPresent, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -60868,7 +60868,7 @@ def Module_WaveformAnnotation_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dat
 									verbose, log, ElementDictionary, 
 									0, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 0xFFFFFFFF)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -60911,7 +60911,7 @@ def Module_WaveformAnnotation_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dat
 									verbose, log, ElementDictionary, 
 									0, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 0xFFFFFFFF)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -64240,7 +64240,7 @@ def Module_DisplayedArea_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset,
 						verbose, log, ElementDictionary, 
 						0, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -64398,7 +64398,7 @@ def Module_GraphicAnnotation_verify(ds:Dataset , parent_ds:Dataset, root_ds:Data
 						verbose, log, ElementDictionary, 
 						0, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -64429,7 +64429,7 @@ def Module_GraphicAnnotation_verify(ds:Dataset , parent_ds:Dataset, root_ds:Data
 						verbose, log, ElementDictionary, 
 						Condition_RequireTextObjectSequence, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -64599,7 +64599,7 @@ def Module_GraphicAnnotation_verify(ds:Dataset , parent_ds:Dataset, root_ds:Data
 						verbose, log, ElementDictionary, 
 						Condition_RequireGraphicObjectSequence, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -65001,7 +65001,7 @@ def Module_SoftcopyVOILUT_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset
 						verbose, log, ElementDictionary, 
 						0, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -65316,7 +65316,7 @@ def Module_PresentationStateBlending_verify(ds:Dataset , parent_ds:Dataset, root
 						verbose, log, ElementDictionary, 
 						0, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -65335,7 +65335,7 @@ def Module_PresentationStateBlending_verify(ds:Dataset , parent_ds:Dataset, root
 									verbose, log, ElementDictionary, 
 									0, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 0xFFFFFFFF)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -65784,7 +65784,7 @@ def Module_HangingProtocolDefinition_verify(ds:Dataset , parent_ds:Dataset, root
 						verbose, log, ElementDictionary, 
 						Condition_ModalityNotPresent, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -66055,7 +66055,7 @@ def Module_HangingProtocolDefinition_verify(ds:Dataset , parent_ds:Dataset, root
 									verbose, log, ElementDictionary, 
 									Condition_ImageSetSelectorCategoryIsAbstractPriorAndAbstractPriorValueNotPresent, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 1)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -67281,7 +67281,7 @@ def Module_StructuredDisplayImageBox_verify(ds:Dataset , parent_ds:Dataset, root
 
 				if Condition_ImageBoxOverlapPriorityValueNot1To100(ds1, parent_ds1, root_ds):
 						log.append( EMsgDC("Null") +" Is not a positive integer in the range 1 to 100 - attribute <ImageBoxOverlapPriority>"+\
-							" = <{}>".format( tag_for_keyword("ImageBoxOverlapPriority")))
+							" = <{}>".format( ds.ImageBoxOverlapPriority))
 
 				partial_success =  		verifyType3(ds1, 
 						"StructuredDisplayImageBox", "DisplaySetHorizontalJustification", 
@@ -67355,7 +67355,7 @@ def Module_StructuredDisplayImageBox_verify(ds:Dataset , parent_ds:Dataset, root
 
 				if Condition_RecommendedDisplayFrameRateNotGreaterThanZero(ds1, parent_ds1, root_ds):
 						log.append( EMsgDC("Null") +" Is not greater than 0 - attribute <RecommendedDisplayFrameRate>"+\
-							" = <{}>".format( tag_for_keyword("RecommendedDisplayFrameRate")))
+							" = <{}>".format( ds.RecommendedDisplayFrameRate))
 
 				partial_success =  		verifyType1C(ds1, 
 						"StructuredDisplayImageBox", "CineRelativeToRealTime", 
@@ -67371,7 +67371,7 @@ def Module_StructuredDisplayImageBox_verify(ds:Dataset , parent_ds:Dataset, root
 
 				if Condition_CineRelativeToRealTimeNotGreaterThanZero(ds1, parent_ds1, root_ds):
 						log.append( EMsgDC("Null") +" Is not greater than 0 - attribute <CineRelativeToRealTime>"+\
-							" = <{}>".format( tag_for_keyword("CineRelativeToRealTime")))
+							" = <{}>".format( ds.CineRelativeToRealTime))
 
 				partial_success =  		verifyType1C(ds1, 
 						"StructuredDisplayImageBox", "InitialCineRunState", 
@@ -67423,7 +67423,7 @@ def Module_StructuredDisplayImageBox_verify(ds:Dataset , parent_ds:Dataset, root
 						verbose, log, ElementDictionary, 
 						Condition_ImageBoxLayoutTypeIsStack, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						0, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -67446,7 +67446,7 @@ def Module_StructuredDisplayImageBox_verify(ds:Dataset , parent_ds:Dataset, root
 						verbose, log, ElementDictionary, 
 						Condition_NoReferencedPresentationStateOrStereometricInstanceOrInstance, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						0, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -67469,7 +67469,7 @@ def Module_StructuredDisplayImageBox_verify(ds:Dataset , parent_ds:Dataset, root
 									verbose, log, ElementDictionary, 
 									0, 
 									False, 
-									parent_ds2, root_ds2, 
+									parent_ds2, root_ds, 
 									1, 1)
 							global_success = global_success and partial_success 
 							if verbose:
@@ -67492,7 +67492,7 @@ def Module_StructuredDisplayImageBox_verify(ds:Dataset , parent_ds:Dataset, root
 						verbose, log, ElementDictionary, 
 						Condition_NoReferencedImageOrStereometricInstanceOrInstance, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -67515,7 +67515,7 @@ def Module_StructuredDisplayImageBox_verify(ds:Dataset , parent_ds:Dataset, root
 						verbose, log, ElementDictionary, 
 						Condition_NoReferencedPresentationStateOrStereometricInstanceOrImage, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -67538,7 +67538,7 @@ def Module_StructuredDisplayImageBox_verify(ds:Dataset , parent_ds:Dataset, root
 						verbose, log, ElementDictionary, 
 						Condition_NoReferencedPresentationStateOrInstanceOrImage, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -68265,7 +68265,7 @@ def Macro_MRTimingAndRelatedParametersMacro_verify(ds:Dataset , parent_ds:Datase
 						verbose, log, ElementDictionary, 
 						Condition_Always, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -68343,7 +68343,7 @@ def Macro_MRTimingAndRelatedParametersMacro_verify(ds:Dataset , parent_ds:Datase
 						verbose, log, ElementDictionary, 
 						Condition_Always, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -69145,7 +69145,7 @@ def Macro_MRReceiveCoilMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Data
 						verbose, log, ElementDictionary, 
 						Condition_ReceiveCoilTypeIsMultiCoil, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -69315,7 +69315,7 @@ def Macro_MRDiffusionMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Datase
 						verbose, log, ElementDictionary, 
 						Condition_DiffusionDirectionalityIsDirectional, 
 						True, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -69342,7 +69342,7 @@ def Macro_MRDiffusionMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Datase
 						verbose, log, ElementDictionary, 
 						Condition_DiffusionDirectionalityIsBMatrix, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -69713,7 +69713,7 @@ def Macro_MRArterialSpinLabelingMacro_verify(ds:Dataset , parent_ds:Dataset, roo
 						verbose, log, ElementDictionary, 
 						Condition_ASLContextIsControlLOrLabel, 
 						True, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -69834,7 +69834,7 @@ def Macro_MRArterialSpinLabelingMacro_verify(ds:Dataset , parent_ds:Dataset, roo
 						verbose, log, ElementDictionary, 
 						Condition_ASLBolusCutoffFlagIsYes, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -71324,7 +71324,7 @@ def Module_EnhancedMRImage_verify(ds:Dataset , parent_ds:Dataset, root_ds:Datase
 
 	if Condition_LossyImageCompressionMethodInconsistentWithTransferSyntax(ds, parent_ds, root_ds):
 			log.append( WMsgDC("Null") +" method inconsistent with transfer syntax - attribute <LossyImageCompressionMethod>"+\
-				" = <{}>".format( tag_for_keyword("LossyImageCompressionMethod")))
+				" = <{}>".format( ds.LossyImageCompressionMethod))
 
 	partial_success =  		verifyType1(ds, 
 			"EnhancedMRImage", "PresentationLUTShape", 
@@ -73780,7 +73780,7 @@ def Macro_CTFrameVOILUTMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Data
 
 				if Condition_WindowWidthIsNegative(ds1, parent_ds1, root_ds):
 						log.append( EMsgDC("Null") +" Not permitted to be negative - attribute <WindowWidth>"+\
-							" = <{}>".format( tag_for_keyword("WindowWidth")))
+							" = <{}>".format( ds.WindowWidth))
 
 				partial_success =  		verifyType3(ds1, 
 						"CTFrameVOILUTMacro", "WindowCenterWidthExplanation", 
@@ -74315,7 +74315,7 @@ def Module_EnhancedCTImage_verify(ds:Dataset , parent_ds:Dataset, root_ds:Datase
 
 	if Condition_LossyImageCompressionMethodInconsistentWithTransferSyntax(ds, parent_ds, root_ds):
 			log.append( WMsgDC("Null") +" method inconsistent with transfer syntax - attribute <LossyImageCompressionMethod>"+\
-				" = <{}>".format( tag_for_keyword("LossyImageCompressionMethod")))
+				" = <{}>".format( ds.LossyImageCompressionMethod))
 
 	partial_success =  		verifyType1(ds, 
 			"EnhancedCTImage", "PresentationLUTShape", 
@@ -75199,7 +75199,7 @@ def Macro_CTExposureMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset
 						verbose, log, ElementDictionary, 
 						Condition_WaterEquivalentDiameterIsPresent, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -78860,7 +78860,7 @@ def Module_EnhancedXAXRFImage_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dat
 						verbose, log, ElementDictionary, 
 						0, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 1)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -79011,7 +79011,7 @@ def Module_EnhancedXAXRFImage_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dat
 
 	if Condition_LossyImageCompressionMethodInconsistentWithTransferSyntax(ds, parent_ds, root_ds):
 			log.append( WMsgDC("Null") +" method inconsistent with transfer syntax - attribute <LossyImageCompressionMethod>"+\
-				" = <{}>".format( tag_for_keyword("LossyImageCompressionMethod")))
+				" = <{}>".format( ds.LossyImageCompressionMethod))
 
 	partial_success = verifyType1C(ds, 
 			"EnhancedXAXRFImage", 
@@ -82181,7 +82181,7 @@ def Module_XRay3DImage_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, v
 
 	if Condition_LossyImageCompressionMethodInconsistentWithTransferSyntax(ds, parent_ds, root_ds):
 			log.append( WMsgDC("Null") +" method inconsistent with transfer syntax - attribute <LossyImageCompressionMethod>"+\
-				" = <{}>".format( tag_for_keyword("LossyImageCompressionMethod")))
+				" = <{}>".format( ds.LossyImageCompressionMethod))
 
 	partial_success = verifyType1C(ds, 
 			"XRay3DImage", 
@@ -83115,7 +83115,7 @@ def Module_XRay3DAngiographicAcquisition_verify(ds:Dataset , parent_ds:Dataset, 
 						verbose, log, ElementDictionary, 
 						0, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -83246,7 +83246,7 @@ def Module_XRay3DCraniofacialAcquisition_verify(ds:Dataset , parent_ds:Dataset, 
 						verbose, log, ElementDictionary, 
 						0, 
 						False, 
-						parent_ds1, root_ds1, 
+						parent_ds1, root_ds, 
 						1, 0xFFFFFFFF)
 				global_success = global_success and partial_success 
 				if verbose:
@@ -84644,7 +84644,7 @@ def Module_EnhancedUSImage_verify(ds:Dataset , parent_ds:Dataset, root_ds:Datase
 
 	if Condition_LossyImageCompressionMethodInconsistentWithTransferSyntax(ds, parent_ds, root_ds):
 			log.append( WMsgDC("Null") +" method inconsistent with transfer syntax - attribute <LossyImageCompressionMethod>"+\
-				" = <{}>".format( tag_for_keyword("LossyImageCompressionMethod")))
+				" = <{}>".format( ds.LossyImageCompressionMethod))
 
 	partial_success =  		verifyType1(ds, 
 			"EnhancedUSImage", "PresentationLUTShape", 

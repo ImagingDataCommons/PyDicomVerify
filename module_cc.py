@@ -257,9 +257,9 @@ def verifyType2C(
     if not err_not_exists:
 
         if condition_function != 0 and conditionNotSatisfied and not mbpo:
-            ViolationMessage(MMsgDC(
-                "AttributePresentWhenConditionUnsatisfiedWithoutMayBePresentOtherwise"),
-                             MMsgDC("Type2C"), module, element, log, verbose)
+            reason = MMsgDC(
+                "AttributePresentWhenConditionUnsatisfiedWithoutMayBePresentOtherwise")
+
         if not verifyVR(elem, module, element, verbose, log):
             reason = MMsgDC("BadValueRepresentation")
             err_vr = True

@@ -182,12 +182,18 @@ def verifyEnumValues(elem: DataElement, str_val: dict, verbose: bool, log: list,
         else:
             candidate = [val]
     for i, count in zip(candidate, range(0, len(candidate))):
-        if type(i) != str:
+        converted_i = i
+        if type(i) == DSfloat or \
+                type(i) == DSdecimal or type(i) == IS:
+            converted_i = str(i)
+        elif type(i) == str:
+            converted_i = i
+        else:
             log.append(
                 EMsgDC("TriedToVerifyEnumeratedValueForNonStringAttribute") + \
                 MMsgDC("ForAttribute") + "  <" + elem.description() + ">")
             return False
-        if i in str_val:
+        if converted_i in str_val:
             if verbose:
                 log.append(
                     MMsgDC("RecognizedEnumeratedValue") \
@@ -226,7 +232,8 @@ def verifyEnumValues_uint16(elem: DataElement, bin_method, verbose: bool,
             candidate = [val]
 
     for i, count in zip(candidate, range(0, len(candidate))):
-        if type(i) != int:
+        if type(i) != int and type(i) != DSfloat and \
+                type(i) != DSdecimal and type(i) != IS:
             log.append(
                 EMsgDC("TriedToVerifyEnumeratedValueForNonNumericAttribute") + \
                 MMsgDC("ForAttribute") + "  <" + elem.description() + ">")
@@ -270,7 +277,8 @@ def verifyBitMap(elem: DataElement, bin_method, verbose: bool, log: list,
             candidate = [val]
 
     for i, count in zip(candidate, range(0, len(candidate))):
-        if type(i) != int:
+        if type(i) != int and type(i) != DSfloat and \
+                type(i) != DSdecimal and type(i) != IS:
             log.append(
                 EMsgDC("TriedToVerifyBitMapForNonNumericAttribute") + \
                 MMsgDC("ForAttribute") + "  <" + elem.description() + ">")
@@ -342,7 +350,10 @@ def verifyEnumValues_tag(elem: DataElement, tag_method, verbose: bool,
 def verifyNotZero(elem: DataElement, verbose: bool, log: list,
                   which: int, warningNotError: bool) -> bool:
     success = True
+    if elem.is_empty:
+        return True
     val = elem.value
+
 
     vm = elem.VM
     if type(val) == MultiValue:
@@ -363,17 +374,16 @@ def verifyNotZero(elem: DataElement, verbose: bool, log: list,
         if not (type(i) == int or type(i) == DSfloat or
                 type(i) == DSdecimal or type(i) == IS or
                 type(i) == float):
-            log.append(
-                EMsgDC("TriedToVerifyNotZeroForNonNumericAttribute") + \
-                MMsgDC("ForAttribute") + "  <" + elem.description() + ">")
+            log.append("{} {} <{}>".format(
+                EMsgDC("TriedToVerifyNotZeroForNonNumericAttribute"),
+                MMsgDC("ForAttribute"), elem.description()))
             return False
         if i == 0:
-            log.append(
+            log.append("{} {} {} {} <{}>".format(
                 (WMsgDC("ZeroValue") if warningNotError else EMsgDC(
-                    "ZeroValue")) \
-                + "> " + MMsgDC("ForValue") + " {}".format(count + 1) \
-                + " " + MMsgDC("OfAttribute") + " <" \
-                + elem.description() + ">")
+                    "ZeroValue")),
+                MMsgDC("ForValue"), (count + 1) ,
+                MMsgDC("OfAttribute"), elem.description()))
             success = False
 
     return success

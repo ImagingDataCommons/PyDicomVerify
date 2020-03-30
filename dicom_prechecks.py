@@ -10,6 +10,9 @@ from pydicom.uid import UID
 from numpy import *
 from mesgtext_cc import *
 from sopclc_h import *
+import module_cc
+import validate_vr
+from pydicom.dataelem import *
 import re
 
 
@@ -80,39 +83,60 @@ def checkScaledNumericValues(ds: Dataset, log: list):
 
 
 # def checkScaledNumericValues ???
-def checkPatientOrientationValuesForBiped(ds: Dataset, log: list) -> bool:
-    if "PatientOrientation" not in ds:
-        for (key, elems) in ds.items():
-            return loopOverListsInSequencesWithLog(
-                elems, log, checkPatientOrientationValuesForQuadruped)
-    p_orientation = ds.PatientOrientation
-    regex = '[APRLFH]{2}'
-    r = re.match(regex, p_orientation)
-    if r is None:
-        msg = "{} - {} - only L, R, A, P, H or F permitted".format(
-            EMsgDC("IllegalCharacterInPatientOrientation"), p_orientation)
-        log.append(msg)
-        return False
+def subcheckPatientOrientationValuesForBiped(ds: Dataset, log: list) -> bool:
+    success = True
+    aPatientOrientation = getElementFromDataset(ds, "PatientOrientation")
+    if aPatientOrientation is not None:
+        vPatientOrientation = aPatientOrientation.value
+        p_orientation = ""
+        if type(vPatientOrientation) == MultiValue:
+            for i in vPatientOrientation:
+                p_orientation += i
+        else:
+            p_orientation = vPatientOrientation
 
-    msg = "{} - {}".format(
-        EMsgDC(
-            "ConflictingDirectionsInPatientOrientationCannotBePresentInSameValue"),
-        "{}")
-    if 'A' in p_orientation and 'P' in p_orientation:
-        log.append(msg.format("A, P"))
-        return False
-    if 'R' in p_orientation and 'L' in p_orientation:
-        log.append(msg.format("R, L"))
-        return False
-    if 'F' in p_orientation and 'H' in p_orientation:
-        log.append(msg.format("F, H"))
-        return False
-    if p_orientation[0] == p_orientation[1]:
-        msg = "{} - /{}/ and /{}/".format(
-            EMsgDC("PatientOrientationRowAndColumnDirectionsCannotBeIdentical"),
-            p_orientation[0], p_orientation[1])
-        log.append(msg)
-        return False
+        regex = '[APRLFH]{2}'
+        r = re.match(regex, p_orientation)
+        if r is None:
+            msg = "{} - {} - only L, R, A, P, H or F permitted".format(
+                EMsgDC("IllegalCharacterInPatientOrientation"), p_orientation)
+            log.append(msg)
+            success = False
+
+        msg = "{} - {}".format(
+            EMsgDC(
+                "ConflictingDirectionsInPatientOrientationCannotBePresentInSameValue"),
+            "{}")
+        if 'A' in p_orientation and 'P' in p_orientation:
+            log.append(msg.format("A, P"))
+            success = False
+        if 'R' in p_orientation and 'L' in p_orientation:
+            log.append(msg.format("R, L"))
+            success = False
+        if 'F' in p_orientation and 'H' in p_orientation:
+            log.append(msg.format("F, H"))
+            success = False
+        if p_orientation[0] == p_orientation[1]:
+            msg = "{} - /{}/ and /{}/".format(
+                EMsgDC("PatientOrientationRowAndColumnDirectionsCannotBeIdentical"),
+                p_orientation[0], p_orientation[1])
+            log.append(msg)
+            success = False
+
+    for (key, elems) in ds.items():
+        success = success and loopOverListsInSequencesWithLog(
+            elems, log, subcheckPatientOrientationValuesForBiped)
+    return success
+
+def checkPatientOrientationValuesForBipedOrQuadruped(ds: Dataset, log: list) -> bool:
+    quadruped = False
+    aAnatomicalOrientationType = getElementFromDataset(ds, 'AnatomicalOrientationType')
+    if aAnatomicalOrientationType is not None:
+        if aAnatomicalOrientationType.value == "QUADRUPED":
+            quadruped = True
+    return subcheckPatientOrientationValuesForQuadruped(ds, log) \
+        if quadruped else subcheckPatientOrientationValuesForBiped(ds, log)
+
 
 
 def subcheckQuadrupedValidity(direction) -> str:
@@ -152,88 +176,101 @@ def subcheckQuadrupedValidity(direction) -> str:
     return direction
 
 
-def checkPatientOrientationValuesForQuadruped(ds: Dataset, log: list) -> bool:
-    if "PatientOrientation" not in ds:
-        for (key, elems) in ds.items():
-            return loopOverListsInSequencesWithLog(
-                elems, log, checkPatientOrientationValuesForQuadruped)
-    p_orientation = ds.PatientOrientation
-    msg = "{} - {} - {}"
-    msg_g = msg.format(
-        EMsgDC(
-            "ConflictingDirectionsInPatientOrientationCannotBePresentInSameValue"),
-        "{}", "")
-    msg_badval = msg.format(
-        EMsgDC("IllegalCharacterInPatientOrientation"), "{}",
-        "only CD, CR, D, DI, L, LE, M, PA, PL, PR, R, RT or V permitted for quadruped")
-    row_dir = subcheckQuadrupedValidity(p_orientation[0:2])
-    if len(row_dir) == 0:
-        log.append(msg_badval.format(p_orientation))
-        return False
-    col_dir = subcheckQuadrupedValidity(p_orientation[len(row_dir):])
-    if len(col_dir) == 0:
-        log.append(msg_badval.format(p_orientation))
-        return False
-    if col_dir == row_dir:
-        msg_eq = msg.format(
-            EMsgDC("PatientOrientationRowAndColumnDirectionsCannotBeIdentical"),
-            "/{}/".format(col_dir), "/{}/".format({row_dir}))
-        return False
-    if col_dir == 'CR' and row_dir == 'CD':
-        log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
-        return False
-    if col_dir == 'CD' and row_dir == 'CR':
-        log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
-        return False
-    # -------------------------------------------------------
-    if col_dir == 'LE' and row_dir == 'RT':
-        log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
-        return False
-    if col_dir == 'RT' and row_dir == 'LE':
-        log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
-        return False
-    # -------------------------------------------------------
-    if col_dir == 'L' and row_dir == 'M':
-        log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
-        return False
-    if col_dir == 'M' and row_dir == 'L':
-        log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
-        return False
-    # -------------------------------------------------------
-    if col_dir == 'D' and row_dir == 'V':
-        log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
-        return False
-    if col_dir == 'V' and row_dir == 'D':
-        log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
-        return False
-    # -------------------------------------------------------
-    if col_dir == 'DI' and row_dir == 'PR':
-        log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
-        return False
-    if col_dir == 'PR' and row_dir == 'DI':
-        log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
-        return False
-    # -------------------------------------------------------
-    if col_dir == "R" and row_dir == "CD":
-        log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
-        return False
-    if col_dir == "CD" and row_dir == "R":
-        log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
-        return False
-    # -------------------------------------------------------
-    if col_dir == "R" and row_dir == "CR":
-        log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
-        return False
-    if col_dir == "CR" and row_dir == "R":
-        log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
-        return False
-    # -------------------------------------------------------
-    if col_dir == "PA" and row_dir == "PL":
-        log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
-        return False
-    if col_dir == "PL" and row_dir == "PA":
-        log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
-        return False
+def subcheckPatientOrientationValuesForQuadruped(ds: Dataset, log: list) -> bool:
+    success = True
+    aPatientOrientation = getElementFromDataset(ds, "PatientOrientation")
+
+    if aPatientOrientation is not None:
+        vPatientOrientation = aPatientOrientation.value
+        p_orientation = ""
+        if type(vPatientOrientation) == MultiValue:
+            for i in vPatientOrientation:
+                p_orientation += i
+        else:
+            p_orientation = vPatientOrientation
+
+        msg = "{} - {} - {}"
+        msg_g = msg.format(
+            EMsgDC(
+                "ConflictingDirectionsInPatientOrientationCannotBePresentInSameValue"),
+            "{}", "")
+        msg_badval = msg.format(
+            EMsgDC("IllegalCharacterInPatientOrientation"), "{}",
+            "only CD, CR, D, DI, L, LE, M, PA, PL, PR, R, RT or V permitted for quadruped")
+        row_dir = subcheckQuadrupedValidity(p_orientation[0:2])
+        if len(row_dir) == 0:
+            log.append(msg_badval.format(p_orientation))
+            success = False
+        col_dir = subcheckQuadrupedValidity(p_orientation[len(row_dir):])
+        if len(col_dir) == 0:
+            log.append(msg_badval.format(p_orientation))
+            success = False
+        if col_dir == row_dir:
+            msg_eq = msg.format(
+                EMsgDC("PatientOrientationRowAndColumnDirectionsCannotBeIdentical"),
+                "/{}/".format(col_dir), "/{}/".format({row_dir}))
+            success = False
+        if col_dir == 'CR' and row_dir == 'CD':
+            log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
+            success = False
+        if col_dir == 'CD' and row_dir == 'CR':
+            log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
+            success = False
+        # -------------------------------------------------------
+        if col_dir == 'LE' and row_dir == 'RT':
+            log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
+            success = False
+        if col_dir == 'RT' and row_dir == 'LE':
+            log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
+            success = False
+        # -------------------------------------------------------
+        if col_dir == 'L' and row_dir == 'M':
+            log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
+            success = False
+        if col_dir == 'M' and row_dir == 'L':
+            log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
+            success = False
+        # -------------------------------------------------------
+        if col_dir == 'D' and row_dir == 'V':
+            log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
+            success = False
+        if col_dir == 'V' and row_dir == 'D':
+            log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
+            success = False
+        # -------------------------------------------------------
+        if col_dir == 'DI' and row_dir == 'PR':
+            log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
+            success = False
+        if col_dir == 'PR' and row_dir == 'DI':
+            log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
+            success = False
+        # -------------------------------------------------------
+        if col_dir == "R" and row_dir == "CD":
+            log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
+            success = False
+        if col_dir == "CD" and row_dir == "R":
+            log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
+            success = False
+        # -------------------------------------------------------
+        if col_dir == "R" and row_dir == "CR":
+            log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
+            success = False
+        if col_dir == "CR" and row_dir == "R":
+            log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
+            success = False
+        # -------------------------------------------------------
+        if col_dir == "PA" and row_dir == "PL":
+            log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
+            success = False
+        if col_dir == "PL" and row_dir == "PA":
+            log.append(msg_g.format("{}, {}".format(col_dir, row_dir)))
+            success = False
+
+
+    for (key, elems) in ds.items():
+        success = success and loopOverListsInSequencesWithLog(
+            elems, log, subcheckPatientOrientationValuesForQuadruped)
+    return success
 
 
 def checkUIDs(ds: Dataset, log: list) -> bool:
@@ -1610,6 +1647,7 @@ def precheckInstanceReferencesAreIncludedInHierarchicalEvidenceSequences(
 
 def validatePrivate(ds: Dataset, log: list) -> bool:
     success = True
+
     for (key, a) in ds.items():
         success = success and loopOverListsInSequencesWithLog(a, log,
                                                               validatePrivate)
@@ -1634,10 +1672,45 @@ def validateRetired(ds: Dataset, log: list) -> bool:
         e = a.tag.element
         if Dictionary.dictionary_has_tag(a.tag):
             if Dictionary.dictionary_is_retired(a.tag):
-                msg = "{} - ({},{})".format(
-                    EMsgDC("RetiredAttribute"),
-                    g, e)
+                msg = "{} - {}".format(
+                    EMsgDC("RetiredAttribute"),validate_vr.tag2str(a.tag))
                 log.append(msg)
                 success = False
+
+    return success
+
+def validateVR(ds: Dataset, log: list) -> bool:
+    success = True
+
+    attrib = getElementFromDataset(ds, "SpecificCharacterSet")
+    if attrib is None:
+        char_set = pydicom.charset.convert_encodings(["ISO 646"])
+    elif type(attrib.value) == MultiValue:
+        char_set = pydicom.charset.convert_encodings(attrib.value)
+    else:
+        char_set = pydicom.charset.convert_encodings([attrib.value])
+    for (key, a) in ds.items():
+        success = success and loopOverListsInSequencesWithLog(a, log,
+                                                              validateVR)
+        try:
+            if a.is_raw:
+                a = DataElement_from_raw(a)
+            if a.VR == "UN":
+                print(a)
+
+            x = getattr(validate_vr, "validateVR_" + a.VR)
+            x(a, log, char_set)
+        except AttributeError as err:
+            print("Couldn't find validateVR_" + a.VR)
+            print(err)
+
+        try:
+            kw = a.keyword
+        except AttributeError:
+            kw = ""
+        if Dictionary.dictionary_has_tag(a.tag):
+            kw = Dictionary.keyword_for_tag(a.tag)
+            success = success and module_cc.verifyVR(a, "", kw, False, log)
+
 
     return success

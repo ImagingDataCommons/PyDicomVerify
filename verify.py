@@ -5,11 +5,17 @@ from condn_cc import *
 import argparse
 import dicom_prechecks
 import sys
-def PrintLog(log):
+import fix_frequent_errors
+
+def PrintLog(log)->str:
+    out = ''
     for item in log:
         print(item)
+        out += item + '\n'
+    return out
 def verify(dicom_file_path, verbose:bool, profile:str):
     ds = dcmread(dicom_file_path)
+
     fm = ds.file_meta
     for [k,v] in fm.items():
         ds[k] = v
@@ -22,10 +28,9 @@ def verify(dicom_file_path, verbose:bool, profile:str):
 
     dicom_prechecks.precheckInstanceReferencesAreIncludedInHierarchicalEvidenceSequences(
         ds, ds, log)
-
-
     SelectAndRunCompositeIOD(ds, verbose, log , Dic.DicomDictionary, profile)
-    PrintLog(log)
+    lloogg = PrintLog(log)
+    return lloogg
 
 def main(argv):
     parser = argparse.ArgumentParser(
