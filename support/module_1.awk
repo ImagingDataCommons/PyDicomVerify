@@ -67,7 +67,7 @@ NR==1	{
 			RLENGTH-length("DefineMacro=\"")-1);
 		}
 
-	print "def " macroormodule "_" module "_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbose:bool, log:list, ElementDictionary:dict)->bool:"
+	print "def " macroormodule "_" module "_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbose:bool, log:list, fix_trivials:bool)->bool:"
 
 		print "\tpartial_success = True"
 		print "\tglobal_success = True"
@@ -172,7 +172,7 @@ NR==1	{
 			indentcode(sequencenestingdepth)
 			print "\t\t\t\"" sequence "\", "
 			indentcode(sequencenestingdepth)
-			print "\t\t\tverbose, log, ElementDictionary, "
+			print "\t\t\tverbose, log, fix_trivials, "
 			indentcode(sequencenestingdepth)
 			if (type == "1C" || type == "2C" || type == "3C") {
 				if (length(condition) > 0) {
@@ -410,7 +410,7 @@ NR==1	{
 			indentcode(sequencenestingdepth)
 			print "\t\t\t\"" module "\", \"" name "\", "
 			indentcode(sequencenestingdepth)
-			print "\t\t\tverbose, log, ElementDictionary, "
+			print "\t\t\tverbose, log, fix_trivials, "
 			indentcode(sequencenestingdepth)
 			if (type == "1C" || type == "2C" || type == "3C") {
 				if (length(condition) > 0)
@@ -459,7 +459,7 @@ NR==1	{
 			indentcode(sequencenestingdepth)
 			print "\t\tpartial_success = verifyVM(ds"get_suffix_for_seq(seq_depth_counter)"[\"name\"], "
 			indentcode(sequencenestingdepth)
-			print "\t\t\t\"" module "\", \"" name "\", log, ElementDictionary, "vmmin ", "vmmax ", \"" condition "\")"	# use condition as source
+			print "\t\t\t\"" module "\", \"" name "\", log, fix_trivials, "vmmin ", "vmmax ", \"" condition "\")"	# use condition as source
 			if (length(condition) > 0) 
 				--sequencenestingdepth
 		}
@@ -671,7 +671,7 @@ NR==1	{
 
 			}
 			indentcode(sequencenestingdepth)
-			print "\tpartial_success =  Macro_" invokedmacro "_verify(ds"get_suffix_for_seq(seq_depth_counter)", parent_ds"get_suffix_for_seq(seq_depth_counter)", root_ds, verbose, log, ElementDictionary)"
+			print "\tpartial_success =  Macro_" invokedmacro "_verify(ds"get_suffix_for_seq(seq_depth_counter)", parent_ds"get_suffix_for_seq(seq_depth_counter)", root_ds, verbose, log, fix_trivials)"
 			if (length(condition) > 0)
 				sequencenestingdepth--
 			print ""

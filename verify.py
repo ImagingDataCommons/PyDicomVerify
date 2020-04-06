@@ -28,7 +28,7 @@ def verify(dicom_file_path, verbose:bool, profile:str):
 
     dicom_prechecks.precheckInstanceReferencesAreIncludedInHierarchicalEvidenceSequences(
         ds, ds, log)
-    SelectAndRunCompositeIOD(ds, verbose, log , Dic.DicomDictionary, profile)
+    SelectAndRunCompositeIOD(ds, verbose, log , False, profile)
     lloogg = PrintLog(log)
     return lloogg
 

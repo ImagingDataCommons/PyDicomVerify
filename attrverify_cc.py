@@ -118,6 +118,10 @@ def isFloatVR(vr: str) -> bool:
                    or vr == "FD"
                    or vr == "OD"
                    or vr == "OF")
+def isPydicomNumeric(value):
+    return (type(value) == int or type(value) == DSfloat or
+                type(value) == DSdecimal or type(value) == IS or
+                type(value) == float)
 
 
 def verifyDefinedTerms(elem: DataElement, str_val: dict, verbose: bool,
@@ -232,17 +236,16 @@ def verifyEnumValues_uint16(elem: DataElement, bin_method, verbose: bool,
             candidate = [val]
 
     for i, count in zip(candidate, range(0, len(candidate))):
-        if type(i) != int and type(i) != DSfloat and \
-                type(i) != DSdecimal and type(i) != IS:
+        if not isPydicomNumeric(i):
             log.append(
                 EMsgDC("TriedToVerifyEnumeratedValueForNonNumericAttribute") + \
                 MMsgDC("ForAttribute") + "  <" + elem.description() + ">")
         output = bin_method(uint16(i))
         if len(output) == 0:
-            msg="{} <{}> {} {} {} {}".format(
+            msg="{} <{}> {} {} {} {} {}".format(
                     EMsgDC("UnrecognizedEnumeratedValue"),
                     i, MMsgDC("ForValue"), count + 1, MMsgDC("OfAttribute"),
-                    elem.description())
+                    elem.description(),bin_method.__name__)
             log.append(msg)
             success = False
         else:
@@ -277,8 +280,7 @@ def verifyBitMap(elem: DataElement, bin_method, verbose: bool, log: list,
             candidate = [val]
 
     for i, count in zip(candidate, range(0, len(candidate))):
-        if type(i) != int and type(i) != DSfloat and \
-                type(i) != DSdecimal and type(i) != IS:
+        if not isPydicomNumeric(i):
             log.append(
                 EMsgDC("TriedToVerifyBitMapForNonNumericAttribute") + \
                 MMsgDC("ForAttribute") + "  <" + elem.description() + ">")
@@ -371,9 +373,7 @@ def verifyNotZero(elem: DataElement, verbose: bool, log: list,
             candidate = [val]
 
     for i, count in zip(candidate, range(0, len(candidate))):
-        if not (type(i) == int or type(i) == DSfloat or
-                type(i) == DSdecimal or type(i) == IS or
-                type(i) == float):
+        if not isPydicomNumeric(i):
             log.append("{} {} <{}>".format(
                 EMsgDC("TriedToVerifyNotZeroForNonNumericAttribute"),
                 MMsgDC("ForAttribute"), elem.description()))
@@ -390,7 +390,7 @@ def verifyNotZero(elem: DataElement, verbose: bool, log: list,
 
 
 def verifyVR(elem: DataElement, module: str, element: str, verbose: bool,
-             log: list):
+             log: list, fix_trivial = False):
     # tag = getTag();
 
     # if (tag.isPrivateTag()) :
@@ -407,10 +407,23 @@ def verifyVR(elem: DataElement, module: str, element: str, verbose: bool,
             mssg += MMsgDC("Module") + "=<" + module + ">"
         log.append(mssg)
         return False
-
     vre = elem.VR
+    vrds = []
+    vre_equlas_vrd = False
+    if len(vrd) > 2:
+        vrds = vrd.split(' or ')
 
-    if vre != vrd and not (vrd == "OX" and vre == "OB" or vre == "OW") \
+        for elem in vrds:
+            if elem == vre:
+                vre_equlas_vrd = True
+                break
+    else:
+        vre_equlas_vrd = (vre == vrd)
+
+
+
+
+    if not vre_equlas_vrd and not (vrd == "OX" and vre == "OB" or vre == "OW") \
             and not (vrd == "XS" and vre == "US" or vre == "SS") \
             and not (vrd == "XO" and vre == "US" or vre == "SS" or vre == "OW") \
             and not (vrd == "XL" and vre == "UL" or vre == "SL"):
@@ -421,6 +434,9 @@ def verifyVR(elem: DataElement, module: str, element: str, verbose: bool,
         if len(module) != 0:
             mssg += MMsgDC("Module") + "=<" + module + ">";
         log.append(mssg)
+        if fix_trivial:
+            elem.VR = vrd
+            mssg += " :fixed: by changing the vr"
         return False
     else:
         return True
@@ -438,16 +454,16 @@ def vmpart2num(vmpart: str):
 
 
 def getVM_min_max(vm: str):
-    has_min_multiplicity = False
-    has_max_multiplicity = False
+    has_min_factor = False
+    has_max_factor = False
     if vm.isnumeric():
         mmin = uint32(vm)
         mmax = uint32(vm)
     else:
         minmax = vm.split('-')
-        [mmin, has_min_multiplicity] = vmpart2num(minmax[0])
-        [mmax, has_max_multiplicity] = vmpart2num(minmax[1])
-    return [mmin, has_min_multiplicity, mmax, has_max_multiplicity]
+        [mmin, has_min_factor] = vmpart2num(minmax[0])
+        [mmax, has_max_factor] = vmpart2num(minmax[1])
+    return [mmin, has_min_factor, mmax, has_max_factor]
 
 
 def verifyVM(elem: DataElement, module: str, element: str, verbose: bool,
@@ -459,24 +475,24 @@ def verifyVM(elem: DataElement, module: str, element: str, verbose: bool,
 
     vm = dictionary_VM(ttag)
     if multiplicityMax == 0 and multiplicityMin == 0:
-        [dictmin, has_min_multiplicity, dictmax,
-         has_max_multiplicity] = getVM_min_max(vm)
+        [dictmin, has_min_factor, dictmax,
+         has_max_factor] = getVM_min_max(vm)
         source = MMsgDC("Dictionary")
     else:
         dictmin = multiplicityMin
         dictmax = multiplicityMax
-        has_min_multiplicity = False
-        has_max_multiplicity = False
+        has_min_factor = False
+        has_max_factor = False
         source = specifiedSource if len(specifiedSource) > 0 else MMsgDC(
             "ModuleDefinition")
     min_err = False
     max_err = False
-    if has_min_multiplicity:
+    if has_min_factor:
         min_err = (current_vm % dictmin == 0)
     else:
         min_err = current_vm < dictmin
 
-    if has_max_multiplicity:
+    if has_max_factor:
         max_err = (current_vm % dictmax == 0)
     else:
         max_err = current_vm > dictmin
@@ -484,16 +500,21 @@ def verifyVM(elem: DataElement, module: str, element: str, verbose: bool,
     err = min_err and max_err
 
     if err:
-        mssg = EMsgDC("BadAttributeValueMultiplicity") \
-               + "{}".format(vm) + " (" + dictmin
-        if dictmin != dictmax:
-            if not has_max_multiplicity and dictmax == 0xFFFFFFFF:
+        mssg = "{} {} vm is {} ({}".format(
+            EMsgDC("BadAttributeValueMultiplicity"), vm, current_vm,
+            dictmin)
+
+        if (dictmin != dictmax or not has_max_factor 
+                or not has_min_factor):
+            if not has_max_factor and dictmax == 0xFFFFFFFF:
                 mssg += "-n"
-            elif has_max_multiplicity:
+            elif has_max_factor and dictmax > 1:
                 mssg += "-{}n".format(dictmax)
+            elif has_max_factor and dictmax == 1:
+                mssg += "-n".format(dictmax)
             else:
                 mssg += "-{}".format(dictmax)
-        mssg += " " + MMsgDC("RequiredBy") + " " + source + ")"
+        mssg += " {} {})".format( MMsgDC("RequiredBy"), source)
         if len(element) != 0:
             mssg += MMsgDC("Element") + "=<" + element + ">";
         if len(module) != 0:

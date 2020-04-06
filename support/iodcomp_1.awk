@@ -39,7 +39,7 @@ NR==1	{
 	if (match($0,"[Rr]etired=\"[^\"]*\""))
 		retired=substr($0,RSTART+length("retired=\""),
 			RLENGTH-length("retired=\"")-1);
-	print "def CompositeIOD_" iodcomp "_verify(ds:Dataset, verbose:bool, log:list, ElementDictionary:dict)->bool: "
+	print "def CompositeIOD_" iodcomp "_verify(ds:Dataset, verbose:bool, log:list, fix_trivials:bool)->bool: "
 	print "\tglobal_success = True"
 	print "\tpartial_success = True"
 	print ""
@@ -81,7 +81,7 @@ NR==1	{
 		print "\tif Condition_" condition "(ds,0,ds) :"
 		indent = "\t";
 	}
-	print indent"\tpartial_success = Module_" module "_verify(ds, ds, ds, verbose, log, ElementDictionary)"
+	print indent"\tpartial_success = Module_" module "_verify(ds, ds, ds, verbose, log, fix_trivials)"
 	print indent"\tglobal_success = global_success and partial_success"
 	print indent"\tif verbose:"
 	print indent"\t\tlog.append( \"" iodcomp " success after verifying " module " \" + (\"success\" if partial_success else \"failure\")) ";

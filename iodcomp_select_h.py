@@ -5,371 +5,371 @@
 from pydicom.dataset import Dataset
 from condn_h import *
 from iodcomp_h import *
-def SelectAndRunCompositeIOD(ds:Dataset, verbose:bool, log:list, ElementDictionary:dict, profile: str)->bool:
+def SelectAndRunCompositeIOD(ds:Dataset, verbose:bool, log:list, fix_trivials:bool, profile: str)->bool:
 
 	iod = False
 	if Condition_CRImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_CRImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_CRImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_CTImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_CTImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_CTImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_MRImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_MRImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_MRImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_NMImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_NMImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_NMImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_USImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_USImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_USImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_USMultiFrameImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_USMultiFrameImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_USMultiFrameImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_SCImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_SCImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_SCImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_MultiframeSingleBitSCImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_MultiframeSingleBitSCImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_MultiframeSingleBitSCImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_MultiframeGrayscaleByteSCImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_MultiframeGrayscaleByteSCImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_MultiframeGrayscaleByteSCImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_MultiframeGrayscaleWordSCImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_MultiframeGrayscaleWordSCImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_MultiframeGrayscaleWordSCImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_MultiframeTrueColorSCImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_MultiframeTrueColorSCImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_MultiframeTrueColorSCImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_StandaloneOverlayInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_StandaloneOverlay_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_StandaloneOverlay_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_StandaloneCurveInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_StandaloneCurve_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_StandaloneCurve_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_StandaloneModalityLUTInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_StandaloneModalityLUT_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_StandaloneModalityLUT_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_StandaloneVOILUTInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_StandaloneVOILUT_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_StandaloneVOILUT_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_SegmentationInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_Segmentation_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_Segmentation_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_SurfaceSegmentationInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_SurfaceSegmentation_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_SurfaceSegmentation_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_SpatialRegistrationInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_SpatialRegistration_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_SpatialRegistration_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_DeformableSpatialRegistrationInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_DeformableSpatialRegistration_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_DeformableSpatialRegistration_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_SpatialFiducialsInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_SpatialFiducials_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_SpatialFiducials_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_EncapsulatedPDFInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_EncapsulatedPDF_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_EncapsulatedPDF_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_EncapsulatedCDAInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_EncapsulatedCDA_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_EncapsulatedCDA_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_EncapsulatedSTLInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_EncapsulatedSTL_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_EncapsulatedSTL_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_RealWorldValueMappingInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_RealWorldValueMapping_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_RealWorldValueMapping_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_IVOCTImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_IVOCTImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_IVOCTImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_ParametricMapInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_ParametricMap_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_ParametricMap_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_MediaStorageDirectoryInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_BasicDirectory_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_BasicDirectory_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_MediaStorageDirectoryInstance(ds, 0, ds) and profile =="Dental":
-		iod = CompositeIOD_BasicDirectoryDental_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_BasicDirectoryDental_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_XAImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_XAImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_XAImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_XRFImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_XRFImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_XRFImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_EnhancedXAImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_EnhancedXAImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_EnhancedXAImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_EnhancedXRFImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_EnhancedXRFImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_EnhancedXRFImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_XRay3DAngiographicImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_XRay3DAngiographicImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_XRay3DAngiographicImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_XRay3DCraniofacialImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_XRay3DCraniofacialImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_XRay3DCraniofacialImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_PETImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_PETImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_PETImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_EnhancedPETImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_EnhancedPETImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_EnhancedPETImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_LegacyConvertedEnhancedPETImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_LegacyConvertedEnhancedPETImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_LegacyConvertedEnhancedPETImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_PrivatePixelMedLegacyConvertedEnhancedPETImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_PrivatePixelMedLegacyConvertedEnhancedPETImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_PrivatePixelMedLegacyConvertedEnhancedPETImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_RTImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_RTImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_RTImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_RTDoseInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_RTDose_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_RTDose_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_RTStructureSetInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_RTStructureSet_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_RTStructureSet_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_RTPlanInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_RTPlan_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_RTPlan_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_RTBeamsTreatmentRecordInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_RTBeamsTreatmentRecord_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_RTBeamsTreatmentRecord_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_RTBrachyTreatmentRecordInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_RTBrachyTreatmentRecord_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_RTBrachyTreatmentRecord_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_RTTreatmentSummaryRecordInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_RTTreatmentSummaryRecord_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_RTTreatmentSummaryRecord_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_RTIonPlanInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_RTIonPlan_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_RTIonPlan_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_RTIonBeamsTreatmentRecordInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_RTIonBeamsTreatmentRecord_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_RTIonBeamsTreatmentRecord_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_DXImageForProcessingInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_DXImageForProcessing_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_DXImageForProcessing_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_DXImageForPresentationInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_DXImageForPresentation_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_DXImageForPresentation_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_MammographyImageForProcessingInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_MammographyImageForProcessing_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_MammographyImageForProcessing_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_MammographyImageForPresentationInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_MammographyImageForPresentation_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_MammographyImageForPresentation_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_MammographyImageForProcessingInstance(ds, 0, ds) and profile =="IHEMammo":
-		iod = CompositeIOD_MammographyImageForProcessingIHEMammo_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_MammographyImageForProcessingIHEMammo_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_MammographyImageForProcessingInstance(ds, 0, ds) and profile =="IHEMammoPartialViewOption":
-		iod = CompositeIOD_MammographyImageForProcessingIHEMammoPartialViewOption_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_MammographyImageForProcessingIHEMammoPartialViewOption_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_MammographyImageForPresentationInstance(ds, 0, ds) and profile =="IHEMammo":
-		iod = CompositeIOD_MammographyImageForPresentationIHEMammo_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_MammographyImageForPresentationIHEMammo_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_MammographyImageForPresentationInstance(ds, 0, ds) and profile =="IHEMammoPartialViewOption":
-		iod = CompositeIOD_MammographyImageForPresentationIHEMammoPartialViewOption_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_MammographyImageForPresentationIHEMammoPartialViewOption_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_IntraoralImageForProcessingInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_IntraoralImageForProcessing_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_IntraoralImageForProcessing_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_IntraoralImageForPresentationInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_IntraoralImageForPresentation_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_IntraoralImageForPresentation_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_IntraoralImageForPresentationInstance(ds, 0, ds) and profile =="Dental":
-		iod = CompositeIOD_IntraoralImageForPresentationDentalMedia_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_IntraoralImageForPresentationDentalMedia_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_DXImageForPresentationInstance(ds, 0, ds) and profile =="Dental":
-		iod = CompositeIOD_DXImageForPresentationDentalMedia_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_DXImageForPresentationDentalMedia_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_BreastTomosynthesisInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_BreastTomosynthesisImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_BreastTomosynthesisImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_BreastTomosynthesisInstance(ds, 0, ds) and profile =="IHEDBT":
-		iod = CompositeIOD_BreastTomosynthesisImageIHEDBT_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_BreastTomosynthesisImageIHEDBT_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_BreastProjectionXRayImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_BreastProjectionXRayImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_BreastProjectionXRayImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_VisibleLightEndoscopicImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_VLEndoscopicImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_VLEndoscopicImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_VisibleLightMicroscopicImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_VLMicroscopicImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_VLMicroscopicImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_VisibleLightSlideCoordinatesMicroscopicImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_VLSlideCoordinatesMicroscopicImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_VLSlideCoordinatesMicroscopicImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_VisibleLightPhotographicImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_VLPhotographicImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_VLPhotographicImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_VideoEndoscopicImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_VideoEndoscopicImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_VideoEndoscopicImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_VideoMicroscopicImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_VideoMicroscopicImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_VideoMicroscopicImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_VideoPhotographicImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_VideoPhotographicImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_VideoPhotographicImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_OphthalmicPhotography8BitImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_OphthalmicPhotography8BitImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_OphthalmicPhotography8BitImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_OphthalmicPhotography16BitImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_OphthalmicPhotography16BitImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_OphthalmicPhotography16BitImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_StereometricRelationshipInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_StereometricRelationship_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_StereometricRelationship_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_OphthalmicTomographyImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_OphthalmicTomographyImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_OphthalmicTomographyImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_VLWholeSlideMicroscopyImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_VLWholeSlideMicroscopyImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_VLWholeSlideMicroscopyImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_LensometryMeasurementsInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_LensometryMeasurements_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_LensometryMeasurements_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_AutorefractionMeasurementsInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_AutorefractionMeasurements_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_AutorefractionMeasurements_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_KeratometryMeasurementsInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_KeratometryMeasurements_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_KeratometryMeasurements_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_SubjectiveRefractionMeasurementsInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_SubjectiveRefractionMeasurements_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_SubjectiveRefractionMeasurements_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_VisualAcuityMeasurementsInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_VisualAcuityMeasurements_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_VisualAcuityMeasurements_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_OphthalmicAxialMeasurementsInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_OphthalmicAxialMeasurements_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_OphthalmicAxialMeasurements_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_IntraocularLensCalculationsInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_IntraocularLensCalculations_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_IntraocularLensCalculations_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_OphthalmicVisualFieldStaticPerimetryMeasurementsInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_OphthalmicVisualFieldStaticPerimetryMeasurements_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_OphthalmicVisualFieldStaticPerimetryMeasurements_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_BasicVoiceInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_BasicVoice_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_BasicVoice_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_TwelveLeadECGInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_TwelveLeadECG_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_TwelveLeadECG_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_GeneralECGInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_GeneralECG_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_GeneralECG_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_AmbulatoryECGInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_AmbulatoryECG_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_AmbulatoryECG_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_HemodynamicWaveformInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_HemodynamicWaveform_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_HemodynamicWaveform_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_CardiacElectrophysiologyWaveformInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_CardiacElectrophysiologyWaveform_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_CardiacElectrophysiologyWaveform_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_BasicTextSRStorageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_BasicTextSR_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_BasicTextSR_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_EnhancedSRStorageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_EnhancedSR_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_EnhancedSR_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_ComprehensiveSRStorageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_ComprehensiveSR_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_ComprehensiveSR_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_Comprehensive3DSRStorageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_Comprehensive3DSR_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_Comprehensive3DSR_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_KeyObjectSelectionDocumentStorageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_KeyObjectSelectionDocument_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_KeyObjectSelectionDocument_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_KeyObjectSelectionDocumentStorageInstance(ds, 0, ds) and profile =="IHEXDSIManifest":
-		iod = CompositeIOD_KeyObjectSelectionDocumentIHEXDSIManifest_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_KeyObjectSelectionDocumentIHEXDSIManifest_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_MammographyCADSRStorageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_MammographyCADSR_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_MammographyCADSR_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_ChestCADSRStorageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_ChestCADSR_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_ChestCADSR_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_ProcedureLogStorageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_ProcedureLog_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_ProcedureLog_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_XRayRadiationDoseSRStorageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_XRayRadiationDoseSR_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_XRayRadiationDoseSR_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_XRayRadiationDoseSRStorageInstance(ds, 0, ds) and profile =="IHEREM":
-		iod = CompositeIOD_XRayRadiationDoseSRIHEREM_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_XRayRadiationDoseSRIHEREM_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_RadiopharmaceuticalRadiationDoseSRStorageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_RadiopharmaceuticalRadiationDoseSR_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_RadiopharmaceuticalRadiationDoseSR_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_SpectaclePrescriptionReportInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_SpectaclePrescriptionReport_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_SpectaclePrescriptionReport_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_AcquisitionContextSRStorageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_AcquisitionContextSR_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_AcquisitionContextSR_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_GrayscaleSoftcopyPresentationStateInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_GrayscaleSoftcopyPresentationState_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_GrayscaleSoftcopyPresentationState_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_ColorSoftcopyPresentationStateInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_ColorSoftcopyPresentationState_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_ColorSoftcopyPresentationState_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_PseudoColorSoftcopyPresentationStateInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_PseudoColorSoftcopyPresentationState_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_PseudoColorSoftcopyPresentationState_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_BlendingSoftcopyPresentationStateInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_BlendingSoftcopyPresentationState_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_BlendingSoftcopyPresentationState_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_HangingProtocolInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_HangingProtocol_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_HangingProtocol_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_ColorPaletteInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_ColorPalette_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_ColorPalette_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_BasicStructuredDisplayInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_BasicStructuredDisplay_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_BasicStructuredDisplay_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_EnhancedMRImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_EnhancedMRImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_EnhancedMRImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_EnhancedMRColorImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_EnhancedMRColorImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_EnhancedMRColorImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_MRSpectroscopyInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_MRSpectroscopy_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_MRSpectroscopy_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_RawDataInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_RawData_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_RawData_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_LegacyConvertedEnhancedMRImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_LegacyConvertedEnhancedMRImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_LegacyConvertedEnhancedMRImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_PrivatePixelMedLegacyConvertedEnhancedMRImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_PrivatePixelMedLegacyConvertedEnhancedMRImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_PrivatePixelMedLegacyConvertedEnhancedMRImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_TractographyResultsInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_TractographyResults_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_TractographyResults_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_EnhancedCTImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_EnhancedCTImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_EnhancedCTImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_LegacyConvertedEnhancedCTImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_LegacyConvertedEnhancedCTImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_LegacyConvertedEnhancedCTImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_PrivatePixelMedLegacyConvertedEnhancedCTImageInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_PrivatePixelMedLegacyConvertedEnhancedCTImage_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_PrivatePixelMedLegacyConvertedEnhancedCTImage_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_EnhancedUltrasoundVolumeInstance(ds, 0, ds) and profile == "":
-		iod = CompositeIOD_EnhancedUltrasoundVolume_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_EnhancedUltrasoundVolume_verify(ds, verbose, log, fix_trivials)
 
 	elif Condition_EnhancedUltrasoundVolumeInstance(ds, 0, ds) and profile =="QTUS":
-		iod = CompositeIOD_EnhancedUltrasoundVolumeQTUS_verify(ds, verbose, log, ElementDictionary)
+		iod = CompositeIOD_EnhancedUltrasoundVolumeQTUS_verify(ds, verbose, log, fix_trivials)
 
 
 	return iod

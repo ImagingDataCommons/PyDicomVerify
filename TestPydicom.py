@@ -12,6 +12,7 @@ import curses.ascii
 from verify import *
 import pydicom.charset
 import subprocess
+import PrivateDicFromDavid
 
 
 # import condn_cc
@@ -60,7 +61,7 @@ def write_str_to_text(file_name, content, append = False):
     n = text_file.write(content)
     text_file.close()
 out_folder = "E:\\work\\dicom_xmls\\"
-dicom_file = "E:\\Dropbox\\IDC-MF_DICOM\\data\\TCGA-BLCA\\TCGA-4Z-AA89\\12-21-2005-RESSONANCIA MAGNETICA DE ABDOME INFERIOR-58797\\1-3Plane Loc-95291\\000000.dcm"
+dicom_file = "E:\\Dropbox\\IDC-MF_DICOM\\data\\TCGA-BLCA\\TCGA-4Z-AA7M\\03-06-2007-TX AS AI-91720\\3-CC 2.5mm STD-04153\\000102.dcm"
 if os.path.isdir(dicom_file):
     files = os.listdir(dicom_file)
     for f in files:
@@ -70,15 +71,23 @@ if os.path.isdir(dicom_file):
 fix_it = True
 ds = read_file(dicom_file)
 
+log = []
 if fix_it:
+    fix_Trivials(ds, log)
     for ffix in dir(fix_frequent_errors):
         if ffix.startswith("fix_"):
+            if ffix == "fix_Trivials":
+                continue
             item = getattr(fix_frequent_errors, ffix)
             if callable(item):
-                item(ds)
-        fixed_file = os.path.join(out_folder, 'fixed.dcm')
+                item(ds, log)
+
+    PrintLog(log)
+
+    fixed_file = os.path.join(out_folder, 'fixed.dcm')
     write_file(fixed_file, ds)
     VER(fixed_file, out_folder)
+
 else:
     VER(dicom_file, out_folder)
 

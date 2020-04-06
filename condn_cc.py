@@ -1,10 +1,11 @@
 from numpy import *
 from pydicom.multival import  MultiValue
 from pydicom.tag import Tag
+import attrverify_cc
 import pydicom.datadict as Dic
 import pydicom.dataelem as Elm
 from pydicom.sequence import Sequence
-from  pydicom.dataset import Dataset
+from pydicom.dataset import Dataset
 from pydicom import tag
 import enum
 
@@ -233,7 +234,7 @@ def BinaryValueMatch(ds: Dataset, tagname: str, valueselector: int,
     elif vm == 0:
         return False
     for v in candidate:
-        if type(v) != int:
+        if not attrverify_cc.isPydicomNumeric(v):
             return False
         if (
                 matchoperator == BinaryValueMatchOperator.Equals and v == valuetomatch) \

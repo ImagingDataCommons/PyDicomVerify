@@ -21,25 +21,27 @@ default_encoding = pydicom.charset.convert_encodings([default_encoding])[0]
 
 
 def isValidText(bytecodes: bytes, encodings: list) -> list:
+
     pydicom.config.enforce_valid_values = True
-    badCharIdces = []
+    badChars = []
     try:
         pydicom.charset.decode_string(bytecodes, encodings, [])
     except UnicodeDecodeError as err:
-        badCharIdces = [err.start, err.end]
+        badChars = [err.start, err.end]
+    except ValueError as err:
+        badChars = [-1, -1] # means bad escape char
     pydicom.config.enforce_valid_values = False
-    return badCharIdces
+    return badChars
 
 
 def tag2str(ttag: Tag):
     if Dictionary.dictionary_has_tag(ttag):
         desc = Dictionary.dictionary_description(ttag)
         vr = Dictionary.dictionary_VR(ttag)
+        txt = "->{}:{}".format(desc, vr)
     else:
-        desc = ""
-        vr = ""
-    msg = "(0x{:0>4x}, 0x{:0>4x})->{}:{}".format(ttag.group, ttag.element,
-                                                 desc, vr)
+        txt = ''
+    msg = "(0x{:0>4x}, 0x{:0>4x})".format(ttag.group, ttag.element, txt)
     return msg
 
 
@@ -115,7 +117,7 @@ def writeErrorBadCharacterRepertoireCharNL(log: list, ttag: str, vr: str,
     msg = "{} = '{}' (0x{:0>4x})"
     msg = msg.format(
         MMsgDC("CharacterInvalidForCharacterRepertoire"),
-        c, c_incoded[0] & 0xff)
+        c, c_incoded[0] if len(c_incoded) > 0 else 0)
     log[-1] += (" - " + msg)
 
 
@@ -585,7 +587,7 @@ def validateVR_DS(elem: DataElement,
             ok = False
         encoded = i.encode(default_encoding)
         if not isnumber(i):
-            writeErrorBadVRCharNL(log, elem.tag, elem.VR, vn, '')
+            writeErrorBadVRValue(log, elem.tag, elem.VR, vn, i)
             ok = False
         out = StringCheck(encoded)
 
@@ -784,8 +786,15 @@ def validateVR_LT(elem: DataElement,
         encoded = i.encode(default_encoding)
         idces = isValidText(i, SpecificCharacterSetInfo)
         if len(idces) != 0:
+            if idces[0] == -1 and idces[1] == -1:
+                enc_char = bytes(0)
+                char = 'Bad Esc Char'
+            else:
+                enc_char = bytes(encoded[idces[0]])
+                char = i[idces[0]]
+
             writeErrorBadCharacterRepertoireCharNL(
-                log, elem.tag, elem.VR, vn, i, i[idces[0]])
+                log, elem.tag, elem.VR, vn, i, char, enc_char)
         for idx in range(0, l):
             if curses.ascii.iscntrl(encoded[idx]) and not iscntrlok(
                     encoded[idx]):
@@ -827,8 +836,15 @@ def validateVR_SH(elem: DataElement,
             i, SpecificCharacterSetInfo)
         idces = isValidText(encoded, SpecificCharacterSetInfo)
         if len(idces) != 0:
+            if idces[0] == -1 and idces[1] == -1:
+                enc_char = bytes(0)
+                char = 'Bad Esc Char'
+            else:
+                enc_char = bytes(encoded[idces[0]])
+                char = i[idces[0]]
+
             writeErrorBadCharacterRepertoireCharNL(
-                log, elem.tag, elem.VR, vn, i, i[idces[0]])
+                log, elem.tag, elem.VR, vn, i, char, enc_char)
         for idx in range(0, l):
             if (curses.ascii.iscntrl(encoded[idx]) and
                 isescape(encoded[idx])) or \
@@ -850,45 +866,6 @@ def validateVR_SH(elem: DataElement,
     return ok
 
 
-def validateVR_LT(elem: DataElement,
-                  log: list, SpecificCharacterSetInfo) -> bool:
-    ok = True
-    if elem.value is None:
-        return ok
-    if type(elem.value) == MultiValue:
-        val = elem.value
-    else:
-        val = [elem.value]
-    for i, vn in zip(val, range(0, len(val))):
-        l = len(i)
-        if l == 0:
-            continue
-        if l > 1024:
-            writeErrorBadVRLengthNL(log, elem.tag, elem.VR, vn, i,
-                                    len(i), "<= 1024")
-            ok = False
-        encoded = i.encode(default_encoding)
-        idces = isValidText(i, SpecificCharacterSetInfo)
-        if len(idces) != 0:
-            writeErrorBadCharacterRepertoireCharNL(
-                log, elem.tag, elem.VR, vn, i, i[idces[0]])
-        for idx in range(0, l):
-            if curses.ascii.iscntrl(encoded[idx]) and not iscntrlok(
-                    encoded[idx]):
-                writeErrorBadVRCharNL(log, elem.tag, elem.VR, vn, i[idx],
-                                      i[idx].encode(
-                                          SpecificCharacterSetInfo))
-                ok = False
-        out = StringCheck(encoded)
-
-        if out["EmbededNullBytes"]:  # set during StringAttribute::read()
-            writeErrorBadVRCharNL(log, elem.tag, elem.VR, 0, [0])
-            ok = False
-
-        if out["TrailingNullBytes"]:  # set during StringAttribute::read()
-            writeErrorBadTrailingChar(log, elem.tag, elem.VR, 0, [0])
-            ok = False
-    return ok
 
 
 def validateVR_TM(elem: DataElement,
@@ -1088,8 +1065,15 @@ def validateVR_UR(elem: DataElement,
         encoded = i.encode(default_encoding)
         idces = isValidText(i, SpecificCharacterSetInfo)
         if len(idces) != 0:
+            if idces[0] == -1 and idces[1] == -1:
+                enc_char = bytes(0)
+                char = 'Bad Esc Char'
+            else:
+                enc_char = bytes(encoded[idces[0]])
+                char = i[idces[0]]
+
             writeErrorBadCharacterRepertoireCharNL(
-                log, elem.tag, elem.VR, vn, i, i[idces[0]])
+                log, elem.tag, elem.VR, vn, i, char, enc_char)
         for idx in range(0, l):
             # pct-encoded = "%" HEXDIG HEXDIG reserved    = gen-delims /
             # sub-delims gen-delims  = ":" / "/" / "?" / "#" / "[" / "]" /
@@ -1136,8 +1120,15 @@ def validateVR_UC(elem: DataElement,
         encoded = i.encode(default_encoding)
         idces = isValidText(i, SpecificCharacterSetInfo)
         if len(idces) != 0:
+            if idces[0] == -1 and idces[1] == -1:
+                enc_char = bytes(0)
+                char = 'Bad Esc Char'
+            else:
+                enc_char = bytes(encoded[idces[0]])
+                char = i[idces[0]]
+
             writeErrorBadCharacterRepertoireCharNL(
-                log, elem.tag, elem.VR, vn, i, i[idces[0]])
+                log, elem.tag, elem.VR, vn, i, char, enc_char)
         for idx in range(0, l):
             if (curses.ascii.iscntrl(encoded[idx]) and
                 isescape(encoded[idx])) or \
@@ -1156,10 +1147,57 @@ def validateVR_UC(elem: DataElement,
             writeErrorBadTrailingChar(log, elem.tag, elem.VR, 0, [0])
             ok = False
     return ok
-
+# def validateVR_LT(elem: DataElement,
+#                   log: list, SpecificCharacterSetInfo) -> bool:
+#     ok = True
+#     if elem.value is None:
+#         return ok
+#     if type(elem.value) == MultiValue:
+#         val = elem.value
+#     else:
+#         val = [elem.value]
+#     for i, vn in zip(val, range(0, len(val))):
+#         l = len(i)
+#         if l == 0:
+#             continue
+#         if l > 1024:
+#             writeErrorBadVRLengthNL(log, elem.tag, elem.VR, vn, i,
+#                                     len(i), "<= 1024")
+#             ok = False
+#         encoded = i.encode(default_encoding)
+#         idces = isValidText(i, SpecificCharacterSetInfo)
+#         if len(idces) != 0:
+#             if idces[0] == -1 and idces[1] == -1:
+#                 enc_char = bytes(0)
+#                 char = 'Bad Esc Char'
+#             else:
+#                 enc_char = bytes(encoded[idces[0]])
+#                 char = i[idces[0]]
+#
+#             writeErrorBadCharacterRepertoireCharNL(
+#                 log, elem.tag, elem.VR, vn, i, char, enc_char)
+#         for idx in range(0, l):
+#             if curses.ascii.iscntrl(encoded[idx]) and not iscntrlok(
+#                     encoded[idx]):
+#                 writeErrorBadVRCharNL(log, elem.tag, elem.VR, vn, i[idx],
+#                                       i[idx].encode(
+#                                           SpecificCharacterSetInfo))
+#                 ok = False
+#         out = StringCheck(encoded)
+#
+#         if out["EmbededNullBytes"]:  # set during StringAttribute::read()
+#             writeErrorBadVRCharNL(log, elem.tag, elem.VR, 0, [0])
+#             ok = False
+#
+#         if out["TrailingNullBytes"]:  # set during StringAttribute::read()
+#             writeErrorBadTrailingChar(log, elem.tag, elem.VR, 0, [0])
+#             ok = False
+#     return ok
+#
 
 def validateVR_LT(elem: DataElement,
                   log: list, SpecificCharacterSetInfo) -> bool:
+    #www
     ok = True
     if elem.value is None:
         return ok
@@ -1174,14 +1212,20 @@ def validateVR_LT(elem: DataElement,
         encoded = i.encode(default_encoding)
         idces = isValidText(encoded, SpecificCharacterSetInfo)
         if len(idces) != 0:
+            if idces[0] == -1 and idces[1] == -1:
+                enc_char = bytes(0)
+                char = 'Bad Esc Char'
+            else:
+                enc_char = bytes(encoded[idces[0]])
+                char = i[idces[0]]
+
             writeErrorBadCharacterRepertoireCharNL(
-                log, elem.tag, elem.VR, vn, i, i[idces[0]])
+                log, elem.tag, elem.VR, vn, i, char, enc_char)
         for idx in range(0, l):
             if curses.ascii.iscntrl(encoded[idx]) and not iscntrlok(
                     encoded[idx]):
                 writeErrorBadVRCharNL(log, elem.tag, elem.VR, vn, i[idx],
-                                      pydicom.charset.decode_string(
-                                          i[idx], SpecificCharacterSetInfo))
+                                      bytes(encoded[idx]))
                 ok = False
         out = StringCheck(encoded)
 
@@ -1197,6 +1241,7 @@ def validateVR_LT(elem: DataElement,
 
 def validateVR_UN(elem: DataElement,
                   log: list, SpecificCharacterSetInfo) -> bool:
+    print(elem)
     ok = True
     if elem.value is None:
         return ok
@@ -1217,3 +1262,4 @@ def validateVR_UN(elem: DataElement,
             ok = False
 
     return ok
+

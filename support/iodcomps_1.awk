@@ -14,7 +14,7 @@ NR==1	{
 	print "from condn_h import *"
 	print "from iodcomp_h import *"
 
-	print "def SelectAndRunCompositeIOD(ds:Dataset, verbose:bool, log:list, ElementDictionary:dict, profile: str)->bool:"
+	print "def SelectAndRunCompositeIOD(ds:Dataset, verbose:bool, log:list, fix_trivials:bool, profile: str)->bool:"
 	print ""
 	print "\tiod = False"
 	iodcomp=""
@@ -54,7 +54,7 @@ NR==1	{
 		else{
 			print "\t" selectelse "if Condition_" condition "(ds, 0, ds) and profile ==\"" profile "\":"
 		}
-		print "\t\tiod = CompositeIOD_" iodcomp "_verify(ds, verbose, log, ElementDictionary)"
+		print "\t\tiod = CompositeIOD_" iodcomp "_verify(ds, verbose, log, fix_trivials)"
 		selectelse="el"
 	}
 

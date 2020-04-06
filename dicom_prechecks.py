@@ -86,7 +86,10 @@ def checkScaledNumericValues(ds: Dataset, log: list):
 def subcheckPatientOrientationValuesForBiped(ds: Dataset, log: list) -> bool:
     success = True
     aPatientOrientation = getElementFromDataset(ds, "PatientOrientation")
+
     if aPatientOrientation is not None:
+        if aPatientOrientation.is_empty:
+            return True
         vPatientOrientation = aPatientOrientation.value
         p_orientation = ""
         if type(vPatientOrientation) == MultiValue:
@@ -131,6 +134,7 @@ def subcheckPatientOrientationValuesForBiped(ds: Dataset, log: list) -> bool:
 def checkPatientOrientationValuesForBipedOrQuadruped(ds: Dataset, log: list) -> bool:
     quadruped = False
     aAnatomicalOrientationType = getElementFromDataset(ds, 'AnatomicalOrientationType')
+
     if aAnatomicalOrientationType is not None:
         if aAnatomicalOrientationType.value == "QUADRUPED":
             quadruped = True
@@ -181,6 +185,8 @@ def subcheckPatientOrientationValuesForQuadruped(ds: Dataset, log: list) -> bool
     aPatientOrientation = getElementFromDataset(ds, "PatientOrientation")
 
     if aPatientOrientation is not None:
+        if aPatientOrientation.is_empty:
+            return True
         vPatientOrientation = aPatientOrientation.value
         p_orientation = ""
         if type(vPatientOrientation) == MultiValue:
@@ -930,7 +936,7 @@ def subcheckLUTDataValuesMatchSpecifiedRange(ds: Dataset, descriptorTag: str,
                 if numberOfBits > 8:
                     maxValue = max(aLUTData.value)
                     if foundValuesToCheck:
-                        if nLUTData * 2 != actualNumberOfEntries:
+                        if nLUTData != actualNumberOfEntries:
                             msg = "{} - {} - LUT Descriptor number of entries = {}  " \
                                   "but number of 16 bit values = {} "
 
@@ -961,7 +967,7 @@ def subcheckLUTDataValuesMatchSpecifiedRange(ds: Dataset, descriptorTag: str,
                                 success = False
             if foundValuesToCheck:
                 if maxValue < wantMaxValueMin or maxValue > wantMaxValueMax:
-                    msg = "{} - {} - LUT Descriptor number of bits = {} but maximum LUT Data value is {}"
+                    msg = "{} - {} - LUT Descriptor number of bits = {} but maximum LUT Data value is 0x{:04x}"
                     msg = msg.format(EMsgDC("LUTDataBad"), message,
                                      numberOfBits, maxValue)
                     log.append(msg)
@@ -978,8 +984,9 @@ def subcheckLUTDataValuesMatchSpecifiedRange_seq(ds: Dataset, sequenceTag: str,
     if a is not None:
         if type(a.value) == Sequence:
             for item in a.value:
-                success = success and subcheckLUTDataValuesMatchSpecifiedRange(
-                    ds, descriptorTag, dataTag, message, log)
+                partial_success = subcheckLUTDataValuesMatchSpecifiedRange(
+                    item, descriptorTag, dataTag, message, log)
+                success = success and partial_success
     return success
 
 
