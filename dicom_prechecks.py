@@ -1691,7 +1691,7 @@ def validateVR(ds: Dataset, log: list) -> bool:
 
     attrib = getElementFromDataset(ds, "SpecificCharacterSet")
     if attrib is None:
-        char_set = pydicom.charset.convert_encodings(["ISO 646"])
+        char_set = pydicom.charset.convert_encodings(["ISO_IR 6"])
     elif type(attrib.value) == MultiValue:
         char_set = pydicom.charset.convert_encodings(attrib.value)
     else:
@@ -1702,14 +1702,15 @@ def validateVR(ds: Dataset, log: list) -> bool:
         try:
             if a.is_raw:
                 a = DataElement_from_raw(a)
-            if a.VR == "UN":
-                print(a)
+            # if a.VR == "UN":
+            #     print(a)
 
             x = getattr(validate_vr, "validateVR_" + a.VR)
             x(a, log, char_set)
         except AttributeError as err:
-            print("Couldn't find validateVR_" + a.VR)
-            print(err)
+            # print("Couldn't find validateVR_" + a.VR)
+            # print(err)
+            pass
 
         try:
             kw = a.keyword

@@ -1239,27 +1239,27 @@ def validateVR_LT(elem: DataElement,
     return ok
 
 
-def validateVR_UN(elem: DataElement,
-                  log: list, SpecificCharacterSetInfo) -> bool:
-    print(elem)
-    ok = True
-    if elem.value is None:
-        return ok
-    if type(elem.value) == MultiValue:
-        val = elem.value
-    else:
-        val = [elem.value]
-    for i, vn in zip(val, range(0, len(val))):
+# def validateVR_UN(elem: DataElement,
+#                   log: list, SpecificCharacterSetInfo) -> bool:
+#     print(elem)
+#     ok = True
+#     if elem.value is None:
+#         return ok
+#     if type(elem.value) == MultiValue:
+#         val = elem.value
+#     else:
+#         val = [elem.value]
+#     for i, vn in zip(val, range(0, len(val))):
 
-        out = StringCheck(i)
+#         out = StringCheck(i)
 
-        if out["EmbededNullBytes"]:  # set during StringAttribute::read()
-            writeErrorBadVRCharNL(log, elem.tag, elem.VR, 0, [0])
-            ok = False
+#         if out["EmbededNullBytes"]:  # set during StringAttribute::read()
+#             writeErrorBadVRCharNL(log, elem.tag, elem.VR, 0, [0])
+#             ok = False
 
-        if out["TrailingNullBytes"]:  # set during StringAttribute::read()
-            writeErrorBadTrailingChar(log, elem.tag, elem.VR, 0, [0])
-            ok = False
+#         if out["TrailingNullBytes"]:  # set during StringAttribute::read()
+#             writeErrorBadTrailingChar(log, elem.tag, elem.VR, 0, [0])
+#             ok = False
 
-    return ok
+#     return ok
 

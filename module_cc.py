@@ -19,10 +19,16 @@ def LogElementAndModule(module: str, element: str) -> str:
 
 def ViolationMessage(error: str, elementtype: str,
                      module: str, element: str,
-                     log: list, verbose: bool):
-    mesg = "{} {} {}".format(#EMsgDC("Null"),
+                     log: list, verbose: bool, has_fix = False):
+    if not has_fix:
+        mesg = "{} {} {}".format(#EMsgDC("Null"),
                                 error, elementtype,
                                 LogElementAndModule(module, element))
+    else:
+        mesg = error.format(#EMsgDC("Null"),
+                             elementtype,
+                                LogElementAndModule(module, element))
+
     log.append(mesg)
 
 
@@ -40,6 +46,23 @@ def ValidMessage(elementtype: str, module: str, element: str,
         mesg = "{} - {} {}".format(MMsgDC("ValidElement"), elementtype,
                                    LogElementAndModule(module, element))
 
+def fix_by_removing(ds: Dataset, kw: str, check_emptyness = True )->str:
+    exceptions = ['Laterality']
+    for ex in exceptions:
+        if ex == kw:
+            return ''
+    reason = ''
+    attrib = ds[kw]
+    if not (not attrib.is_empty and check_emptyness):
+        del ds[kw]
+        reason = "fixed by removing the attribute. "
+    else:
+        reason = "didn't fix since the attrib holds value = <{}>. ".format(
+            attrib.value
+        )
+    return reason
+
+
 
 def verifyRequired(ds: Dataset,
                    module: str, element: str,
@@ -47,6 +70,7 @@ def verifyRequired(ds: Dataset,
                    log: list,
                    fix_trivials: bool,
                    multiplicityMin: uint32, multiplicityMax: uint32) -> bool:
+    
     # Normalized Required Data Element
 
     err_vr = False
@@ -57,18 +81,18 @@ def verifyRequired(ds: Dataset,
     if element in ds:
         elem = ds[element]
     else:
-        reason = "{} Error: {}"
+        reason = "{} Error - {}"
         reason = reason.format(ErrorType.Required.value,
                                MMsgDC("MissingAttribute"))
         err_not_exists = True
     if not err_not_exists:
         if elem.is_empty():
-            reason = "{} Error: {}"
+            reason = "{} Error - {}"
             reason = reason.format(ErrorType.RequiredEmpty.value,
                                    MMsgDC("EmptyAttribute"))
             err_empty = True
         if not verifyVR(elem, module, element, verbose, log):
-            reason = "{} Error: {}"
+            reason = "{} Error - {}"
             reason = reason.format(ErrorType.RequiredVR.value,
                                    MMsgDC("BadValueRepresentation"))
             err_vr = True
@@ -76,7 +100,7 @@ def verifyRequired(ds: Dataset,
             if not verifyVM(elem, module, element, verbose, log,
                             multiplicityMin,
                             multiplicityMax, "source"):
-                reason = "{} Error: {}"
+                reason = "{} Error - {}"
                 reason = reason.format(ErrorType.RequiredVM.value,
                                        MMsgDC("BadAttributeValueMultiplicity"))
                 err_vm = True
@@ -106,20 +130,20 @@ def verifyType1(
     if element in ds:
         elem = ds[element]
     else:
-        reason = "{} Error: {}"
+        reason = "{} Error - {}"
         reason = reason.format(ErrorType.Type1.value,
                                MMsgDC("MissingAttribute"))
         err_not_exists = True
 
     if not err_not_exists:
         if isEmptyOrHasAllEmptyValues(elem):
-            reason = "{} Error: {}"
+            reason = "{} Error - {}"
             reason = reason.format(ErrorType.Type1Empty.value,
                                MMsgDC("EmptyAttribute"))
             err_empty = True
 
         if not verifyVR(elem, module, element, verbose, log):
-            reason = "{} Error: {}"
+            reason = "{} Error - {}"
             reason = reason.format(ErrorType.Type1VR.value,
                                    MMsgDC("BadValueRepresentation"))
             err_vr = True
@@ -127,7 +151,7 @@ def verifyType1(
             if not verifyVM(elem, module, element,
                             log, multiplicityMin,
                             multiplicityMax, "source"):
-                reason = "{} Error: {}"
+                reason = "{} Error - {}"
                 reason = reason.format(ErrorType.Type1VM.value,
                                        MMsgDC("BadAttributeValueMultiplicity"))
                 err_vm = True
@@ -165,37 +189,36 @@ def verifyType1C(
         elem = ds[element]
     else:
         if not conditionNotSatisfied :
-            reason = "{} Error: {}"
+            reason = "{} Error - {}"
             reason = reason.format(ErrorType.Type1CRequiredEmpty.value,
                                    MMsgDC("MissingAttribute"))
         err_not_exists = True
     if not err_not_exists:
         if condition_function != 0 and conditionNotSatisfied and not mbpo:
-            reason = "{} Error: {}"
+            reason = "{} Error - {}"
             reason = reason.format(ErrorType.Type1CPresent.value,
                                    MMsgDC("AttributePresentWhenConditionUnsatisfied"
                        "WithoutMayBePresentOtherwise"))
-
             if fix_trivials:
-                del ds[element]
-                reason += reason + ":->: fixed by removing the attribute. "
+                tmp = ErrorInfo(reason + "{} {}", fix_by_removing(ds, element))
+                reason = tmp.getWholeMessage()
 
-        if isEmptyOrHasAllEmptyValues(elem):
+        if isEmptyOrHasAllEmptyValues(elem) and element in ds:
             if conditionNotSatisfied:
-                reason = "{} Error: {}"
+                reason = "{} Error - {}"
                 reason = reason.format(ErrorType.Type1CRedundantEmpty.value,
                                        MMsgDC("EmptyAttributeWhenConditionUnsatisfied"))
                 if fix_trivials:
-                    del ds[element]
-                    reason += reason + ":->: fixed by removing the attribute. "
+                    tmp = ErrorInfo(reason + "{} {}", fix_by_removing(ds, element))
+                    reason = tmp.getWholeMessage()
             else:
-                reason = "{} Error: {}"
+                reason = "{} Error - {}"
                 reason = reason.format(ErrorType.Type1CRequiredEmpty.value,
                                        MMsgDC("EmptyAttribute"))
             err_empty = True
         else:
             if not verifyVR(elem, module, element, verbose, log):
-                reason = "{} Error: {}"
+                reason = "{} Error - {}"
                 reason = reason.format(ErrorType.Type1CVR.value,
                                        MMsgDC("BadValueRepresentation"))
                 err_vr = True
@@ -203,13 +226,17 @@ def verifyType1C(
                 if not verifyVM(elem, module, element,
                                 log, multiplicityMin,
                                 multiplicityMax, "source"):
-                    reason = "{} Error: {}"
+                    reason = "{} Error - {}"
                     reason = reason.format(ErrorType.Type1CVM.value,
                                        MMsgDC("BadAttributeValueMultiplicity"))
                     err_vm = True
 
     if len(reason) != 0:
-        ViolationMessage(reason, MMsgDC("Type1C"), module, element, log,
+        if fix_trivials:
+            ViolationMessage(reason, MMsgDC("Type1C"), module, element, log,
+                         verbose, True)
+        else:
+            ViolationMessage(reason, MMsgDC("Type1C"), module, element, log,
                          verbose)
     else:
         ValidMessage(MMsgDC("Type1C"), module, element, log, verbose)
@@ -232,17 +259,18 @@ def verifyType2(
     if element in ds:
         elem = ds[element]
     else:
-        reason = "{} Error: {}"
+        reason = "{} Error - {}"
         reason = reason.format(ErrorType.Type2.value,
                                MMsgDC("MissingAttribute"))
         err_not_exists = True
         if fix_trivials:  # add an empty attrib
-            reason += fix_ByAddingEmptyAttrib(ds, element)
+            tmp = ErrorInfo(reason + "{} {}", fix_ByAddingEmptyAttrib(ds, element))
+            reason = tmp.getWholeMessage()
     if not err_not_exists:
         # do not check emptiness
         if not elem.is_empty:
             if not verifyVR(elem, module, element, verbose, log):
-                reason = "{} Error: {}"
+                reason = "{} Error - {}"
                 reason = reason.format(ErrorType.Type2VR.value,
                                        MMsgDC("BadValueRepresentation"))
                 err_vr = True
@@ -250,12 +278,18 @@ def verifyType2(
                 if not verifyVM(elem, module, element, verbose, log,
                                 multiplicityMin,
                                 multiplicityMax):
-                    reason = "{} Error: {}"
+                    reason = "{} Error - {}"
                     reason = reason.format(ErrorType.Type2VM.value,
                                            MMsgDC("BadAttributeValueMultiplicity"))
                     err_vm = True
     if len(reason) != 0:
-        ViolationMessage(reason, MMsgDC("Type2"), module, element, log, verbose)
+        if fix_trivials:
+            ViolationMessage(reason, MMsgDC("Type2"), module, element, log,
+                         verbose, True)
+        else:
+            ViolationMessage(reason, MMsgDC("Type2"), module, element, log,
+                         verbose)
+        
     else:
         ValidMessage(MMsgDC("Type2"), module, element, log, verbose)
 
@@ -268,7 +302,7 @@ def fix_ByAddingEmptyAttrib(ds: Dataset, element:str)->str:
         element = DataElement(ttag, vr, '')
         element.value = element.empty_value
         ds[ttag] = element
-        reason += ":->: fixed by adding empty attribute"
+        reason += "fixed by adding empty attribute"
     return  reason
 
 def verifyType2C(
@@ -298,23 +332,24 @@ def verifyType2C(
         elem = ds[element]
     else:
         if not conditionNotSatisfied :
-            reason = "{} Error: {}"
+            reason = "{} Error - {}"
             reason = reason.format(ErrorType.Type2CAbsent.value,
                                    MMsgDC("MissingAttribute"))
         err_not_exists = True
     if not err_not_exists:
 
         if condition_function != 0 and conditionNotSatisfied and not mbpo:
-            reason = "{} Error: {}"
+            reason = "{} Error - {}"
             reason = reason.format(ErrorType.Type2CPresent.value,
                                    MMsgDC(
                 "AttributePresentWhenConditionUnsatisfiedWithoutMayBePresentOtherwise"))
             if fix_trivials:
-                del ds[element]
-                reason += reason + ":->: fixed by removing the attribute"
+                tmp = ErrorInfo(reason + "{} {}", fix_by_removing(ds, element))
+                reason = tmp.getWholeMessage()
+
         if elem.is_empty:
             if not verifyVR(elem, module, element, verbose, log):
-                reason = "{} Error: {}"
+                reason = "{} Error - {}"
                 reason = reason.format(ErrorType.Type2CVR.value,
                                        MMsgDC("BadValueRepresentation"))
                 err_vr = True
@@ -322,12 +357,16 @@ def verifyType2C(
                 if not verifyVM(elem, module, element, verbose,
                                 log, multiplicityMin,
                                 multiplicityMax, "source"):
-                    reason = "{} Error: {}"
+                    reason = "{} Error - {}"
                     reason = reason.format(ErrorType.Type2CVM.value,
                                            MMsgDC("BadAttributeValueMultiplicity"))
                     err_vm = True
     if len(reason) != 0:
-        ViolationMessage(reason, MMsgDC("Type2C"), module, element, log,
+        if fix_trivials:
+            ViolationMessage(reason, MMsgDC("Type2C"), module, element, log,
+                         verbose, True)
+        else:
+            ViolationMessage(reason, MMsgDC("Type2C"), module, element, log,
                          verbose)
     else:
         ValidMessage(MMsgDC("Type2C"), module, element, log, verbose)
@@ -358,7 +397,7 @@ def verifyType3(
     # do not check emptiness
     if not not_exists:
         if not verifyVR(elem, module, element, verbose, log):
-            reason = "{} Error: {}"
+            reason = "{} Error - {}"
             reason = reason.format(ErrorType.Type3VR.value,
                                    MMsgDC("BadValueRepresentation"))
             err_vr = True
@@ -366,7 +405,7 @@ def verifyType3(
             if not verifyVM(elem, module, element, verbose,
                             log, multiplicityMin,
                             multiplicityMax, "source"):
-                reason = "{} Error: {}"
+                reason = "{} Error - {}"
                 reason = reason.format(ErrorType.Type3VM.value,
                                        MMsgDC("BadAttributeValueMultiplicity"))
                 err_vm = True
@@ -409,14 +448,14 @@ def verifyType3C(
         err_vr = False
         err_vm = False
         if not verifyVR(elem, module, element, verbose, log, fix_trivials):
-            reason = "{} Error: {}".format(
+            reason = "{} Error - {}".format(
                 ErrorType.Type3CVR.value, MMsgDC("BadValueRepresentation"))
             err_vr = True
         else:
             if not verifyVM(elem, module, element, verbose,
                             log, multiplicityMin,
                             multiplicityMax, "source"):
-                reason = "{} Error: {}"
+                reason = "{} Error - {}"
                 reason = reason.format(ErrorType.Type3CVM.value,
                                        MMsgDC("BadAttributeValueMultiplicity"))
                 err_vm = True

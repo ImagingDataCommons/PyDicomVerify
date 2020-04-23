@@ -1,5 +1,29 @@
 from mesgtext_h import EMSGDC_Table
 from enum import Enum
+import sys
+fixmsg = "{error} :->: {fix} <function {}>"
+class ErrorInfo:
+    def __init__(self,m = '', f = ''):
+        self.msg = m
+        self.fix = f
+    
+    msg:str
+    fix:str
+    
+    def getWholeMessage(self)->str:
+        fixmsg = "{} :->: {} <function {} from file:{}> <function {} from file:{}>"
+        function = sys._getframe(1).f_code.co_name
+        filename = sys._getframe(1).f_code.co_filename
+        function1 = sys._getframe(2).f_code.co_name
+        filename1 = sys._getframe(2).f_code.co_filename
+        fixmsg = fixmsg.format(self.msg,self.fix,function,
+         filename, function1, filename1)
+        return fixmsg
+
+
+
+
+
 class ErrorType(Enum):
     Type1 = "Type1 Absent"
     Type1Empty = "Type1 Empty"
@@ -62,11 +86,4 @@ def MMsgDC(key_:str)->str:
     except:
         msg = "message table doesn't have the key <{}>".format(key_)
     return "{}".format(msg)
-
-
-
-
-
-
-
 

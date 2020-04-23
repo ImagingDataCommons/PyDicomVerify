@@ -10,7 +10,6 @@ import fix_frequent_errors
 def PrintLog(log)->str:
     out = ''
     for item in log:
-        print(item)
         out += item + '\n'
     return out
 def verify(dicom_file_path, verbose:bool, profile:str):

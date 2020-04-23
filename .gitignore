@@ -10,3 +10,8 @@ __pycache__/*
 
 #IntelliJ
 .idea/*
+
+#Visual Studio Code
+.vscode/*
+.DS_Store
+
