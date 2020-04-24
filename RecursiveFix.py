@@ -342,35 +342,40 @@ repo = git.Repo(search_parent_directories=True)
 print(repo.active_branch)
 sha = repo.head.object.hexsha
 print(sha)
-time_interval_for_progress_update = 1
-last_time_point = 0
+time_interval_for_progress_update = .5
+time_interval_record_data = 30
+last_time_point_for_progress_update = 0
+last_time_point_record_data = 0
 for i, f in enumerate(file_list,1):
     progress = float(i) / float(len(file_list))
     time_point = time.time()
     time_elapsed = round(time_point - start)
     time_left = round(float(len(file_list)-i)* time_elapsed/float(i))
-    time_elapsed_since_last_show = time_point - last_time_point
+    time_elapsed_since_last_show = time_point - last_time_point_for_progress_update
+    time_elapsed_since_last_record = time_point - last_time_point_record_data
     log_david = []
     log_fixed = []
     fix_file(f, in_folder, dcm_folder, fix_folder,
     vfy_folder,log_fixed, log_david)
     if time_elapsed_since_last_show > time_interval_for_progress_update:
-        last_time_point = time_point
+        last_time_point_for_progress_update = time_point
         t_e = str(timedelta(seconds = time_elapsed))
         t_l = str(timedelta(seconds = time_left))
         prog_str = '{:.2%}'.format(progress)
         ll = int(progress*100)
         rr = 100 - ll
-        form = '{{:|>{}}}{{:-<{}}}'.format(ll,rr)
+        form = '{{:|>{}}}{{:.<{}}}'.format(ll,rr)
         progress_bar = form.format(prog_str, '')
-        print('time elapsed: {} ({}) estimated time left:{}'.format(t_e, progress_bar, t_l),end='\r', flush=True)
+        print('time elapsed: {} ({}) estimated time left:{}\t\t\t'.format(t_e, progress_bar, t_l),end='\r', flush=True)
+    if time_elapsed_since_last_record > time_interval_record_data:
+        last_time_point_record_data = time_point
         AddLogToStatistics(f, log_fixed, fix_rep, '.*:\-\>:.*')
         write_stat_report(fix_rep, out_folder + "/stat_fix.txt")
         write_fix_stat_worksheet(fix_rep, out_folder + "/stat_fix.xlsx")
         AddLogToStatistics(f, log_david, vfy_rep,'Error.*')
         write_stat_report(vfy_rep, out_folder + "/stat_vfy.txt")
         write_vfy_stat_worksheet(vfy_rep, out_folder + "/stat_vfy.xlsx")
-        # write_fix_stat_worksheet(vfy_rep, out_folder + "/stat_vfy.xlsx")
+            # write_fix_stat_worksheet(vfy_rep, out_folder + "/stat_vfy.xlsx")
 
 
     
