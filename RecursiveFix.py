@@ -19,19 +19,34 @@ import os
 import xlsxwriter
 import time
 from datetime import timedelta
+class FileUIDS:
+    StudyUID:pydicom.uid.UID
+    SeriesUID:pydicom.uid.UID
+    SOPInstanceUID:pydicom.uid.UID
+    def __init__(self, file):
+        try:
+            ds = pydicom.read_file(file, specific_tags=[
+                'SOPInstanceUID', 'StudyInstanceUID', 'SeriesInstanceUID'
+            ])
+            self.SOPInstanceUID = ds['SOPInstanceUID'].value
+            self.StudyUID = ds['StudyInstanceUID'].value
+            self.SeriesUID = ds['SeriesInstanceUID'].value
+            
+        except BaseException as err:
+            print(err)
+            self.SOPInstanceUID = ''
+            self.StudyUID = ''
+            self.SeriesUID = ''
+
 class ErrStatistics:
     SampleTargetFile:str
     ErrorDirs:set
-    SampleStudyUID:pydicom.uid.UID
-    SampleSeriesUID:pydicom.uid.UID
-    SampleSOPInstanceUID:pydicom.uid.UID
+    ErrorFiles:dict
     Count:int
     def __init__(self):
         self.SampleTargetFile = ''
         self.ErrorDirs = set()
-        self.SampleStudyUID = ''
-        self.SampleSeriesUID = ''
-        self.SampleSOPInstanceUID = ''
+        self.ErrorFiles = {}
         self.Count = 0
 # import condn_cc
 def run_exe(arg_list, stderr_file, stdout_file,log:list, env_vars=None):
@@ -159,14 +174,12 @@ def AddLogToStatistics(filename:str ,log:list, stat:dict, regexp = ''):
             
             stat[i].ErrorDirs.add(folder)
             stat[i].Count += 1
+            if filename not in stat[i].ErrorFiles:
+                stat[i].ErrorFiles[filename] = FileUIDS(filename)
         else:
             stat_let = ErrStatistics()
             stat_let.ErrorDirs = {folder}
-            stat_let.SampleTargetFile = filename
-            ds = pydicom.read_file(filename)
-            stat_let.SampleSOPInstanceUID = ds.SOPInstanceUID
-            stat_let.SampleStudyUID = ds.StudyInstanceUID
-            stat_let.SampleSeriesUID = ds.SeriesInstanceUID
+            stat_let.ErrorFiles [filename] = FileUIDS(filename)
             stat_let.Count = 1
             stat[i] = stat_let
 def recursive_file_find(address, approvedlist):
@@ -183,34 +196,40 @@ def recursive_file_find(address, approvedlist):
 def write_stat_report(stat:dict, filename:str):
     to_string = ''
     c = 0
-    for k,v in stat.items():
+    for k,v in sorted(stat.items(),key=lambda x:x[1].Count, reverse=True):
         c += 1
-        msg = '\n\t\t\t{}'
+        msg = '\n\t\t\t{}: {}'
         to_string += "({}) {} cases in {} folders : {}".format(
             c, v.Count, len(v.ErrorDirs), k
         )
-        to_string += msg.format(v.SampleTargetFile)
-        to_string += msg.format(v.SampleSOPInstanceUID)
-        to_string += msg.format(v.SampleSeriesUID)
-        to_string += msg.format(v.SampleStudyUID)
+        top = list(v.ErrorFiles.items())[0]
+        to_string += msg.format('FILE',top[0])
+        to_string += msg.format('SOP',top[1].SOPInstanceUID)
+        to_string += msg.format('STUDY',top[1].StudyUID)
+        to_string += msg.format('SERIES',top[1].SeriesUID)
     write_str_to_text(filename, to_string)
-def write_stat_worksheet(seq_, excel_file):
+def write_fix_stat_worksheet(seq_, excel_file):
     fs = ['N','FREQ(FILES)','FREQ(FOLDER)','ERROR TYPE','ERROR',
-     "FIX APPROACH", 'CURRENT FUN', 'CURRENT FUN FILE', 'LAST FUN', 'LAST FUN FILE',"DCM FILE" , 'SOP UID', 'STUDY UID', 'SERIES UID']
+     "FIX APPROACH", 'CURRENT FUN', 'CURRENT FUN FILE', 'LAST FUN',
+      'LAST FUN FILE']
+    fs_1 = ["DCM FILE" , 'SOP UID', 'STUDY UID', 'SERIES UID']
     workbook = xlsxwriter.Workbook(excel_file)
     worksheet = workbook.add_worksheet(name = "general")
     col = 0
+    git_url = 'https://github.com/afshinmessiah/PyDicomVerify/{}'
     repo = git.Repo(search_parent_directories=True)
     worksheet.write_string(0, 0,"GIT BRANCH")
-    worksheet.write_string(1, 0, str(repo.active_branch))
+    branch = str(repo.active_branch)
+    worksheet.write_url(1, 0, git_url.format('tree/'+branch), string=branch)
     worksheet.write_string(0, 1,'HEAD HASH')
-    worksheet.write_string(1, 1, (repo.head.object.hexsha))
+    commit = repo.head.object.hexsha
+    worksheet.write_url(1, 1, git_url.format('commit/'+commit), string=commit)
     row_offset = 2
     for value, idx in zip(fs, range(0, len(fs))):
         worksheet.write_string(row_offset, idx, value)
     r = 1 + row_offset
     
-    for err, obj in seq_.items():
+    for err, obj in sorted(seq_.items(), key=lambda x:x[1].Count, reverse=True):
         regexp = '(.*{})-(.*):-\>:(.*)\<function(.*)from file:(.*)\> \<function(.*)from file:(.*)\>'
         
         m = re.search(regexp.format('Fix\s'), err)
@@ -236,13 +255,68 @@ def write_stat_worksheet(seq_, excel_file):
         worksheet.write_string(r, fs.index('CURRENT FUN FILE'), file1)
         worksheet.write_string(r, fs.index('LAST FUN'), fun2)
         worksheet.write_string(r, fs.index('LAST FUN FILE'), file2)
-        worksheet.write_string(r, fs.index('DCM FILE'), obj.SampleTargetFile)
-        worksheet.write_string(r, fs.index('SOP UID'), obj.SampleSOPInstanceUID)
-        worksheet.write_string(r, fs.index('STUDY UID'), obj.SampleStudyUID)
-        worksheet.write_string(r, fs.index('SERIES UID'), obj.SampleSeriesUID)
         worksheet1 = workbook.add_worksheet(name = "{}".format(r-row_offset))
+        
+        for header, idx in zip(fs_1, range(0, len(fs_1))):
+            worksheet1.write_string(0, idx, header)
+        secondary_row = 1
+        for f, fuids in obj.ErrorFiles.items():
+            worksheet1.write(secondary_row, fs_1.index('DCM FILE'), f)
+            worksheet1.write(secondary_row, fs_1.index('SOP UID'), fuids.SOPInstanceUID)
+            worksheet1.write(secondary_row, fs_1.index('STUDY UID'), fuids.StudyUID)
+            worksheet1.write(secondary_row, fs_1.index('SERIES UID'), fuids.SeriesUID)
+            secondary_row += 1
+        
+        worksheet1.write(secondary_row, 0, 'FOLDERS LIST')
+        secondary_row +=1
         for idx, d in enumerate(obj.ErrorDirs, 1):
-            worksheet1.write(idx-1, 0, d)
+            worksheet1.write(idx+secondary_row-1, 0, d)
+        r += 1
+
+    workbook.close()
+def write_vfy_stat_worksheet(seq_, excel_file):
+    fs = ['N','FREQ(FILES)','FREQ(FOLDER)','ERROR']
+    fs_1 = ["DCM FILE" , 'SOP UID', 'STUDY UID', 'SERIES UID']
+    workbook = xlsxwriter.Workbook(excel_file)
+    worksheet = workbook.add_worksheet(name = "general")
+    col = 0
+    git_url = 'https://github.com/afshinmessiah/PyDicomVerify/{}'
+    repo = git.Repo(search_parent_directories=True)
+    worksheet.write_string(0, 0,"GIT BRANCH")
+    branch = str(repo.active_branch)
+    worksheet.write_url(1, 0, git_url.format('tree/'+branch), string=branch)
+    worksheet.write_string(0, 1,'HEAD HASH')
+    commit = repo.head.object.hexsha
+    worksheet.write_url(1, 1, git_url.format('commit/'+commit), string=commit)
+    row_offset = 2
+    for value, idx in zip(fs, range(0, len(fs))):
+        worksheet.write_string(row_offset, idx, value)
+    r = 1 + row_offset
+    
+    for err, obj in sorted(seq_.items(), key=lambda x:x[1].Count, reverse=True):
+        
+
+
+        worksheet.write_url(r,fs.index('N'), 'internal:{}!A2'.format(r - row_offset), string=str(r-row_offset))
+        worksheet.write_number(r, fs.index('FREQ(FILES)'), obj.Count)
+        worksheet.write_number(r, fs.index('FREQ(FOLDER)'), len(obj.ErrorDirs))
+        worksheet.write_string(r, fs.index('ERROR'), err)
+        worksheet1 = workbook.add_worksheet(name = "{}".format(r-row_offset))
+        
+        for header, idx in zip(fs_1, range(0, len(fs_1))):
+            worksheet1.write_string(0, idx, header)
+        secondary_row = 1
+        for f, fuids in obj.ErrorFiles.items():
+            worksheet1.write(secondary_row, fs_1.index('DCM FILE'), f)
+            worksheet1.write(secondary_row, fs_1.index('SOP UID'), fuids.SOPInstanceUID)
+            worksheet1.write(secondary_row, fs_1.index('STUDY UID'), fuids.StudyUID)
+            worksheet1.write(secondary_row, fs_1.index('SERIES UID'), fuids.SeriesUID)
+            secondary_row += 1
+        
+        worksheet1.write(secondary_row, 0, 'FOLDERS LIST')
+        secondary_row +=1
+        for idx, d in enumerate(obj.ErrorDirs, 1):
+            worksheet1.write(idx+secondary_row-1, 0, d)
         r += 1
 
     workbook.close()
@@ -250,7 +324,7 @@ def write_stat_worksheet(seq_, excel_file):
 
 
 
-out_folder = "/Users/afshin/Documents/work/dicom_fix00/"
+out_folder = "/Users/afshin/Documents/work/dicom_fix01/"
 if os.path.exists(out_folder):
     shutil.rmtree(out_folder)
 dcm_folder = out_folder + "/dcm/"
@@ -268,32 +342,35 @@ repo = git.Repo(search_parent_directories=True)
 print(repo.active_branch)
 sha = repo.head.object.hexsha
 print(sha)
-
+time_interval_for_progress_update = 1
+last_time_point = 0
 for i, f in enumerate(file_list,1):
     progress = float(i) / float(len(file_list))
     time_point = time.time()
-    time_elapsed = time_point - start
-    time_left = float(len(file_list)-i)* time_elapsed/float(i)
-    t_e = str(timedelta(seconds = time_elapsed))
-    t_l = str(timedelta(seconds = time_left))
-    
-
-    prog_str = '{:.2%}'.format(progress)
-    ll = int(progress*100)
-    rr = 100 - ll
-    form = '{{:|>{}}}{{:-<{}}}'.format(ll,rr)
-    progress_bar = form.format(prog_str, '')
-    print('time elapsed: {} ({}) estimated time left:{}'.format(t_e, progress_bar, t_l))
+    time_elapsed = round(time_point - start)
+    time_left = round(float(len(file_list)-i)* time_elapsed/float(i))
+    time_elapsed_since_last_show = time_point - last_time_point
     log_david = []
     log_fixed = []
     fix_file(f, in_folder, dcm_folder, fix_folder,
     vfy_folder,log_fixed, log_david)
-    AddLogToStatistics(f, log_fixed, fix_rep, '.*:\-\>:.*')
-    write_stat_report(fix_rep, out_folder + "/stat_fix.txt")
-    write_stat_worksheet(fix_rep, out_folder + "/stat_fix.xlsx")
-    AddLogToStatistics(f, log_david, vfy_rep,'Error.*')
-    write_stat_report(vfy_rep, out_folder + "/stat_vfy.txt")
-    # write_stat_worksheet(vfy_rep, out_folder + "/stat_vfy.xlsx")
+    if time_elapsed_since_last_show > time_interval_for_progress_update:
+        last_time_point = time_point
+        t_e = str(timedelta(seconds = time_elapsed))
+        t_l = str(timedelta(seconds = time_left))
+        prog_str = '{:.2%}'.format(progress)
+        ll = int(progress*100)
+        rr = 100 - ll
+        form = '{{:|>{}}}{{:-<{}}}'.format(ll,rr)
+        progress_bar = form.format(prog_str, '')
+        print('time elapsed: {} ({}) estimated time left:{}'.format(t_e, progress_bar, t_l),end='\r', flush=True)
+        AddLogToStatistics(f, log_fixed, fix_rep, '.*:\-\>:.*')
+        write_stat_report(fix_rep, out_folder + "/stat_fix.txt")
+        write_fix_stat_worksheet(fix_rep, out_folder + "/stat_fix.xlsx")
+        AddLogToStatistics(f, log_david, vfy_rep,'Error.*')
+        write_stat_report(vfy_rep, out_folder + "/stat_vfy.txt")
+        write_vfy_stat_worksheet(vfy_rep, out_folder + "/stat_vfy.xlsx")
+        # write_fix_stat_worksheet(vfy_rep, out_folder + "/stat_vfy.xlsx")
 
 
     
