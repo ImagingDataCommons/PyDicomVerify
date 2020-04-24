@@ -366,7 +366,7 @@ for i, f in enumerate(file_list,1):
         rr = 100 - ll
         form = '{{:|>{}}}{{:.<{}}}'.format(ll,rr)
         progress_bar = form.format(prog_str, '')
-        print('time elapsed: {} ({}) estimated time left:{}\t\t\t'.format(t_e, progress_bar, t_l),end='\r', flush=True)
+        print('time elapsed: {} ({}) estimated time left:{}         '.format(t_e, progress_bar, t_l),end='\r', flush=True)
     if time_elapsed_since_last_record > time_interval_record_data:
         last_time_point_record_data = time_point
         AddLogToStatistics(f, log_fixed, fix_rep, '.*:\-\>:.*')
