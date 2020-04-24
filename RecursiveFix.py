@@ -324,12 +324,12 @@ def write_vfy_stat_worksheet(seq_, excel_file):
 
 
 
-out_folder = "/Users/afshin/Documents/work/dicom_fix01/"
+out_folder = "/Users/afshin/Documents/work/dicom_fix01"
 if os.path.exists(out_folder):
     shutil.rmtree(out_folder)
-dcm_folder = out_folder + "/dcm/"
-fix_folder = out_folder + "/fix/"
-vfy_folder = out_folder + "/vfy/"
+dcm_folder = os.path.join(out_folder , "dcm/")
+fix_folder = os.path.join(out_folder , "fix/")
+vfy_folder = os.path.join(out_folder , "vfy/")
 in_folder = '/Users/afshin/Dropbox (Partners HealthCare)/IDC-MF_DICOM/data/'
 dicom_file = "/Users/afshin/Dropbox (Partners HealthCare)/./IDC-MF_DICOM/data/TCGA-UCEC/TCGA-D1-A169/12-01-1992-NMPETCT trunk-32478/1007-MIPTORSO 3DFDGIR CTAC-95040/000027.dcm"
 
