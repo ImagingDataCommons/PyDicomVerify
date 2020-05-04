@@ -19,6 +19,8 @@ import os
 import xlsxwriter
 import time
 from datetime import timedelta
+import common_tools as ctools
+import single2multi_frame
 class FileUIDS:
     StudyUID:pydicom.uid.UID
     SeriesUID:pydicom.uid.UID
@@ -49,71 +51,22 @@ class ErrStatistics:
         self.ErrorFiles = {}
         self.Count = 0
 # import condn_cc
-def RunExe(arg_list, stderr_file, stdout_file,log:list, env_vars=None):
-    # print(str(arg_list))
-    out_text = ""
-    for a in arg_list:
-        has_ws = False
-        for ch in a:
-            if ch.isspace():
-                has_ws = True
-                break
-        if has_ws:
-            out_text += "\"{}\" ".format(a)
-        else:
-            out_text += "{} ".format(a)
-    # print(out_text)
-
-    curr_env = os.environ.copy()
-    if env_vars is not None:
-        if type(env_vars) == dict:
-            for key, v in env_vars.items():
-                if key in curr_env:
-                    curr_env[key] += ":{}".format(v)
-                else:
-                    curr_env[key] = v
-
-    proc = subprocess.run(arg_list, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=curr_env)
-    _error = proc.stderr
-    if len(stderr_file) != 0:
-        WriteStringToFile(stderr_file, _error.decode("ascii"))
-        # print( _error.decode("ascii"))
-    _output = proc.stdout
-    if len(stdout_file) != 0:
-        WriteStringToFile(stdout_file, _output.decode("ascii"))
-    log.extend(re.split("\n",  _error.decode("ascii")))
-    return proc.returncode
 def VER(file:str, out_folder:str,log:list):
     file_name = os.path.basename(file)
     toxml_exe_file = "/Users/afshin/Documents/softwares/dcmtk/3.6.5/bin/bin/dcm2xml"
-    RunExe([toxml_exe_file, file, os.path.join(out_folder,'xml.xml')],os.path.join(out_folder,'err_xml.txt'),os.path.join(out_folder,'out_xml.txt'),[],
-            {"DYLD_LIBRARY_PATH":"/Users/afshin/Documents/softwares/dcmtk/3.6.5/bin/lib/"})
+    ctools.RunExe([toxml_exe_file, file, os.path.join(out_folder,'xml.xml')],
+    os.path.join(out_folder,'err_xml.txt'),os.path.join(out_folder,'out_xml.txt'),
+            env_vars={"DYLD_LIBRARY_PATH":"/Users/afshin/Documents/softwares/dcmtk/3.6.5/bin/lib/"})
     # print('{:=^120}'.format("DAVID'S"))
-    dcm_verify = "/Users/afshin/Documents/softwares/dicom3tools/dicom3tools_macexe_1.00.snapshot.20191225051647/dciodvfy"
+    dcm_verify = "/Users/afshin/Documents/softwares/dicom3tools/exe_20200430/dciodvfy"
     out = os.path.join(out_folder, file_name + "_err.txt")
-    RunExe([dcm_verify,'-filename', file], out, '',log)
+    ctools.RunExe([dcm_verify,'-filename', file], out, '',log)
     # print('{:=^120}'.format("MY CODE"))
     my_code_output = verify(file, False, '')
-    WriteStringToFile(out, '{:=^120}\n'.format("MY CODE"), True)
-    WriteStringToFile(out, my_code_output, True)
+    ctools.WriteStringToFile(out, '{:=^120}\n'.format("MY CODE"), True)
+    ctools.WriteStringToFile(out, my_code_output, True)
 
 # =========================================================================
-def WriteStringToFile(file_name, content, append = False):
-    if append:
-        text_file = open(file_name, "a")
-    else:
-        text_file = open(file_name, "w")
-    n = text_file.write(content)
-    text_file.close()
-def GetFileString(filename):
-    File_object = open(filename, "r")
-    try:
-        Content = File_object.read()
-    except:
-        print("Couldn't read the file")
-        Content = ""
-    File_object.close()
-    return Content
 def FixFile(dicom_file, in_folder,
 fixed_dcm_folder, fix_report_folder, final_vfy_folder,
 log_fix, log_david):
@@ -135,6 +88,7 @@ log_fix, log_david):
 
     log_mine = []
     if fix_it:
+        fix_frequent_errors.priorfix_RemoveIllegalTags(ds,'All', log_fix)
         #(1)general fixes:
         for ffix in dir(fix_frequent_errors):
             if ffix.startswith("generalfix_"):
@@ -158,7 +112,7 @@ log_fix, log_david):
         fixed_file = os.path.join(f_dcm_folder, file_name)
 
         write_file(fixed_file, ds)
-        WriteStringToFile(os.path.join(f_rpt_folder, file_name+'_fix_report.txt'),fix_report)
+        ctools.WriteStringToFile(os.path.join(f_rpt_folder, file_name+'_fix_report.txt'),fix_report)
         VER(fixed_file, f_vfy_folder, log_david)
 
     else:
@@ -184,17 +138,7 @@ def AddLogToStatistics(filename:str ,log:list, stat:dict, regexp = ''):
             stat_let.ErrorFiles [filename] = FileUIDS(filename)
             stat_let.Count = 1
             stat[i] = stat_let
-def RecursiveFileFind(address, approvedlist):
-    filelist = os.listdir(address)
-    for filename in filelist:
-        fullpath = os.path.join(address, filename);
 
-        if os.path.isdir(fullpath):
-            RecursiveFileFind(fullpath, approvedlist)
-            continue;
-        filename_size = len(filename);
-        if filename.find(".dcm", filename_size - 5) != -1:
-            approvedlist.append(fullpath)
 def WriteReportStatisticsToFile(stat:dict, filename:str):
     to_string = ''
     c = 0
@@ -209,7 +153,7 @@ def WriteReportStatisticsToFile(stat:dict, filename:str):
         to_string += msg.format('SOP',top[1].SOPInstanceUID)
         to_string += msg.format('STUDY',top[1].StudyUID)
         to_string += msg.format('SERIES',top[1].SeriesUID)
-    WriteStringToFile(filename, to_string)
+    ctools.WriteStringToFile(filename, to_string)
 def WriteFixReportToWorksheet(seq_, excel_file):
     fs = ['N','FREQ(FILES)','FREQ(FOLDER)','ERROR TYPE','ERROR',
      "FIX APPROACH", 'CURRENT FUN', 'CURRENT FUN FILE', 'LAST FUN',
@@ -337,65 +281,77 @@ def WriteVryReportToWorksheet(seq_, excel_file):
         r += 1
 
     workbook.close()
+def FIX(in_folder, out_folder, prefix=''):
+    if os.path.exists(out_folder):
+        shutil.rmtree(out_folder)
+    dcm_folder = os.path.join(out_folder , "fixed_dicom/")
+    fix_folder = os.path.join(out_folder , "fix_report/")
+    vfy_folder = os.path.join(out_folder , "postfix_vfy_report/")
+    fix_report_file_name = '/TCIA_fix_report_total'
+    post_fix_report_file_name = '/TCIA_post-fix_verification_report'
+    fix_rep = {}
+    vfy_rep = {}
+    file_list = ctools.Find(in_folder,cond_function=ctools.is_dicom,)
+    start = time.time()
+    repo = git.Repo(search_parent_directories=True)
+    print(repo.active_branch)
+    sha = repo.head.object.hexsha
+    print(sha)
+    time_interval_for_progress_update = .5
+    time_interval_record_data = 30
+    last_time_point_for_progress_update = 0
+    last_time_point_record_data = 0
+    for i, f in enumerate(file_list,1):
+        progress = float(i) / float(len(file_list))
+        time_point = time.time()
+        time_elapsed = round(time_point - start)
+        time_left = round(float(len(file_list)-i)* time_elapsed/float(i))
+        time_elapsed_since_last_show = time_point - last_time_point_for_progress_update
+        time_elapsed_since_last_record = time_point - last_time_point_record_data
+        log_david = []
+        log_fixed = []
+        FixFile(f, in_folder, dcm_folder, fix_folder,
+        vfy_folder,log_fixed, log_david)
+        fixed_file_path = f.replace(in_folder,dcm_folder)
+        if time_elapsed_since_last_show > time_interval_for_progress_update:
+            last_time_point_for_progress_update = time_point
+            ctools.ShowProgress(progress,time_elapsed, time_left, 80, prefix)
+            if i == len(file_list):
+                print('\n')
+        if time_elapsed_since_last_record > time_interval_record_data:
+            last_time_point_record_data = time_point
+            AddLogToStatistics(f, log_fixed, fix_rep, '.*:\-\>:.*')
+            WriteReportStatisticsToFile(fix_rep, out_folder + fix_report_file_name+".txt")
+            WriteFixReportToWorksheet(fix_rep, out_folder + fix_report_file_name+".xlsx")
+            AddLogToStatistics(fixed_file_path, log_david, vfy_rep,'Error.*')
+            WriteReportStatisticsToFile(vfy_rep, out_folder+ post_fix_report_file_name+".txt")
+            WriteVryReportToWorksheet(vfy_rep, out_folder+ post_fix_report_file_name+".xlsx")
+                # WriteFixReportToWorksheet(vfy_rep, out_folder + "/stat_vfy.xlsx")
+
+
+        
+                
+    
+
+
+
         
 
 
 local_dropbox_folder = "/Users/afshin/Dropbox (Partners HealthCare)"
 out_folder = os.path.join(local_dropbox_folder,"IDC-MF_DICOM/fix_output00")
-if os.path.exists(out_folder):
-    shutil.rmtree(out_folder)
-dcm_folder = os.path.join(out_folder , "fixed_dicom/")
-fix_folder = os.path.join(out_folder , "fix_report/")
-vfy_folder = os.path.join(out_folder , "postfix_vfy_report/")
 in_folder = os.path.join(local_dropbox_folder,"IDC-MF_DICOM/data/")
-fix_report_file_name = '/TCIA_fix_report_total'
-post_fix_report_file_name = '/TCIA_post-fix_verification_report'
-fix_rep = {}
-vfy_rep = {}
-file_list = []
-RecursiveFileFind(in_folder, file_list)
-start = time.time()
-repo = git.Repo(search_parent_directories=True)
-print(repo.active_branch)
-sha = repo.head.object.hexsha
-print(sha)
-time_interval_for_progress_update = .5
-time_interval_record_data = 30
-last_time_point_for_progress_update = 0
-last_time_point_record_data = 0
-for i, f in enumerate(file_list,1):
-    progress = float(i) / float(len(file_list))
-    time_point = time.time()
-    time_elapsed = round(time_point - start)
-    time_left = round(float(len(file_list)-i)* time_elapsed/float(i))
-    time_elapsed_since_last_show = time_point - last_time_point_for_progress_update
-    time_elapsed_since_last_record = time_point - last_time_point_record_data
-    log_david = []
-    log_fixed = []
-    FixFile(f, in_folder, dcm_folder, fix_folder,
-    vfy_folder,log_fixed, log_david)
-    fixed_file_path = f.replace(in_folder,dcm_folder)
-    if time_elapsed_since_last_show > time_interval_for_progress_update:
-        last_time_point_for_progress_update = time_point
-        t_e = str(timedelta(seconds = time_elapsed))
-        t_l = str(timedelta(seconds = time_left))
-        prog_str = '{:.2%}'.format(progress)
-        ll = int(progress*100)
-        rr = 100 - ll
-        form = '{{:|>{}}}{{:.<{}}}'.format(ll,rr)
-        progress_bar = form.format(prog_str, '')
-        print('time elapsed: {} ({}) estimated time left:{}         '.format(t_e, progress_bar, t_l),end='\r', flush=True)
-    if time_elapsed_since_last_record > time_interval_record_data:
-        last_time_point_record_data = time_point
-        AddLogToStatistics(f, log_fixed, fix_rep, '.*:\-\>:.*')
-        WriteReportStatisticsToFile(fix_rep, out_folder + fix_report_file_name+".txt")
-        WriteFixReportToWorksheet(fix_rep, out_folder + fix_report_file_name+".xlsx")
-        AddLogToStatistics(fixed_file_path, log_david, vfy_rep,'Error.*')
-        WriteReportStatisticsToFile(vfy_rep, out_folder+ post_fix_report_file_name+".txt")
-        WriteVryReportToWorksheet(vfy_rep, out_folder+ post_fix_report_file_name+".xlsx")
-            # WriteFixReportToWorksheet(vfy_rep, out_folder + "/stat_vfy.xlsx")
-
-
-    
-            
-
+# FIX(in_folder, out_folder, 'INPUT FIXING')
+fixed_folder = os.path.join(out_folder, 'fixed_dicom/')
+#---------------------------------------------------------------
+highdicom_folder = "/Users/afshin/Documents/Conversion/hd/"
+pixelmed_folder = "/Users/afshin/Documents/Conversion/pm/"
+conversion_log = []
+single2multi_frame.Convert(fixed_folder,pixelmed_folder, highdicom_folder, 
+     conversion_log)
+ctools.WriteStringToFile(os.path.join(highdicom_folder,'highdicom_log.txt'),
+ctools.StrList2Txt(conversion_log))
+highdicom_fixed_folder = os.path.join(highdicom_folder,'fix')
+pixelmed_fixed_folder = os.path.join(pixelmed_folder,'fix')
+FIX(highdicom_folder,highdicom_fixed_folder, 'FIXING HD')
+FIX(pixelmed_folder, pixelmed_fixed_folder, 'FIXING PM')

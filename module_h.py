@@ -609,43 +609,50 @@ def Macro_CodeSequenceMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Datas
 		log.append( " CodeSequenceMacro success after verifying EnhancedCodeSequenceMacro"+ ("success" if partial_success else "failure" ))
 	return global_success
 
-def Macro_CodeSequenceMeaningOptionalMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbose:bool, log:list, fix_trivials:bool)->bool:
+def Macro_BasicCodeSequenceMeaningOptionalMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbose:bool, log:list, fix_trivials:bool)->bool:
 	partial_success = True
 	global_success = True
 
 	if verbose:
-		log.append( MMsgDC("Verifying") + MMsgDC("Macro") +"CodeSequenceMeaningOptionalMacro")
+		log.append( MMsgDC("Verifying") + MMsgDC("Macro") +"BasicCodeSequenceMeaningOptionalMacro")
 
-	partial_success =  		verifyType1(ds, 
-			"CodeSequenceMeaningOptionalMacro", "CodeValue", 
+	partial_success =  		verifyType1C(ds, 
+			"BasicCodeSequenceMeaningOptionalMacro", "CodeValue", 
 			verbose, log, fix_trivials, 
+			Condition_LongCodeValueAndURNCodeValueAbsent, 
+			False, 
+			parent_ds, root_ds, 
 			0, 0)
 	global_success = global_success and partial_success 
 	if verbose:
-		log.append( " CodeSequenceMeaningOptionalMacro success after verifying CodeValue --> "+("success" if partial_success else "failure"))
+		log.append( " BasicCodeSequenceMeaningOptionalMacro success after verifying CodeValue --> "+("success" if partial_success else "failure"))
 
 
 	if Condition_CodeValueIllegalOrDeprecated(ds, parent_ds, root_ds):
 			log.append( EMsgDC("Null") +" Code Value is illegal or deprecated - attribute <CodeValue>"+\
 				" = <{}>".format( ds.CodeValue))
 
-	partial_success =  		verifyType1(ds, 
-			"CodeSequenceMeaningOptionalMacro", "CodingSchemeDesignator", 
+	partial_success =  		verifyType1C(ds, 
+			"BasicCodeSequenceMeaningOptionalMacro", "CodingSchemeDesignator", 
 			verbose, log, fix_trivials, 
+			Condition_CodeValueOrLongCodeValuePresent, 
+			True, 
+			parent_ds, root_ds, 
 			0, 0)
 	global_success = global_success and partial_success 
 	if verbose:
-		log.append( " CodeSequenceMeaningOptionalMacro success after verifying CodingSchemeDesignator --> "+("success" if partial_success else "failure"))
+		log.append( " BasicCodeSequenceMeaningOptionalMacro success after verifying CodingSchemeDesignator --> "+("success" if partial_success else "failure"))
 
-	if "CodingSchemeDesignator" not in ds: 
-		partial_success = False 
-	else: 
-		partial_success = verifyDefinedTerms(ds["CodingSchemeDesignator"], 
-			StringValueTable_MiscellaneousCodingSchemeDesignators, 
-			verbose, log, -1)
-	global_success = global_success and partial_success 
+	if Condition_CodeValueOrLongCodeValuePresent(ds, parent_ds, root_ds):
+		if "CodingSchemeDesignator" not in ds: 
+			partial_success = False 
+		else: 
+			partial_success = verifyDefinedTerms(ds["CodingSchemeDesignator"], 
+				StringValueTable_MiscellaneousCodingSchemeDesignators, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
 	if verbose:
-		log.append( " CodeSequenceMeaningOptionalMacro success after verifying string defined terms CodingSchemeDesignator --> "+("success" if partial_success else "failure"))
+		log.append( " BasicCodeSequenceMeaningOptionalMacro success after verifying string defined terms CodingSchemeDesignator --> "+("success" if partial_success else "failure"))
 
 
 	if Condition_CodingSchemeDesignatorDeprecated(ds, parent_ds, root_ds):
@@ -653,247 +660,96 @@ def Macro_CodeSequenceMeaningOptionalMacro_verify(ds:Dataset , parent_ds:Dataset
 				" = <{}>".format( ds.CodingSchemeDesignator))
 
 	partial_success =  		verifyType1C(ds, 
-			"CodeSequenceMeaningOptionalMacro", "CodingSchemeVersion", 
+			"BasicCodeSequenceMeaningOptionalMacro", "CodingSchemeVersion", 
 			verbose, log, fix_trivials, 
 			Condition_CodingSchemeVersionRequired, 
-			False, 
+			True, 
 			parent_ds, root_ds, 
 			0, 0)
 	global_success = global_success and partial_success 
 	if verbose:
-		log.append( " CodeSequenceMeaningOptionalMacro success after verifying CodingSchemeVersion --> "+("success" if partial_success else "failure"))
+		log.append( " BasicCodeSequenceMeaningOptionalMacro success after verifying CodingSchemeVersion --> "+("success" if partial_success else "failure"))
 
 	partial_success =  		verifyType3(ds, 
-			"CodeSequenceMeaningOptionalMacro", "CodeMeaning", 
+			"BasicCodeSequenceMeaningOptionalMacro", "CodeMeaning", 
 			verbose, log, fix_trivials, 
 			0, 0)
 	global_success = global_success and partial_success 
 	if verbose:
-		log.append( " CodeSequenceMeaningOptionalMacro success after verifying CodeMeaning --> "+("success" if partial_success else "failure"))
+		log.append( " BasicCodeSequenceMeaningOptionalMacro success after verifying CodeMeaning --> "+("success" if partial_success else "failure"))
 
 
 	if Condition_CodeMeaningEmptyOrNotPresent(ds, parent_ds, root_ds):
 			log.append( WMsgDC("Null") +" Code Meaning is missing or empty, which is legal but undesirable - attribute <CodeMeaning>")
 
-	partial_success =  		verifyType3(ds, 
-			"CodeSequenceMeaningOptionalMacro", "ContextIdentifier", 
-			verbose, log, fix_trivials, 
-			0, 0)
-	global_success = global_success and partial_success 
-	if verbose:
-		log.append( " CodeSequenceMeaningOptionalMacro success after verifying ContextIdentifier --> "+("success" if partial_success else "failure"))
 
-	partial_success =  		verifyType3(ds, 
-			"CodeSequenceMeaningOptionalMacro", "ContextUID", 
-			verbose, log, fix_trivials, 
-			0, 0)
-	global_success = global_success and partial_success 
-	if verbose:
-		log.append( " CodeSequenceMeaningOptionalMacro success after verifying ContextUID --> "+("success" if partial_success else "failure"))
+	if Condition_CodeMeaningIllegalOrDeprecated(ds, parent_ds, root_ds):
+			log.append( EMsgDC("Null") +" Code Meaning is illegal or deprecated - attribute <CodeMeaning>"+\
+				" = <{}>".format( ds.CodeMeaning))
 
 	partial_success =  		verifyType1C(ds, 
-			"CodeSequenceMeaningOptionalMacro", "MappingResource", 
+			"BasicCodeSequenceMeaningOptionalMacro", "LongCodeValue", 
 			verbose, log, fix_trivials, 
-			Condition_ContextIdentifierIsPresent, 
+			Condition_CodeValueAndURNCodeValueAbsent, 
 			False, 
 			parent_ds, root_ds, 
 			0, 0)
 	global_success = global_success and partial_success 
 	if verbose:
-		log.append( " CodeSequenceMeaningOptionalMacro success after verifying MappingResource --> "+("success" if partial_success else "failure"))
+		log.append( " BasicCodeSequenceMeaningOptionalMacro success after verifying LongCodeValue --> "+("success" if partial_success else "failure"))
 
 	partial_success =  		verifyType1C(ds, 
-			"CodeSequenceMeaningOptionalMacro", "ContextGroupVersion", 
+			"BasicCodeSequenceMeaningOptionalMacro", "URNCodeValue", 
 			verbose, log, fix_trivials, 
-			Condition_ContextIdentifierIsPresent, 
+			Condition_CodeValueAndLongCodeValueAbsent, 
 			False, 
 			parent_ds, root_ds, 
 			0, 0)
 	global_success = global_success and partial_success 
 	if verbose:
-		log.append( " CodeSequenceMeaningOptionalMacro success after verifying ContextGroupVersion --> "+("success" if partial_success else "failure"))
-
-	partial_success =  		verifyType3(ds, 
-			"CodeSequenceMeaningOptionalMacro", "ContextGroupExtensionFlag", 
-			verbose, log, fix_trivials, 
-			0, 0)
-	global_success = global_success and partial_success 
-	if verbose:
-		log.append( " CodeSequenceMeaningOptionalMacro success after verifying ContextGroupExtensionFlag --> "+("success" if partial_success else "failure"))
-
-	if "ContextGroupExtensionFlag" not in ds: 
-		partial_success = False 
-	else:
-		partial_success = verifyEnumValues(ds["ContextGroupExtensionFlag"], 
-			StringValueTable_YesNoLetter, 
-			verbose, log, -1)
-	global_success = global_success and partial_success 
-	if verbose:
-		log.append( " CodeSequenceMeaningOptionalMacro success after verifying string enumerated values ContextGroupExtensionFlag --> "+("success" if partial_success else "failure"))
-
-	partial_success =  		verifyType1C(ds, 
-			"CodeSequenceMeaningOptionalMacro", "ContextGroupLocalVersion", 
-			verbose, log, fix_trivials, 
-			Condition_ExtendedCodingScheme, 
-			False, 
-			parent_ds, root_ds, 
-			0, 0)
-	global_success = global_success and partial_success 
-	if verbose:
-		log.append( " CodeSequenceMeaningOptionalMacro success after verifying ContextGroupLocalVersion --> "+("success" if partial_success else "failure"))
-
-	partial_success =  		verifyType1C(ds, 
-			"CodeSequenceMeaningOptionalMacro", "ContextGroupExtensionCreatorUID", 
-			verbose, log, fix_trivials, 
-			Condition_ExtendedCodingScheme, 
-			False, 
-			parent_ds, root_ds, 
-			0, 0)
-	global_success = global_success and partial_success 
-	if verbose:
-		log.append( " CodeSequenceMeaningOptionalMacro success after verifying ContextGroupExtensionCreatorUID --> "+("success" if partial_success else "failure"))
+		log.append( " BasicCodeSequenceMeaningOptionalMacro success after verifying URNCodeValue --> "+("success" if partial_success else "failure"))
 
 	return global_success
 
-def Macro_CodeSequence99SDMMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbose:bool, log:list, fix_trivials:bool)->bool:
+def Macro_CodeSequenceMeaningOptionalMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbose:bool, log:list, fix_trivials:bool)->bool:
 	partial_success = True
 	global_success = True
 
 	if verbose:
-		log.append( MMsgDC("Verifying") + MMsgDC("Macro") +"CodeSequence99SDMMacro")
+		log.append( MMsgDC("Verifying") + MMsgDC("Macro") +"CodeSequenceMeaningOptionalMacro")
 
-	partial_success =  		verifyType1(ds, 
-			"CodeSequence99SDMMacro", "CodeValue", 
+	partial_success =  Macro_BasicCodeSequenceMeaningOptionalMacro_verify(ds, parent_ds, root_ds, verbose, log, fix_trivials)
+
+	if verbose:
+		log.append( " CodeSequenceMeaningOptionalMacro success after verifying BasicCodeSequenceMeaningOptionalMacro"+ ("success" if partial_success else "failure" ))
+	partial_success = verifyType3(ds, 
+			"CodeSequenceMeaningOptionalMacro", 
+			"EquivalentCodeSequence", 
 			verbose, log, fix_trivials, 
-			0, 0)
+			1, 0xFFFFFFFF)
 	global_success = global_success and partial_success 
 	if verbose:
-		log.append( " CodeSequence99SDMMacro success after verifying CodeValue --> "+("success" if partial_success else "failure"))
+		log.append( "CodeSequenceMeaningOptionalMacro success after verifying EquivalentCodeSequence" + ("success" if partial_success else "failure")) 
+	if "EquivalentCodeSequence" in ds:
+		EquivalentCodeSequence_data = ds.EquivalentCodeSequence
+		if type(EquivalentCodeSequence_data) == Sequence:
+			for i1 in range(0, len(EquivalentCodeSequence_data)):
+				if verbose:
+					log.append( " EquivalentCodeSequence item [{}]".format(i1+1))
+				parent_ds1 = ds
+				ds1 = EquivalentCodeSequence_data[i1]
+				partial_success =  Macro_BasicCodeSequenceMacro_verify(ds1, parent_ds1, root_ds, verbose, log, fix_trivials)
 
+				if verbose:
+					log.append( " CodeSequenceMeaningOptionalMacro success after verifying BasicCodeSequenceMacro"+ ("success" if partial_success else "failure" ))
+				partial_success =  Macro_EnhancedCodeSequenceMacro_verify(ds1, parent_ds1, root_ds, verbose, log, fix_trivials)
 
-	if Condition_CodeValueIllegalOrDeprecated(ds, parent_ds, root_ds):
-			log.append( EMsgDC("Null") +" Code Value is illegal or deprecated - attribute <CodeValue>"+\
-				" = <{}>".format( ds.CodeValue))
+				if verbose:
+					log.append( " CodeSequenceMeaningOptionalMacro success after verifying EnhancedCodeSequenceMacro"+ ("success" if partial_success else "failure" ))
+	partial_success =  Macro_EnhancedCodeSequenceMacro_verify(ds, parent_ds, root_ds, verbose, log, fix_trivials)
 
-	partial_success =  		verifyType1(ds, 
-			"CodeSequence99SDMMacro", "CodingSchemeDesignator", 
-			verbose, log, fix_trivials, 
-			0, 0)
-	global_success = global_success and partial_success 
 	if verbose:
-		log.append( " CodeSequence99SDMMacro success after verifying CodingSchemeDesignator --> "+("success" if partial_success else "failure"))
-
-	if "CodingSchemeDesignator" not in ds: 
-		partial_success = False 
-	else:
-		partial_success = verifyEnumValues(ds["CodingSchemeDesignator"], 
-			StringValueTable_CodingSchemeDesignatorForSNOMEDDICOMMicroglossary, 
-			verbose, log, -1)
-	global_success = global_success and partial_success 
-	if verbose:
-		log.append( " CodeSequence99SDMMacro success after verifying string enumerated values CodingSchemeDesignator --> "+("success" if partial_success else "failure"))
-
-	partial_success =  		verifyType1C(ds, 
-			"CodeSequence99SDMMacro", "CodingSchemeVersion", 
-			verbose, log, fix_trivials, 
-			Condition_CodingSchemeVersionRequired, 
-			False, 
-			parent_ds, root_ds, 
-			0, 0)
-	global_success = global_success and partial_success 
-	if verbose:
-		log.append( " CodeSequence99SDMMacro success after verifying CodingSchemeVersion --> "+("success" if partial_success else "failure"))
-
-	partial_success =  		verifyType3(ds, 
-			"CodeSequence99SDMMacro", "CodeMeaning", 
-			verbose, log, fix_trivials, 
-			0, 0)
-	global_success = global_success and partial_success 
-	if verbose:
-		log.append( " CodeSequence99SDMMacro success after verifying CodeMeaning --> "+("success" if partial_success else "failure"))
-
-
-	if Condition_CodeMeaningEmptyOrNotPresent(ds, parent_ds, root_ds):
-			log.append( WMsgDC("Null") +" Code Meaning is missing or empty, which is legal but undesirable - attribute <CodeMeaning>")
-
-	partial_success =  		verifyType3(ds, 
-			"CodeSequence99SDMMacro", "ContextIdentifier", 
-			verbose, log, fix_trivials, 
-			0, 0)
-	global_success = global_success and partial_success 
-	if verbose:
-		log.append( " CodeSequence99SDMMacro success after verifying ContextIdentifier --> "+("success" if partial_success else "failure"))
-
-	partial_success =  		verifyType3(ds, 
-			"CodeSequence99SDMMacro", "ContextUID", 
-			verbose, log, fix_trivials, 
-			0, 0)
-	global_success = global_success and partial_success 
-	if verbose:
-		log.append( " CodeSequence99SDMMacro success after verifying ContextUID --> "+("success" if partial_success else "failure"))
-
-	partial_success =  		verifyType1C(ds, 
-			"CodeSequence99SDMMacro", "MappingResource", 
-			verbose, log, fix_trivials, 
-			Condition_ContextIdentifierIsPresent, 
-			False, 
-			parent_ds, root_ds, 
-			0, 0)
-	global_success = global_success and partial_success 
-	if verbose:
-		log.append( " CodeSequence99SDMMacro success after verifying MappingResource --> "+("success" if partial_success else "failure"))
-
-	partial_success =  		verifyType1C(ds, 
-			"CodeSequence99SDMMacro", "ContextGroupVersion", 
-			verbose, log, fix_trivials, 
-			Condition_ContextIdentifierIsPresent, 
-			False, 
-			parent_ds, root_ds, 
-			0, 0)
-	global_success = global_success and partial_success 
-	if verbose:
-		log.append( " CodeSequence99SDMMacro success after verifying ContextGroupVersion --> "+("success" if partial_success else "failure"))
-
-	partial_success =  		verifyType3(ds, 
-			"CodeSequence99SDMMacro", "ContextGroupExtensionFlag", 
-			verbose, log, fix_trivials, 
-			0, 0)
-	global_success = global_success and partial_success 
-	if verbose:
-		log.append( " CodeSequence99SDMMacro success after verifying ContextGroupExtensionFlag --> "+("success" if partial_success else "failure"))
-
-	if "ContextGroupExtensionFlag" not in ds: 
-		partial_success = False 
-	else:
-		partial_success = verifyEnumValues(ds["ContextGroupExtensionFlag"], 
-			StringValueTable_YesNoLetter, 
-			verbose, log, -1)
-	global_success = global_success and partial_success 
-	if verbose:
-		log.append( " CodeSequence99SDMMacro success after verifying string enumerated values ContextGroupExtensionFlag --> "+("success" if partial_success else "failure"))
-
-	partial_success =  		verifyType1C(ds, 
-			"CodeSequence99SDMMacro", "ContextGroupLocalVersion", 
-			verbose, log, fix_trivials, 
-			Condition_ExtendedCodingScheme, 
-			False, 
-			parent_ds, root_ds, 
-			0, 0)
-	global_success = global_success and partial_success 
-	if verbose:
-		log.append( " CodeSequence99SDMMacro success after verifying ContextGroupLocalVersion --> "+("success" if partial_success else "failure"))
-
-	partial_success =  		verifyType1C(ds, 
-			"CodeSequence99SDMMacro", "ContextGroupExtensionCreatorUID", 
-			verbose, log, fix_trivials, 
-			Condition_ExtendedCodingScheme, 
-			False, 
-			parent_ds, root_ds, 
-			0, 0)
-	global_success = global_success and partial_success 
-	if verbose:
-		log.append( " CodeSequence99SDMMacro success after verifying ContextGroupExtensionCreatorUID --> "+("success" if partial_success else "failure"))
-
+		log.append( " CodeSequenceMeaningOptionalMacro success after verifying EnhancedCodeSequenceMacro"+ ("success" if partial_success else "failure" ))
 	return global_success
 
 def Macro_PersonIdentificationMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbose:bool, log:list, fix_trivials:bool)->bool:
@@ -1399,6 +1255,271 @@ def Macro_ImageSOPInstanceReferenceMacro_verify(ds:Dataset , parent_ds:Dataset, 
 
 	if Condition_ReferencedFrameNumberAndReferencedSegmentNumberPresent(ds, parent_ds, root_ds):
 			log.append( EMsgDC("Null") +" May not be present when ReferencedFrameNumber is present - attribute <ReferencedSegmentNumber>")
+
+	return global_success
+
+def Macro_ReferencedInstancesAndAccessMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbose:bool, log:list, fix_trivials:bool)->bool:
+	partial_success = True
+	global_success = True
+
+	if verbose:
+		log.append( MMsgDC("Verifying") + MMsgDC("Macro") +"ReferencedInstancesAndAccessMacro")
+
+	partial_success =  		verifyType1(ds, 
+			"ReferencedInstancesAndAccessMacro", "TypeOfInstances", 
+			verbose, log, fix_trivials, 
+			1, 1)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " ReferencedInstancesAndAccessMacro success after verifying TypeOfInstances --> "+("success" if partial_success else "failure"))
+
+	if "TypeOfInstances" not in ds: 
+		partial_success = False 
+	else: 
+		partial_success = verifyDefinedTerms(ds["TypeOfInstances"], 
+			StringValueTable_TypeOfInstances, 
+			verbose, log, -1)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " ReferencedInstancesAndAccessMacro success after verifying string defined terms TypeOfInstances --> "+("success" if partial_success else "failure"))
+
+	partial_success =  		verifyType1C(ds, 
+			"ReferencedInstancesAndAccessMacro", "StudyInstanceUID", 
+			verbose, log, fix_trivials, 
+			Condition_TypeOfInstancesIsDICOM, 
+			False, 
+			parent_ds, root_ds, 
+			1, 1)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " ReferencedInstancesAndAccessMacro success after verifying StudyInstanceUID --> "+("success" if partial_success else "failure"))
+
+	partial_success =  		verifyType1C(ds, 
+			"ReferencedInstancesAndAccessMacro", "SeriesInstanceUID", 
+			verbose, log, fix_trivials, 
+			Condition_TypeOfInstancesIsDICOM, 
+			False, 
+			parent_ds, root_ds, 
+			1, 1)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " ReferencedInstancesAndAccessMacro success after verifying SeriesInstanceUID --> "+("success" if partial_success else "failure"))
+
+	partial_success = verifyType1(ds, 
+			"ReferencedInstancesAndAccessMacro", 
+			"ReferencedSOPSequence", 
+			verbose, log, fix_trivials, 
+			1, 0xFFFFFFFF)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( "ReferencedInstancesAndAccessMacro success after verifying ReferencedSOPSequence" + ("success" if partial_success else "failure")) 
+	if "ReferencedSOPSequence" in ds:
+		ReferencedSOPSequence_data = ds.ReferencedSOPSequence
+		if type(ReferencedSOPSequence_data) == Sequence:
+			for i1 in range(0, len(ReferencedSOPSequence_data)):
+				if verbose:
+					log.append( " ReferencedSOPSequence item [{}]".format(i1+1))
+				parent_ds1 = ds
+				ds1 = ReferencedSOPSequence_data[i1]
+				partial_success =  		verifyType1(ds1, 
+						"ReferencedInstancesAndAccessMacro", "ReferencedSOPClassUID", 
+						verbose, log, fix_trivials, 
+									0, 0)
+				global_success = global_success and partial_success 
+				if verbose:
+					log.append( " ReferencedInstancesAndAccessMacro success after verifying ReferencedSOPClassUID --> "+("success" if partial_success else "failure"))
+
+				partial_success =  		verifyType1(ds1, 
+						"ReferencedInstancesAndAccessMacro", "ReferencedSOPInstanceUID", 
+						verbose, log, fix_trivials, 
+									0, 0)
+				global_success = global_success and partial_success 
+				if verbose:
+					log.append( " ReferencedInstancesAndAccessMacro success after verifying ReferencedSOPInstanceUID --> "+("success" if partial_success else "failure"))
+
+				partial_success =  		verifyType1C(ds1, 
+						"ReferencedInstancesAndAccessMacro", "HL7InstanceIdentifier", 
+						verbose, log, fix_trivials, 
+						Condition_TypeOfInstancesInParentIsCDA, 
+						False, 
+						parent_ds1, root_ds, 
+						1, 1)
+				global_success = global_success and partial_success 
+				if verbose:
+					log.append( " ReferencedInstancesAndAccessMacro success after verifying HL7InstanceIdentifier --> "+("success" if partial_success else "failure"))
+
+				partial_success =  		verifyType1C(ds1, 
+						"ReferencedInstancesAndAccessMacro", "ReferencedFrameNumber", 
+						verbose, log, fix_trivials, 
+						0, 
+						True, 
+						parent_ds1, root_ds, 
+						1, 1)
+				global_success = global_success and partial_success 
+				if verbose:
+					log.append( " ReferencedInstancesAndAccessMacro success after verifying ReferencedFrameNumber --> "+("success" if partial_success else "failure"))
+
+				partial_success =  		verifyType1C(ds1, 
+						"ReferencedInstancesAndAccessMacro", "ReferencedSegmentNumber", 
+						verbose, log, fix_trivials, 
+						0, 
+						True, 
+						parent_ds1, root_ds, 
+						1, 1)
+				global_success = global_success and partial_success 
+				if verbose:
+					log.append( " ReferencedInstancesAndAccessMacro success after verifying ReferencedSegmentNumber --> "+("success" if partial_success else "failure"))
+
+	partial_success = verifyType1C(ds, 
+			"ReferencedInstancesAndAccessMacro", 
+			"DICOMRetrievalSequence", 
+			verbose, log, fix_trivials, 
+			Condition_NeedDICOMRetrievalSequence, 
+			True, 
+			parent_ds, root_ds, 
+			1, 1)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( "ReferencedInstancesAndAccessMacro success after verifying DICOMRetrievalSequence" + ("success" if partial_success else "failure")) 
+	if "DICOMRetrievalSequence" in ds:
+		DICOMRetrievalSequence_data = ds.DICOMRetrievalSequence
+		if type(DICOMRetrievalSequence_data) == Sequence:
+			for i1 in range(0, len(DICOMRetrievalSequence_data)):
+				if verbose:
+					log.append( " DICOMRetrievalSequence item [{}]".format(i1+1))
+				parent_ds1 = ds
+				ds1 = DICOMRetrievalSequence_data[i1]
+				partial_success =  		verifyType1(ds1, 
+						"ReferencedInstancesAndAccessMacro", "RetrieveAETitle", 
+						verbose, log, fix_trivials, 
+									0, 0)
+				global_success = global_success and partial_success 
+				if verbose:
+					log.append( " ReferencedInstancesAndAccessMacro success after verifying RetrieveAETitle --> "+("success" if partial_success else "failure"))
+
+	partial_success = verifyType1C(ds, 
+			"ReferencedInstancesAndAccessMacro", 
+			"DICOMMediaRetrievalSequence", 
+			verbose, log, fix_trivials, 
+			Condition_NeedDICOMMediaRetrievalSequence, 
+			True, 
+			parent_ds, root_ds, 
+			1, 1)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( "ReferencedInstancesAndAccessMacro success after verifying DICOMMediaRetrievalSequence" + ("success" if partial_success else "failure")) 
+	if "DICOMMediaRetrievalSequence" in ds:
+		DICOMMediaRetrievalSequence_data = ds.DICOMMediaRetrievalSequence
+		if type(DICOMMediaRetrievalSequence_data) == Sequence:
+			for i1 in range(0, len(DICOMMediaRetrievalSequence_data)):
+				if verbose:
+					log.append( " DICOMMediaRetrievalSequence item [{}]".format(i1+1))
+				parent_ds1 = ds
+				ds1 = DICOMMediaRetrievalSequence_data[i1]
+				partial_success =  		verifyType2(ds1, 
+						"ReferencedInstancesAndAccessMacro", "StorageMediaFileSetID", 
+						verbose, log, fix_trivials, 
+									0, 0)
+				global_success = global_success and partial_success 
+				if verbose:
+					log.append( " ReferencedInstancesAndAccessMacro success after verifying StorageMediaFileSetID --> "+("success" if partial_success else "failure"))
+
+				partial_success =  		verifyType1(ds1, 
+						"ReferencedInstancesAndAccessMacro", "StorageMediaFileSetUID", 
+						verbose, log, fix_trivials, 
+									0, 0)
+				global_success = global_success and partial_success 
+				if verbose:
+					log.append( " ReferencedInstancesAndAccessMacro success after verifying StorageMediaFileSetUID --> "+("success" if partial_success else "failure"))
+
+	partial_success = verifyType1C(ds, 
+			"ReferencedInstancesAndAccessMacro", 
+			"WADORetrievalSequence", 
+			verbose, log, fix_trivials, 
+			Condition_NeedWADORetrievalSequence, 
+			True, 
+			parent_ds, root_ds, 
+			1, 1)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( "ReferencedInstancesAndAccessMacro success after verifying WADORetrievalSequence" + ("success" if partial_success else "failure")) 
+	if "WADORetrievalSequence" in ds:
+		WADORetrievalSequence_data = ds.WADORetrievalSequence
+		if type(WADORetrievalSequence_data) == Sequence:
+			for i1 in range(0, len(WADORetrievalSequence_data)):
+				if verbose:
+					log.append( " WADORetrievalSequence item [{}]".format(i1+1))
+				parent_ds1 = ds
+				ds1 = WADORetrievalSequence_data[i1]
+				partial_success =  		verifyType1(ds1, 
+						"ReferencedInstancesAndAccessMacro", "RetrieveURI", 
+						verbose, log, fix_trivials, 
+									0, 0)
+				global_success = global_success and partial_success 
+				if verbose:
+					log.append( " ReferencedInstancesAndAccessMacro success after verifying RetrieveURI --> "+("success" if partial_success else "failure"))
+
+	partial_success = verifyType1C(ds, 
+			"ReferencedInstancesAndAccessMacro", 
+			"XDSRetrievalSequence", 
+			verbose, log, fix_trivials, 
+			Condition_NeedXDSRetrievalSequence, 
+			True, 
+			parent_ds, root_ds, 
+			1, 1)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( "ReferencedInstancesAndAccessMacro success after verifying XDSRetrievalSequence" + ("success" if partial_success else "failure")) 
+	if "XDSRetrievalSequence" in ds:
+		XDSRetrievalSequence_data = ds.XDSRetrievalSequence
+		if type(XDSRetrievalSequence_data) == Sequence:
+			for i1 in range(0, len(XDSRetrievalSequence_data)):
+				if verbose:
+					log.append( " XDSRetrievalSequence item [{}]".format(i1+1))
+				parent_ds1 = ds
+				ds1 = XDSRetrievalSequence_data[i1]
+				partial_success =  		verifyType1(ds1, 
+						"ReferencedInstancesAndAccessMacro", "RepositoryUniqueID", 
+						verbose, log, fix_trivials, 
+									0, 0)
+				global_success = global_success and partial_success 
+				if verbose:
+					log.append( " ReferencedInstancesAndAccessMacro success after verifying RepositoryUniqueID --> "+("success" if partial_success else "failure"))
+
+				partial_success =  		verifyType3(ds1, 
+						"ReferencedInstancesAndAccessMacro", "HomeCommunityID", 
+						verbose, log, fix_trivials, 
+									0, 0)
+				global_success = global_success and partial_success 
+				if verbose:
+					log.append( " ReferencedInstancesAndAccessMacro success after verifying HomeCommunityID --> "+("success" if partial_success else "failure"))
+
+	partial_success = verifyType1C(ds, 
+			"ReferencedInstancesAndAccessMacro", 
+			"WADORSRetrievalSequence", 
+			verbose, log, fix_trivials, 
+			Condition_NeedWADORSRetrievalSequence, 
+			True, 
+			parent_ds, root_ds, 
+			1, 1)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( "ReferencedInstancesAndAccessMacro success after verifying WADORSRetrievalSequence" + ("success" if partial_success else "failure")) 
+	if "WADORSRetrievalSequence" in ds:
+		WADORSRetrievalSequence_data = ds.WADORSRetrievalSequence
+		if type(WADORSRetrievalSequence_data) == Sequence:
+			for i1 in range(0, len(WADORSRetrievalSequence_data)):
+				if verbose:
+					log.append( " WADORSRetrievalSequence item [{}]".format(i1+1))
+				parent_ds1 = ds
+				ds1 = WADORSRetrievalSequence_data[i1]
+				partial_success =  		verifyType1(ds1, 
+						"ReferencedInstancesAndAccessMacro", "RetrieveURL", 
+						verbose, log, fix_trivials, 
+									0, 0)
+				global_success = global_success and partial_success 
+				if verbose:
+					log.append( " ReferencedInstancesAndAccessMacro success after verifying RetrieveURL --> "+("success" if partial_success else "failure"))
 
 	return global_success
 
@@ -3679,6 +3800,44 @@ def Module_Patient_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbo
 	if verbose:
 		log.append( " Patient success after verifying PatientBirthDate --> "+("success" if partial_success else "failure"))
 
+	partial_success =  		verifyType3(ds, 
+			"Patient", "PatientBirthDateInAlternativeCalendar", 
+			verbose, log, fix_trivials, 
+			0, 0)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " Patient success after verifying PatientBirthDateInAlternativeCalendar --> "+("success" if partial_success else "failure"))
+
+	partial_success =  		verifyType3(ds, 
+			"Patient", "PatientDeathDateInAlternativeCalendar", 
+			verbose, log, fix_trivials, 
+			0, 0)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " Patient success after verifying PatientDeathDateInAlternativeCalendar --> "+("success" if partial_success else "failure"))
+
+	partial_success =  		verifyType1C(ds, 
+			"Patient", "PatientAlternativeCalendar", 
+			verbose, log, fix_trivials, 
+			Condition_PatientAlternativeCalendarNeeded, 
+			False, 
+			parent_ds, root_ds, 
+			0, 0)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " Patient success after verifying PatientAlternativeCalendar --> "+("success" if partial_success else "failure"))
+
+	if Condition_PatientAlternativeCalendarNeeded(ds, parent_ds, root_ds):
+		if "PatientAlternativeCalendar" not in ds: 
+			partial_success = False 
+		else: 
+			partial_success = verifyDefinedTerms(ds["PatientAlternativeCalendar"], 
+				StringValueTable_PatientAlternativeCalendar, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " Patient success after verifying string defined terms PatientAlternativeCalendar --> "+("success" if partial_success else "failure"))
+
 	partial_success =  		verifyType2(ds, 
 			"Patient", "PatientSex", 
 			verbose, log, fix_trivials, 
@@ -3697,6 +3856,26 @@ def Module_Patient_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbo
 	if verbose:
 		log.append( " Patient success after verifying string enumerated values PatientSex --> "+("success" if partial_success else "failure"))
 
+	partial_success = verifyType3(ds, 
+			"Patient", 
+			"ReferencedPatientPhotoSequence", 
+			verbose, log, fix_trivials, 
+			1, 1)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( "Patient success after verifying ReferencedPatientPhotoSequence" + ("success" if partial_success else "failure")) 
+	if "ReferencedPatientPhotoSequence" in ds:
+		ReferencedPatientPhotoSequence_data = ds.ReferencedPatientPhotoSequence
+		if type(ReferencedPatientPhotoSequence_data) == Sequence:
+			for i1 in range(0, len(ReferencedPatientPhotoSequence_data)):
+				if verbose:
+					log.append( " ReferencedPatientPhotoSequence item [{}]".format(i1+1))
+				parent_ds1 = ds
+				ds1 = ReferencedPatientPhotoSequence_data[i1]
+				partial_success =  Macro_ReferencedInstancesAndAccessMacro_verify(ds1, parent_ds1, root_ds, verbose, log, fix_trivials)
+
+				if verbose:
+					log.append( " Patient success after verifying ReferencedInstancesAndAccessMacro"+ ("success" if partial_success else "failure" ))
 	partial_success =  		verifyType3(ds, 
 			"Patient", "QualityControlSubject", 
 			verbose, log, fix_trivials, 
@@ -4327,6 +4506,34 @@ def Module_GeneralStudy_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, 
 
 				if verbose:
 					log.append( " GeneralStudy success after verifying PersonIdentificationMacro"+ ("success" if partial_success else "failure" ))
+	partial_success =  		verifyType3(ds, 
+			"GeneralStudy", "ConsultingPhysicianName", 
+			verbose, log, fix_trivials, 
+			0, 0)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " GeneralStudy success after verifying ConsultingPhysicianName --> "+("success" if partial_success else "failure"))
+
+	partial_success = verifyType3(ds, 
+			"GeneralStudy", 
+			"ConsultingPhysicianIdentificationSequence", 
+			verbose, log, fix_trivials, 
+			1, 0xFFFFFFFF)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( "GeneralStudy success after verifying ConsultingPhysicianIdentificationSequence" + ("success" if partial_success else "failure")) 
+	if "ConsultingPhysicianIdentificationSequence" in ds:
+		ConsultingPhysicianIdentificationSequence_data = ds.ConsultingPhysicianIdentificationSequence
+		if type(ConsultingPhysicianIdentificationSequence_data) == Sequence:
+			for i1 in range(0, len(ConsultingPhysicianIdentificationSequence_data)):
+				if verbose:
+					log.append( " ConsultingPhysicianIdentificationSequence item [{}]".format(i1+1))
+				parent_ds1 = ds
+				ds1 = ConsultingPhysicianIdentificationSequence_data[i1]
+				partial_success =  Macro_PersonIdentificationMacro_verify(ds1, parent_ds1, root_ds, verbose, log, fix_trivials)
+
+				if verbose:
+					log.append( " GeneralStudy success after verifying PersonIdentificationMacro"+ ("success" if partial_success else "failure" ))
 	partial_success =  		verifyType2(ds, 
 			"GeneralStudy", "StudyID", 
 			verbose, log, fix_trivials, 
@@ -4423,34 +4630,6 @@ def Module_GeneralStudy_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, 
 					log.append( " PhysiciansReadingStudyIdentificationSequence item [{}]".format(i1+1))
 				parent_ds1 = ds
 				ds1 = PhysiciansReadingStudyIdentificationSequence_data[i1]
-				partial_success =  Macro_PersonIdentificationMacro_verify(ds1, parent_ds1, root_ds, verbose, log, fix_trivials)
-
-				if verbose:
-					log.append( " GeneralStudy success after verifying PersonIdentificationMacro"+ ("success" if partial_success else "failure" ))
-	partial_success =  		verifyType3(ds, 
-			"GeneralStudy", "ConsultingPhysicianName", 
-			verbose, log, fix_trivials, 
-			0, 0)
-	global_success = global_success and partial_success 
-	if verbose:
-		log.append( " GeneralStudy success after verifying ConsultingPhysicianName --> "+("success" if partial_success else "failure"))
-
-	partial_success = verifyType3(ds, 
-			"GeneralStudy", 
-			"ConsultingPhysicianIdentificationSequence", 
-			verbose, log, fix_trivials, 
-			1, 0xFFFFFFFF)
-	global_success = global_success and partial_success 
-	if verbose:
-		log.append( "GeneralStudy success after verifying ConsultingPhysicianIdentificationSequence" + ("success" if partial_success else "failure")) 
-	if "ConsultingPhysicianIdentificationSequence" in ds:
-		ConsultingPhysicianIdentificationSequence_data = ds.ConsultingPhysicianIdentificationSequence
-		if type(ConsultingPhysicianIdentificationSequence_data) == Sequence:
-			for i1 in range(0, len(ConsultingPhysicianIdentificationSequence_data)):
-				if verbose:
-					log.append( " ConsultingPhysicianIdentificationSequence item [{}]".format(i1+1))
-				parent_ds1 = ds
-				ds1 = ConsultingPhysicianIdentificationSequence_data[i1]
 				partial_success =  Macro_PersonIdentificationMacro_verify(ds1, parent_ds1, root_ds, verbose, log, fix_trivials)
 
 				if verbose:
@@ -4608,6 +4787,48 @@ def Module_PatientStudy_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, 
 		partial_success = verifyNotZero(ds["PatientWeight"], 
 			verbose, log, -1, True)
 
+	partial_success =  		verifyType3(ds, 
+			"PatientStudy", "PatientBodyMassIndex", 
+			verbose, log, fix_trivials, 
+			0, 0)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " PatientStudy success after verifying PatientBodyMassIndex --> "+("success" if partial_success else "failure"))
+
+	if "PatientBodyMassIndex" not in ds: 
+		partial_success = False 
+	else: 
+		partial_success = verifyNotZero(ds["PatientBodyMassIndex"], 
+			verbose, log, -1, True)
+
+	partial_success =  		verifyType3(ds, 
+			"PatientStudy", "MeasuredAPDimension", 
+			verbose, log, fix_trivials, 
+			0, 0)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " PatientStudy success after verifying MeasuredAPDimension --> "+("success" if partial_success else "failure"))
+
+	if "MeasuredAPDimension" not in ds: 
+		partial_success = False 
+	else: 
+		partial_success = verifyNotZero(ds["MeasuredAPDimension"], 
+			verbose, log, -1, True)
+
+	partial_success =  		verifyType3(ds, 
+			"PatientStudy", "MeasuredLateralDimension", 
+			verbose, log, fix_trivials, 
+			0, 0)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " PatientStudy success after verifying MeasuredLateralDimension --> "+("success" if partial_success else "failure"))
+
+	if "MeasuredLateralDimension" not in ds: 
+		partial_success = False 
+	else: 
+		partial_success = verifyNotZero(ds["MeasuredLateralDimension"], 
+			verbose, log, -1, True)
+
 	partial_success = verifyType3(ds, 
 			"PatientStudy", 
 			"PatientSizeCodeSequence", 
@@ -4628,6 +4849,74 @@ def Module_PatientStudy_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, 
 
 				if verbose:
 					log.append( " PatientStudy success after verifying CodeSequenceMacro"+ ("success" if partial_success else "failure" ))
+	partial_success =  		verifyType3(ds, 
+			"PatientStudy", "MedicalAlerts", 
+			verbose, log, fix_trivials, 
+			0, 0)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " PatientStudy success after verifying MedicalAlerts --> "+("success" if partial_success else "failure"))
+
+	partial_success =  		verifyType3(ds, 
+			"PatientStudy", "Allergies", 
+			verbose, log, fix_trivials, 
+			0, 0)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " PatientStudy success after verifying Allergies --> "+("success" if partial_success else "failure"))
+
+	partial_success =  		verifyType3(ds, 
+			"PatientStudy", "SmokingStatus", 
+			verbose, log, fix_trivials, 
+			0, 0)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " PatientStudy success after verifying SmokingStatus --> "+("success" if partial_success else "failure"))
+
+	if "SmokingStatus" not in ds: 
+		partial_success = False 
+	else:
+		partial_success = verifyEnumValues(ds["SmokingStatus"], 
+			StringValueTable_SmokingStatus, 
+			verbose, log, -1)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " PatientStudy success after verifying string enumerated values SmokingStatus --> "+("success" if partial_success else "failure"))
+
+	partial_success =  		verifyType3(ds, 
+			"PatientStudy", "PregnancyStatus", 
+			verbose, log, fix_trivials, 
+			0, 0)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " PatientStudy success after verifying PregnancyStatus --> "+("success" if partial_success else "failure"))
+
+	if "PregnancyStatus" not in ds: 
+		partial_success = False 
+	else:
+		partial_success = verifyEnumValues_uint16(ds["PregnancyStatus"], 
+			BinaryValueDescription_PregnancyStatus, 
+			verbose, log, -1)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " PatientStudy success after verifying binary enumerated values PregnancyStatus --> "+("success" if partial_success else "failure"))
+
+	partial_success =  		verifyType3(ds, 
+			"PatientStudy", "LastMenstrualDate", 
+			verbose, log, fix_trivials, 
+			0, 0)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " PatientStudy success after verifying LastMenstrualDate --> "+("success" if partial_success else "failure"))
+
+	partial_success =  		verifyType3(ds, 
+			"PatientStudy", "PatientState", 
+			verbose, log, fix_trivials, 
+			0, 0)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " PatientStudy success after verifying PatientState --> "+("success" if partial_success else "failure"))
+
 	partial_success =  		verifyType3(ds, 
 			"PatientStudy", "Occupation", 
 			verbose, log, fix_trivials, 
@@ -4989,6 +5278,52 @@ def Module_GeneralSeries_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset,
 	if verbose:
 		log.append( " GeneralSeries success after verifying ProtocolName --> "+("success" if partial_success else "failure"))
 
+	partial_success = verifyType1C(ds, 
+			"GeneralSeries", 
+			"ReferencedDefinedProtocolSequence", 
+			verbose, log, fix_trivials, 
+			0, 
+			True, 
+			parent_ds, root_ds, 
+			1, 0xFFFFFFFF)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( "GeneralSeries success after verifying ReferencedDefinedProtocolSequence" + ("success" if partial_success else "failure")) 
+	if "ReferencedDefinedProtocolSequence" in ds:
+		ReferencedDefinedProtocolSequence_data = ds.ReferencedDefinedProtocolSequence
+		if type(ReferencedDefinedProtocolSequence_data) == Sequence:
+			for i1 in range(0, len(ReferencedDefinedProtocolSequence_data)):
+				if verbose:
+					log.append( " ReferencedDefinedProtocolSequence item [{}]".format(i1+1))
+				parent_ds1 = ds
+				ds1 = ReferencedDefinedProtocolSequence_data[i1]
+				partial_success =  Macro_SOPInstanceReferenceMacro_verify(ds1, parent_ds1, root_ds, verbose, log, fix_trivials)
+
+				if verbose:
+					log.append( " GeneralSeries success after verifying SOPInstanceReferenceMacro"+ ("success" if partial_success else "failure" ))
+	partial_success = verifyType1C(ds, 
+			"GeneralSeries", 
+			"ReferencedPerformedProtocolSequence", 
+			verbose, log, fix_trivials, 
+			0, 
+			True, 
+			parent_ds, root_ds, 
+			1, 0xFFFFFFFF)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( "GeneralSeries success after verifying ReferencedPerformedProtocolSequence" + ("success" if partial_success else "failure")) 
+	if "ReferencedPerformedProtocolSequence" in ds:
+		ReferencedPerformedProtocolSequence_data = ds.ReferencedPerformedProtocolSequence
+		if type(ReferencedPerformedProtocolSequence_data) == Sequence:
+			for i1 in range(0, len(ReferencedPerformedProtocolSequence_data)):
+				if verbose:
+					log.append( " ReferencedPerformedProtocolSequence item [{}]".format(i1+1))
+				parent_ds1 = ds
+				ds1 = ReferencedPerformedProtocolSequence_data[i1]
+				partial_success =  Macro_SOPInstanceReferenceMacro_verify(ds1, parent_ds1, root_ds, verbose, log, fix_trivials)
+
+				if verbose:
+					log.append( " GeneralSeries success after verifying SOPInstanceReferenceMacro"+ ("success" if partial_success else "failure" ))
 	partial_success =  		verifyType3(ds, 
 			"GeneralSeries", "SeriesDescription", 
 			verbose, log, fix_trivials, 
@@ -5412,6 +5747,14 @@ def Module_GeneralEquipment_verify(ds:Dataset , parent_ds:Dataset, root_ds:Datas
 		log.append( " GeneralEquipment success after verifying ManufacturerModelName --> "+("success" if partial_success else "failure"))
 
 	partial_success =  		verifyType3(ds, 
+			"GeneralEquipment", "ManufacturerDeviceClassUID", 
+			verbose, log, fix_trivials, 
+			0, 0)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " GeneralEquipment success after verifying ManufacturerDeviceClassUID --> "+("success" if partial_success else "failure"))
+
+	partial_success =  		verifyType3(ds, 
 			"GeneralEquipment", "DeviceSerialNumber", 
 			verbose, log, fix_trivials, 
 			0, 0)
@@ -5455,6 +5798,14 @@ def Module_GeneralEquipment_verify(ds:Dataset , parent_ds:Dataset, root_ds:Datas
 
 				if verbose:
 					log.append( " GeneralEquipment success after verifying UDIMacro"+ ("success" if partial_success else "failure" ))
+	partial_success =  		verifyType3(ds, 
+			"GeneralEquipment", "DeviceUID", 
+			verbose, log, fix_trivials, 
+			0, 0)
+	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " GeneralEquipment success after verifying DeviceUID --> "+("success" if partial_success else "failure"))
+
 	partial_success =  		verifyType3(ds, 
 			"GeneralEquipment", "SpatialResolution", 
 			verbose, log, fix_trivials, 
@@ -6324,12 +6675,36 @@ def Macro_ImagePixelMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset
 		log.append( " ImagePixelMacro success after verifying string defined terms PhotometricInterpretation --> "+("success" if partial_success else "failure"))
 
 
-	if Condition_JPEGLossyTransferSyntaxAndThreeSamplesOtherThanWSI(ds, parent_ds, root_ds):
+	if Condition_JPEGLossyTransferSyntaxAndOneSample(ds, parent_ds, root_ds):
 		if "PhotometricInterpretation" not in ds: 
 			partial_success = False 
 		else:
 			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
-				StringValueTable_PhotometricInterpretationYBRFull422, 
+				StringValueTable_PhotometricInterpretationMonochrome, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " ImagePixelMacro success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEGLossyTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRFull422OrRGB, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " ImagePixelMacro success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEGLosslessTransferSyntaxAndOneSample(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationMonochromeOrPaletteColor, 
 				verbose, log, -1)
 		global_success = global_success and partial_success 
 	if verbose:
@@ -6341,31 +6716,103 @@ def Macro_ImagePixelMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset
 			partial_success = False 
 		else:
 			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
-				StringValueTable_PhotometricInterpretationYBRFullOrRGBorYBR_RCT, 
+				StringValueTable_PhotometricInterpretationYBRFullOrRGB, 
 				verbose, log, -1)
 		global_success = global_success and partial_success 
 	if verbose:
 		log.append( " ImagePixelMacro success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
 
 
-	if Condition_JPEG2000LosslessTransferSyntaxAndThreeSamplesOtherThanWSI(ds, parent_ds, root_ds):
+	if Condition_JPEGLSLosslessTransferSyntaxAndOneSample(ds, parent_ds, root_ds):
 		if "PhotometricInterpretation" not in ds: 
 			partial_success = False 
 		else:
 			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
-				StringValueTable_PhotometricInterpretationYBRRCT, 
+				StringValueTable_PhotometricInterpretationMonochromeOrPaletteColor, 
 				verbose, log, -1)
 		global_success = global_success and partial_success 
 	if verbose:
 		log.append( " ImagePixelMacro success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
 
 
-	if Condition_JPEG2000TransferSyntaxAndThreeSamplesOtherThanWSI(ds, parent_ds, root_ds):
+	if Condition_JPEGLSLosslessTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
 		if "PhotometricInterpretation" not in ds: 
 			partial_success = False 
 		else:
 			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
-				StringValueTable_PhotometricInterpretationYBRRCTOrICT, 
+				StringValueTable_PhotometricInterpretationYBRFullOrRGB, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " ImagePixelMacro success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEGLSNearLosslessTransferSyntaxAndOneSample(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationMonochrome, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " ImagePixelMacro success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEGLSNearLosslessTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRFullOrRGB, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " ImagePixelMacro success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEG2000LosslessTransferSyntaxAndOneSample(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationMonochromeOrPaletteColor, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " ImagePixelMacro success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEG2000LosslessTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRFullOrRGBOrYBR_RCT, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " ImagePixelMacro success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEG2000TransferSyntaxAndOneSample(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationMonochrome, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " ImagePixelMacro success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEG2000TransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRFullOrRGBOrYBR_RCTOrYBR_ICT, 
 				verbose, log, -1)
 		global_success = global_success and partial_success 
 	if verbose:
@@ -6378,6 +6825,18 @@ def Macro_ImagePixelMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset
 		else:
 			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
 				StringValueTable_PhotometricInterpretationYBRPartial420, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " ImagePixelMacro success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_RLETransferSyntaxAndOneSample(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationMonochromeOrPaletteColor, 
 				verbose, log, -1)
 		global_success = global_success and partial_success 
 	if verbose:
@@ -6401,7 +6860,7 @@ def Macro_ImagePixelMacro_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset
 			partial_success = False 
 		else:
 			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
-				StringValueTable_PhotometricInterpretationYBRFullOrRGBorYBR_RCTorYBR_ICT, 
+				StringValueTable_PhotometricInterpretationYBRFullOrRGBOrYBR_RCTOrYBR_ICT, 
 				verbose, log, -1)
 		global_success = global_success and partial_success 
 	if verbose:
@@ -11880,10 +12339,10 @@ def Module_NMPETPatientOrientation_verify(ds:Dataset , parent_ds:Dataset, root_d
 					log.append( " PatientOrientationCodeSequence item [{}]".format(i1+1))
 				parent_ds1 = ds
 				ds1 = PatientOrientationCodeSequence_data[i1]
-				partial_success =  Macro_CodeSequence99SDMMacro_verify(ds1, parent_ds1, root_ds, verbose, log, fix_trivials)
+				partial_success =  Macro_CodeSequenceMeaningOptionalMacro_verify(ds1, parent_ds1, root_ds, verbose, log, fix_trivials)
 
 				if verbose:
-					log.append( " NMPETPatientOrientation success after verifying CodeSequence99SDMMacro"+ ("success" if partial_success else "failure" ))
+					log.append( " NMPETPatientOrientation success after verifying CodeSequenceMeaningOptionalMacro"+ ("success" if partial_success else "failure" ))
 				partial_success = verifyType2C(ds1, 
 						"NMPETPatientOrientation", 
 						"PatientOrientationModifierCodeSequence", 
@@ -11903,10 +12362,10 @@ def Module_NMPETPatientOrientation_verify(ds:Dataset , parent_ds:Dataset, root_d
 								log.append( " PatientOrientationModifierCodeSequence item [{}]".format(i2+1))
 							parent_ds2 = ds1
 							ds2 = PatientOrientationModifierCodeSequence_data[i2]
-							partial_success =  Macro_CodeSequence99SDMMacro_verify(ds2, parent_ds2, root_ds, verbose, log, fix_trivials)
+							partial_success =  Macro_CodeSequenceMeaningOptionalMacro_verify(ds2, parent_ds2, root_ds, verbose, log, fix_trivials)
 
 							if verbose:
-								log.append( " NMPETPatientOrientation success after verifying CodeSequence99SDMMacro"+ ("success" if partial_success else "failure" ))
+								log.append( " NMPETPatientOrientation success after verifying CodeSequenceMeaningOptionalMacro"+ ("success" if partial_success else "failure" ))
 	partial_success = verifyType2(ds, 
 			"NMPETPatientOrientation", 
 			"PatientGantryRelationshipCodeSequence", 
@@ -11923,10 +12382,10 @@ def Module_NMPETPatientOrientation_verify(ds:Dataset , parent_ds:Dataset, root_d
 					log.append( " PatientGantryRelationshipCodeSequence item [{}]".format(i1+1))
 				parent_ds1 = ds
 				ds1 = PatientGantryRelationshipCodeSequence_data[i1]
-				partial_success =  Macro_CodeSequence99SDMMacro_verify(ds1, parent_ds1, root_ds, verbose, log, fix_trivials)
+				partial_success =  Macro_CodeSequenceMeaningOptionalMacro_verify(ds1, parent_ds1, root_ds, verbose, log, fix_trivials)
 
 				if verbose:
-					log.append( " NMPETPatientOrientation success after verifying CodeSequence99SDMMacro"+ ("success" if partial_success else "failure" ))
+					log.append( " NMPETPatientOrientation success after verifying CodeSequenceMeaningOptionalMacro"+ ("success" if partial_success else "failure" ))
 	return global_success
 
 def Module_NMImagePixel_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbose:bool, log:list, fix_trivials:bool)->bool:
@@ -12877,10 +13336,10 @@ def Module_NMIsotope_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, ver
 								log.append( " RadionuclideCodeSequence item [{}]".format(i2+1))
 							parent_ds2 = ds1
 							ds2 = RadionuclideCodeSequence_data[i2]
-							partial_success =  Macro_CodeSequence99SDMMacro_verify(ds2, parent_ds2, root_ds, verbose, log, fix_trivials)
+							partial_success =  Macro_CodeSequenceMeaningOptionalMacro_verify(ds2, parent_ds2, root_ds, verbose, log, fix_trivials)
 
 							if verbose:
-								log.append( " NMIsotope success after verifying CodeSequence99SDMMacro"+ ("success" if partial_success else "failure" ))
+								log.append( " NMIsotope success after verifying CodeSequenceMeaningOptionalMacro"+ ("success" if partial_success else "failure" ))
 				partial_success =  		verifyType3(ds1, 
 						"NMIsotope", "RadiopharmaceuticalRoute", 
 						verbose, log, fix_trivials, 
@@ -14312,6 +14771,90 @@ def Module_USImage_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbo
 	global_success = global_success and partial_success 
 	if verbose:
 		log.append( " USImage success after verifying string defined terms PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_UncompressedTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationRGB, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " USImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEGLSLosslessTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationRGB, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " USImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEG2000TransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRICT, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " USImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEG2000LosslessTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRRCT, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " USImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_MPEG2TransferSyntax(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRPartial420, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " USImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEGLossyTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRFull422, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " USImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_RLETransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRFullOrRGB, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " USImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
 
 	partial_success =  		verifyType1(ds, 
 			"USImage", "BitsAllocated", 
@@ -18727,7 +19270,7 @@ def Module_MultiframeTrueColorSCImagePseudo_verify(ds:Dataset , parent_ds:Datase
 		partial_success = False 
 	else:
 		partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
-			StringValueTable_PhotometricInterpretationMonochrome2OrRGBorYBR_FULL_422orYBR_RCTorYBR_ICTorYBR_PARTIAL_420, 
+			StringValueTable_PhotometricInterpretationMonochrome2OrRGBOrYBR_FULL_422OrYBR_RCTOrYBR_ICTOrYBR_PARTIAL_420, 
 			verbose, log, -1)
 	global_success = global_success and partial_success 
 	if verbose:
@@ -18744,7 +19287,7 @@ def Module_MultiframeTrueColorSCImagePseudo_verify(ds:Dataset , parent_ds:Datase
 				" = <{}>".format( ds.PhotometricInterpretation))
 
 
-	if Condition_JPEG2000TransferSyntaxButNotYBR_RCTorYBR_ICT(ds, parent_ds, root_ds):
+	if Condition_JPEG2000TransferSyntaxButNotYBR_RCTOrYBR_ICT(ds, parent_ds, root_ds):
 			log.append( EMsgDC("Null") +" JPEG 2000 transfer syntax is required to have Photometric Interpretation of YBR_RCT or YBR_ICT - attribute <PhotometricInterpretation>"+\
 				" = <{}>".format( ds.PhotometricInterpretation))
 
@@ -50882,6 +51425,78 @@ def Module_VLImage_verify(ds:Dataset , parent_ds:Dataset, root_ds:Dataset, verbo
 	if verbose:
 		log.append( " VLImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
 
+
+	if Condition_UncompressedTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationRGB, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " VLImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEGLSLosslessTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationRGB, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " VLImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEG2000TransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRICT, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " VLImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEG2000LosslessTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRRCT, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " VLImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_MPEG2TransferSyntax(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRPartial420, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " VLImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEGLossyTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRFull422, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " VLImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
 	partial_success =  		verifyType1(ds, 
 			"VLImage", "BitsAllocated", 
 			verbose, log, fix_trivials, 
@@ -51701,6 +52316,78 @@ def Module_OphthalmicPhotographyImage_verify(ds:Dataset , parent_ds:Dataset, roo
 			StringValueTable_PhotometricInterpretationMonochrome2OrRGBorYBRFULL422orYBRPARTIAL420orYBRRCTorYBRICT, 
 			verbose, log, -1)
 	global_success = global_success and partial_success 
+	if verbose:
+		log.append( " OphthalmicPhotographyImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_UncompressedTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationRGB, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " OphthalmicPhotographyImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEGLSLosslessTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationRGB, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " OphthalmicPhotographyImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEG2000TransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRICT, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " OphthalmicPhotographyImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEG2000LosslessTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRRCT, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " OphthalmicPhotographyImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_MPEG2TransferSyntax(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRPartial420, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " OphthalmicPhotographyImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEGLossyTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRFull422, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
 	if verbose:
 		log.append( " OphthalmicPhotographyImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
 
@@ -53783,12 +54470,36 @@ def Module_WholeSlideMicroscopyImage_verify(ds:Dataset , parent_ds:Dataset, root
 		log.append( " WholeSlideMicroscopyImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
 
 
-	if Condition_JPEGLossyTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+	if Condition_UncompressedTransferSyntaxAndOneSample(ds, parent_ds, root_ds):
 		if "PhotometricInterpretation" not in ds: 
 			partial_success = False 
 		else:
 			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
-				StringValueTable_PhotometricInterpretationYBRFull422OrRGB, 
+				StringValueTable_PhotometricInterpretationMonochrome2, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " WholeSlideMicroscopyImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_UncompressedTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationRGB, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " WholeSlideMicroscopyImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEGLSLosslessTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationRGB, 
 				verbose, log, -1)
 		global_success = global_success and partial_success 
 	if verbose:
@@ -53813,6 +54524,18 @@ def Module_WholeSlideMicroscopyImage_verify(ds:Dataset , parent_ds:Dataset, root
 		else:
 			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
 				StringValueTable_PhotometricInterpretationYBRRCTOrICTOrRGB, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " WholeSlideMicroscopyImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEGLossyTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRFull422OrRGB, 
 				verbose, log, -1)
 		global_success = global_success and partial_success 
 	if verbose:
@@ -53849,7 +54572,7 @@ def Module_WholeSlideMicroscopyImage_verify(ds:Dataset , parent_ds:Dataset, root
 		log.append( " WholeSlideMicroscopyImage success after verifying NumberOfFrames --> "+("success" if partial_success else "failure"))
 
 
-	if Condition_ImageTypeValue3LocalizerOrLabel(ds, parent_ds, root_ds):
+	if Condition_ImageTypeValue3LocalizerOrLabelOrOverview(ds, parent_ds, root_ds):
 		if "NumberOfFrames" not in ds: 
 			partial_success = False 
 		else:
@@ -71063,7 +71786,91 @@ def Module_EnhancedMRImage_verify(ds:Dataset , parent_ds:Dataset, root_ds:Datase
 			partial_success = False 
 		else:
 			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
-				StringValueTable_PhotometricInterpretationRGBorYBR_FULL_422orYBR_RCTorYBR_ICTorYBR_PARTIAL_420, 
+				StringValueTable_PhotometricInterpretationRGBOrYBR_FULL_422OrYBR_RCTOrYBR_ICTOrYBR_PARTIAL_420, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " EnhancedMRImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_UncompressedTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationRGB, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " EnhancedMRImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEGLSLosslessTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationRGB, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " EnhancedMRImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEG2000TransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRICT, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " EnhancedMRImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEG2000LosslessTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRRCT, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " EnhancedMRImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_MPEG2TransferSyntax(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRPartial420, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " EnhancedMRImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_JPEGLossyTransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRFull422, 
+				verbose, log, -1)
+		global_success = global_success and partial_success 
+	if verbose:
+		log.append( " EnhancedMRImage success after verifying string enumerated values PhotometricInterpretation --> "+("success" if partial_success else "failure"))
+
+
+	if Condition_RLETransferSyntaxAndThreeSamples(ds, parent_ds, root_ds):
+		if "PhotometricInterpretation" not in ds: 
+			partial_success = False 
+		else:
+			partial_success = verifyEnumValues(ds["PhotometricInterpretation"], 
+				StringValueTable_PhotometricInterpretationYBRFullOrRGB, 
 				verbose, log, -1)
 		global_success = global_success and partial_success 
 	if verbose:

@@ -35,7 +35,9 @@ def ProjectToolLibraryHeaderTemplate_1(header, template, script):
 
 
 ProjectToolLibraryHeaderTemplate_1(dest + "binval_h", "binval", "binval")
+ProjectToolLibraryHeaderTemplate_1(dest + "strval_h", "strval", "strval")
 ProjectToolLibraryHeaderTemplate_1(dest + "tagval_h", "tagval", "tagval")
+ProjectToolLibraryHeaderTemplate_1(dest + "mesgtext_h", "mesgtext", "mesgtext")
 ProjectToolLibraryHeaderTemplate_1(dest + "module_h", "module", "module")
 ProjectToolLibraryHeaderTemplate_1(dest + "iodcomp_h", "iodcomp", "iodcomp")
 ProjectToolLibraryHeaderTemplate_1(dest + "iodcomp_select_h", "iodcomp", "iodcomps")

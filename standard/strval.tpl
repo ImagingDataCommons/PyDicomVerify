@@ -100,10 +100,6 @@ StringValues="ProcedureCodeScheme" {
 	UMD = MDNS
 }
 
-StringValues="CodingSchemeDesignatorForSNOMEDDICOMMicroglossary"	{
-	99SDM = SNOMED DICOM Microglossary
-}
-
 StringValues="CodingSchemeDesignatorForSNOMED"	{
 	SNM3 = SNOMED
 }
@@ -863,6 +859,16 @@ StringValues="PhotometricInterpretationMonochrome" {
 	MONOCHROME2
 }
 
+StringValues="PhotometricInterpretationMonochrome2" {
+	MONOCHROME2
+}
+
+StringValues="PhotometricInterpretationMonochromeOrPaletteColor" {
+	MONOCHROME1,
+	MONOCHROME2,
+	PALETTE COLOR,
+}
+
 StringValues="PhotometricInterpretationRGB" {
 	RGB
 }
@@ -872,7 +878,7 @@ StringValues="PhotometricInterpretationMonochrome2OrRGB" {
 	RGB
 }
 
-StringValues="PhotometricInterpretationMonochrome2OrRGBorYBR_FULL422" {
+StringValues="PhotometricInterpretationMonochrome2OrRGBOrYBR_FULL422" {
 	MONOCHROME2,
 	YBR_FULL_422,
 	RGB
@@ -885,6 +891,10 @@ StringValues="PhotometricInterpretationYBRFull422" {
 StringValues="PhotometricInterpretationYBRFull422OrRGB" {
 	YBR_FULL_422,
 	RGB
+}
+
+StringValues="PhotometricInterpretationYBRICT" {
+	YBR_ICT
 }
 
 StringValues="PhotometricInterpretationYBRRCT" {
@@ -915,14 +925,14 @@ StringValues="PhotometricInterpretationYBRFull" {
 	YBR_FULL
 }
 
-StringValues="PhotometricInterpretationYBRFullOrRGBorYBR_RCTorYBR_ICT" {
+StringValues="PhotometricInterpretationYBRFullOrRGBOrYBR_RCTOrYBR_ICT" {
 	YBR_FULL,
 	YBR_RCT,
 	YBR_ICT,
 	RGB
 }
 
-StringValues="PhotometricInterpretationRGBorYBR_FULL_422orYBR_RCTorYBR_ICTorYBR_PARTIAL_420" {
+StringValues="PhotometricInterpretationRGBOrYBR_FULL_422OrYBR_RCTOrYBR_ICTOrYBR_PARTIAL_420" {
 	YBR_FULL_422,
 	YBR_PARTIAL_420,
 	YBR_RCT,
@@ -930,7 +940,7 @@ StringValues="PhotometricInterpretationRGBorYBR_FULL_422orYBR_RCTorYBR_ICTorYBR_
 	RGB
 }
 
-StringValues="PhotometricInterpretationMonochrome2OrRGBorYBR_FULL_422orYBR_RCTorYBR_ICTorYBR_PARTIAL_420" {
+StringValues="PhotometricInterpretationMonochrome2OrRGBOrYBR_FULL_422OrYBR_RCTOrYBR_ICTOrYBR_PARTIAL_420" {
 	MONOCHROME2,
 	YBR_FULL_422,
 	YBR_PARTIAL_420,
@@ -939,7 +949,7 @@ StringValues="PhotometricInterpretationMonochrome2OrRGBorYBR_FULL_422orYBR_RCTor
 	RGB
 }
 
-StringValues="PhotometricInterpretationRGBorYBR_RCT" {
+StringValues="PhotometricInterpretationRGBOrYBR_RCT" {
 	YBR_RCT,
 	RGB
 }
@@ -949,7 +959,7 @@ StringValues="PhotometricInterpretationYBRFullOrRGB" {
 	RGB
 }
 
-StringValues="PhotometricInterpretationYBRFullOrRGBorYBR_RCT" {
+StringValues="PhotometricInterpretationYBRFullOrRGBOrYBR_RCT" {
 	YBR_FULL,
 	YBR_RCT,
 	RGB
@@ -1686,6 +1696,19 @@ StringValues="DeidentificationAction" {
 	U
 }
 
+StringValues="PatientAlternativeCalendar" {
+	PROLEPTIC GREGN,
+	JULIAN,
+	PROLEPTIC JULIAN,
+	EGYPTIAN REGNAL,
+	HEBREW,
+	HIJRI
+}
+
+StringValues="TypeOfInstances" {
+	DICOM,
+	CDA
+}
 StringValues="SpecificCharacterSet" {
 	***EMPTYVALUE*** = Default ASCII,
 	ISO_IR 100 =	Latin alphabet No. 1,
@@ -1795,10 +1818,6 @@ StringValues="XRayImageScanOptions" {
 	ROTA = Rotation
 }
 
-StringValues="PhotometricInterpretationMonochrome2" {
-	MONOCHROME2
-}
-
 StringValues="PixelIntensityRelationship" {
 	LIN = Approximately proportional to X-Ray beam intensity,
 	LOG = Non-linear Log Function,
@@ -1818,21 +1837,6 @@ StringValues="InterventionStatus" {
 	INTERMEDIATE,
 	POST,
 	NONE
-}
-
-StringValues="XADeviceCodingSchemeDesignators" {
-	99DEV = X-Ray Angiographic IOD Interim Intervention Device List,
-	99SDM = SNOMED DICOM Microglossary
-}
-
-StringValues="XATherapyCodingSchemeDesignators" {
-	99THR = X-Ray Angiographic IOD Interim Intervention Therapy List,
-	99SDM = SNOMED DICOM Microglossary
-}
-
-StringValues="XAAnatomyCodingSchemeDesignators" {
-	99ANA = X-Ray Angiographic IOD Interim Anatomic Term List,
-	99SDM = SNOMED DICOM Microglossary
 }
 
 StringValues="DeviceDiameterUnits" {
@@ -4806,7 +4810,8 @@ StringValues="WholeSlideImageType1" {
 StringValues="WholeSlideImageType3" {
 	LOCALIZER,
 	VOLUME,
-	LABEL
+	LABEL,
+	OVERVIEW
 }
 
 StringValues="WholeSlideImageType4" {

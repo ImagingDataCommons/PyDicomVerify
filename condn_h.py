@@ -3722,11 +3722,30 @@ def Condition_JPEG2000LosslessTransferSyntaxButNotYBR_RCT(ds:Dataset, parentds:D
 	cond0 = cond0  or (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.90"))
 	cond0 = cond0  and  not (StringValueMatch(ds , "PhotometricInterpretation", -1, "YBR_RCT"))
 	return cond0
-def Condition_JPEG2000TransferSyntaxButNotYBR_RCTorYBR_ICT(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+def Condition_JPEG2000TransferSyntaxButNotYBR_RCTOrYBR_ICT(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
 	cond0 = False
 	cond0 = cond0  or (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.91"))
 	cond0 = cond0  and  not (StringValueMatch(ds , "PhotometricInterpretation", -1, "YBR_RCT"))
 	cond0 = cond0  and  not (StringValueMatch(ds , "PhotometricInterpretation", -1, "YBR_ICT"))
+	return cond0
+def Condition_JPEGLossyTransferSyntaxAndOneSample(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+	cond0 = False
+	cond0 = cond0  or (BinaryValueMatch(ds , "SamplesPerPixel", -1, BinaryValueMatchOperator.Equals, 1))
+	cond1 = False
+	cond1 = cond1  or (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.50"))
+	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.51"))
+	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.52"))
+	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.53"))
+	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.54"))
+	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.55"))
+	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.56"))
+	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.59"))
+	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.60"))
+	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.61"))
+	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.62"))
+	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.63"))
+	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.64"))
+	cond0 = cond0 and cond1
 	return cond0
 def Condition_JPEGLossyTransferSyntaxAndThreeSamples(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
 	cond0 = False
@@ -3747,25 +3766,16 @@ def Condition_JPEGLossyTransferSyntaxAndThreeSamples(ds:Dataset, parentds:Datase
 	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.64"))
 	cond0 = cond0 and cond1
 	return cond0
-def Condition_JPEGLossyTransferSyntaxAndThreeSamplesOtherThanWSI(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+def Condition_JPEGLosslessTransferSyntaxAndOneSample(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
 	cond0 = False
-	cond0 = cond0  or (BinaryValueMatch(ds , "SamplesPerPixel", -1, BinaryValueMatchOperator.Equals, 3))
+	cond0 = cond0  or (BinaryValueMatch(ds , "SamplesPerPixel", -1, BinaryValueMatchOperator.Equals, 1))
 	cond1 = False
-	cond1 = cond1  or (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.50"))
-	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.51"))
-	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.52"))
-	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.53"))
-	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.54"))
-	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.55"))
-	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.56"))
-	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.59"))
-	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.60"))
-	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.61"))
-	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.62"))
-	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.63"))
-	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.64"))
+	cond1 = cond1  or (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.57"))
+	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.58"))
+	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.65"))
+	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.66"))
+	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.70"))
 	cond0 = cond0 and cond1
-	cond0 = cond0  and  not (StringValueMatch(rootds , "SOPClassUID", -1, VLWholeSlideMicroscopyImageStorageSOPClassUID))
 	return cond0
 def Condition_JPEGLosslessTransferSyntaxAndThreeSamples(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
 	cond0 = False
@@ -3778,16 +3788,43 @@ def Condition_JPEGLosslessTransferSyntaxAndThreeSamples(ds:Dataset, parentds:Dat
 	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.70"))
 	cond0 = cond0 and cond1
 	return cond0
+def Condition_JPEGLSLosslessTransferSyntaxAndOneSample(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+	cond0 = False
+	cond0 = cond0  or (BinaryValueMatch(ds , "SamplesPerPixel", -1, BinaryValueMatchOperator.Equals, 1))
+	cond0 = cond0  and (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.80"))
+	return cond0
+def Condition_JPEGLSLosslessTransferSyntaxAndThreeSamples(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+	cond0 = False
+	cond0 = cond0  or (BinaryValueMatch(ds , "SamplesPerPixel", -1, BinaryValueMatchOperator.Equals, 3))
+	cond0 = cond0  and (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.80"))
+	return cond0
+def Condition_JPEGLSNearLosslessTransferSyntaxAndOneSample(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+	cond0 = False
+	cond0 = cond0  or (BinaryValueMatch(ds , "SamplesPerPixel", -1, BinaryValueMatchOperator.Equals, 1))
+	cond0 = cond0  and (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.81"))
+	return cond0
+def Condition_JPEGLSNearLosslessTransferSyntaxAndThreeSamples(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+	cond0 = False
+	cond0 = cond0  or (BinaryValueMatch(ds , "SamplesPerPixel", -1, BinaryValueMatchOperator.Equals, 3))
+	cond0 = cond0  and (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.81"))
+	return cond0
+def Condition_JPEG2000LosslessTransferSyntaxAndOneSample(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+	cond0 = False
+	cond0 = cond0  or (BinaryValueMatch(ds , "SamplesPerPixel", -1, BinaryValueMatchOperator.Equals, 1))
+	cond0 = cond0  and (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.90"))
+	return cond0
 def Condition_JPEG2000LosslessTransferSyntaxAndThreeSamples(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
 	cond0 = False
-	cond0 = cond0  or (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.90"))
-	cond0 = cond0  and (BinaryValueMatch(ds , "SamplesPerPixel", -1, BinaryValueMatchOperator.Equals, 3))
+	cond0 = cond0  or (BinaryValueMatch(ds , "SamplesPerPixel", -1, BinaryValueMatchOperator.Equals, 3))
+	cond0 = cond0  and (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.90"))
 	return cond0
-def Condition_JPEG2000LosslessTransferSyntaxAndThreeSamplesOtherThanWSI(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+def Condition_JPEG2000TransferSyntaxAndOneSample(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
 	cond0 = False
-	cond0 = cond0  or (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.90"))
-	cond0 = cond0  and (BinaryValueMatch(ds , "SamplesPerPixel", -1, BinaryValueMatchOperator.Equals, 3))
-	cond0 = cond0  and  not (StringValueMatch(rootds , "SOPClassUID", -1, VLWholeSlideMicroscopyImageStorageSOPClassUID))
+	cond0 = cond0  or (BinaryValueMatch(ds , "SamplesPerPixel", -1, BinaryValueMatchOperator.Equals, 1))
+	cond1 = False
+	cond1 = cond1  or (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.90"))
+	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.91"))
+	cond0 = cond0 and cond1
 	return cond0
 def Condition_JPEG2000TransferSyntaxAndThreeSamples(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
 	cond0 = False
@@ -3797,19 +3834,19 @@ def Condition_JPEG2000TransferSyntaxAndThreeSamples(ds:Dataset, parentds:Dataset
 	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.91"))
 	cond0 = cond0 and cond1
 	return cond0
-def Condition_JPEG2000TransferSyntaxAndThreeSamplesOtherThanWSI(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
-	cond0 = False
-	cond0 = cond0  or (BinaryValueMatch(ds , "SamplesPerPixel", -1, BinaryValueMatchOperator.Equals, 3))
-	cond1 = False
-	cond1 = cond1  or (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.90"))
-	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.91"))
-	cond0 = cond0 and cond1
-	cond0 = cond0  and  not (StringValueMatch(rootds , "SOPClassUID", -1, VLWholeSlideMicroscopyImageStorageSOPClassUID))
-	return cond0
 def Condition_MPEG2TransferSyntax(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
 	cond0 = False
 	cond0 = cond0  or (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.100"))
 	cond0 = cond0 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.101"))
+	return cond0
+def Condition_UncompressedTransferSyntaxAndOneSample(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+	cond0 = False
+	cond0 = cond0  or (BinaryValueMatch(ds , "SamplesPerPixel", -1, BinaryValueMatchOperator.Equals, 1))
+	cond1 = False
+	cond1 = cond1  or (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2"))
+	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.1"))
+	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.2"))
+	cond0 = cond0 and cond1
 	return cond0
 def Condition_UncompressedTransferSyntaxAndThreeSamples(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
 	cond0 = False
@@ -3820,10 +3857,15 @@ def Condition_UncompressedTransferSyntaxAndThreeSamples(ds:Dataset, parentds:Dat
 	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.2"))
 	cond0 = cond0 and cond1
 	return cond0
+def Condition_RLETransferSyntaxAndOneSample(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+	cond0 = False
+	cond0 = cond0  or (BinaryValueMatch(ds , "SamplesPerPixel", -1, BinaryValueMatchOperator.Equals, 1))
+	cond0 = cond0  and (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.5"))
+	return cond0
 def Condition_RLETransferSyntaxAndThreeSamples(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
 	cond0 = False
-	cond0 = cond0  or (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.5"))
-	cond0 = cond0  and (BinaryValueMatch(ds , "SamplesPerPixel", -1, BinaryValueMatchOperator.Equals, 3))
+	cond0 = cond0  or (BinaryValueMatch(ds , "SamplesPerPixel", -1, BinaryValueMatchOperator.Equals, 3))
+	cond0 = cond0  and (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.5"))
 	return cond0
 def Condition_MPEG2TransferSyntaxAndNotThreeSamples(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
 	cond0 = False
@@ -6368,10 +6410,11 @@ def Condition_NeedOpticalPathIdentificationMacroInPerFrameFunctionalGroupSequenc
 	cond1 = cond1 or not (StringValueMatch(rootds , "DimensionOrganizationType", 0, "TILED_FULL"))
 	cond0 = cond0 and cond1
 	return cond0
-def Condition_ImageTypeValue3LocalizerOrLabel(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+def Condition_ImageTypeValue3LocalizerOrLabelOrOverview(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
 	cond0 = False
 	cond0 = cond0  or (StringValueMatch(ds , "ImageType", 2, "LOCALIZER"))
 	cond0 = cond0 or(StringValueMatch(ds , "ImageType", 2, "LABEL"))
+	cond0 = cond0 or(StringValueMatch(ds , "ImageType", 2, "OVERVIEW"))
 	return cond0
 def Condition_ExtendedDepthOfFieldIsYes(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
 	cond0 = False
@@ -7032,4 +7075,52 @@ def Condition_CTXRayDetailsSequenceNotOneItemAndNotMultienergyAcquisition(ds:Dat
 	cond0 = False
 	cond0 = cond0  or  not (SequenceHasOneItem(ds , "CTXRayDetailsSequence"))
 	cond0 = cond0  and  not (StringValueMatch(rootds , "MultienergyCTAcquisition", -1, "YES"))
+	return cond0
+def Condition_PatientAlternativeCalendarNeeded(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+	cond0 = False
+	cond0 = cond0  or (ElementPresent(ds , "PatientBirthDateInAlternativeCalendar"))
+	cond0 = cond0  or (ElementPresent(ds , "PatientDeathDateInAlternativeCalendar"))
+	return cond0
+def Condition_TypeOfInstancesIsDICOM(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+	cond0 = False
+	cond0 = cond0  or (StringValueMatch(ds , "TypeOfInstances", -1, "DICOM"))
+	return cond0
+def Condition_TypeOfInstancesInParentIsCDA(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+	cond0 = False
+	cond0 = cond0  or (StringValueMatch(parentds , "TypeOfInstances", -1, "DICOM"))
+	return cond0
+def Condition_NeedDICOMRetrievalSequence(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+	cond0 = False
+	cond0 = cond0  or  not (ElementPresent(ds , "DICOMMediaRetrievalSequence"))
+	cond0 = cond0  and  not (ElementPresent(ds , "WADORetrievalSequence"))
+	cond0 = cond0  and  not (ElementPresent(ds , "XDSRetrievalSequence"))
+	cond0 = cond0  and  not (ElementPresent(ds , "WADORSRetrievalSequence"))
+	return cond0
+def Condition_NeedDICOMMediaRetrievalSequence(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+	cond0 = False
+	cond0 = cond0  or  not (ElementPresent(ds , "DICOMRetrievalSequence"))
+	cond0 = cond0  and  not (ElementPresent(ds , "WADORetrievalSequence"))
+	cond0 = cond0  and  not (ElementPresent(ds , "XDSRetrievalSequence"))
+	cond0 = cond0  and  not (ElementPresent(ds , "WADORSRetrievalSequence"))
+	return cond0
+def Condition_NeedWADORetrievalSequence(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+	cond0 = False
+	cond0 = cond0  or  not (ElementPresent(ds , "DICOMRetrievalSequence"))
+	cond0 = cond0  and  not (ElementPresent(ds , "DICOMMediaRetrievalSequence"))
+	cond0 = cond0  and  not (ElementPresent(ds , "XDSRetrievalSequence"))
+	cond0 = cond0  and  not (ElementPresent(ds , "WADORSRetrievalSequence"))
+	return cond0
+def Condition_NeedXDSRetrievalSequence(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+	cond0 = False
+	cond0 = cond0  or  not (ElementPresent(ds , "DICOMRetrievalSequence"))
+	cond0 = cond0  and  not (ElementPresent(ds , "DICOMMediaRetrievalSequence"))
+	cond0 = cond0  and  not (ElementPresent(ds , "WADORetrievalSequence"))
+	cond0 = cond0  and  not (ElementPresent(ds , "WADORSRetrievalSequence"))
+	return cond0
+def Condition_NeedWADORSRetrievalSequence(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+	cond0 = False
+	cond0 = cond0  or  not (ElementPresent(ds , "DICOMRetrievalSequence"))
+	cond0 = cond0  and  not (ElementPresent(ds , "DICOMMediaRetrievalSequence"))
+	cond0 = cond0  and  not (ElementPresent(ds , "WADORetrievalSequence"))
+	cond0 = cond0  and  not (ElementPresent(ds , "XDSRetrievalSequence"))
 	return cond0

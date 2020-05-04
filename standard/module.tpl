@@ -59,37 +59,26 @@ DefineMacro="CodeSequenceMacro"
 	InvokeMacro="EnhancedCodeSequenceMacro"
 MacroEnd
 
-DefineMacro="CodeSequenceMeaningOptionalMacro"
-	Name="CodeValue"						Type="1"
+DefineMacro="BasicCodeSequenceMeaningOptionalMacro"
+	Name="CodeValue"						Type="1C"	Condition="LongCodeValueAndURNCodeValueAbsent"
 	Verify="CodeValue"									Condition="CodeValueIllegalOrDeprecated"	ThenErrorMessage="Code Value is illegal or deprecated" ShowValueWithMessage="true"
-	Name="CodingSchemeDesignator"			Type="1"	StringDefinedTerms="MiscellaneousCodingSchemeDesignators"
+	Name="CodingSchemeDesignator"			Type="1C"	Condition="CodeValueOrLongCodeValuePresent"	StringDefinedTerms="MiscellaneousCodingSchemeDesignators"	mbpo="true"
 	Verify="CodingSchemeDesignator"						Condition="CodingSchemeDesignatorDeprecated"	ThenWarningMessage="Coding Scheme Designator is deprecated" ShowValueWithMessage="true"
-	Name="CodingSchemeVersion"				Type="1C"	Condition="CodingSchemeVersionRequired"
+	Name="CodingSchemeVersion"				Type="1C"	Condition="CodingSchemeVersionRequired" mbpo="true"
 	Name="CodeMeaning"						Type="3"
 	Verify="CodeMeaning"								Condition="CodeMeaningEmptyOrNotPresent"	ThenWarningMessage="Code Meaning is missing or empty, which is legal but undesirable"
-	Name="ContextIdentifier"				Type="3"
-	Name="ContextUID"						Type="3"
-	Name="MappingResource"					Type="1C"	Condition="ContextIdentifierIsPresent"
-	Name="ContextGroupVersion"				Type="1C"	Condition="ContextIdentifierIsPresent"
-	Name="ContextGroupExtensionFlag"		Type="3"	StringEnumValues="YesNoLetter"
-	Name="ContextGroupLocalVersion"			Type="1C"	Condition="ExtendedCodingScheme"
-	Name="ContextGroupExtensionCreatorUID"	Type="1C"	Condition="ExtendedCodingScheme"
+	Verify="CodeMeaning"								Condition="CodeMeaningIllegalOrDeprecated"	ThenErrorMessage="Code Meaning is illegal or deprecated" ShowValueWithMessage="true"
+	Name="LongCodeValue"					Type="1C"	Condition="CodeValueAndURNCodeValueAbsent"
+	Name="URNCodeValue"						Type="1C"	Condition="CodeValueAndLongCodeValueAbsent"
 MacroEnd
 
-DefineMacro="CodeSequence99SDMMacro"
-	Name="CodeValue"						Type="1"
-	Verify="CodeValue"									Condition="CodeValueIllegalOrDeprecated"	ThenErrorMessage="Code Value is illegal or deprecated" ShowValueWithMessage="true"
-	Name="CodingSchemeDesignator"			Type="1"	StringEnumValues="CodingSchemeDesignatorForSNOMEDDICOMMicroglossary"
-	Name="CodingSchemeVersion"				Type="1C"	Condition="CodingSchemeVersionRequired"
-	Name="CodeMeaning"						Type="3"
-	Verify="CodeMeaning"								Condition="CodeMeaningEmptyOrNotPresent"	ThenWarningMessage="Code Meaning is missing or empty, which is legal but undesirable"
-	Name="ContextIdentifier"				Type="3"
-	Name="ContextUID"						Type="3"
-	Name="MappingResource"					Type="1C"	Condition="ContextIdentifierIsPresent"
-	Name="ContextGroupVersion"				Type="1C"	Condition="ContextIdentifierIsPresent"
-	Name="ContextGroupExtensionFlag"		Type="3"	StringEnumValues="YesNoLetter"
-	Name="ContextGroupLocalVersion"			Type="1C"	Condition="ExtendedCodingScheme"
-	Name="ContextGroupExtensionCreatorUID"	Type="1C"	Condition="ExtendedCodingScheme"
+DefineMacro="CodeSequenceMeaningOptionalMacro"
+	InvokeMacro="BasicCodeSequenceMeaningOptionalMacro"
+	Sequence="EquivalentCodeSequence"		Type="3"	VM="1-n"
+		InvokeMacro="BasicCodeSequenceMacro"
+		InvokeMacro="EnhancedCodeSequenceMacro"
+	SequenceEnd
+	InvokeMacro="EnhancedCodeSequenceMacro"
 MacroEnd
 
 DefineMacro="PersonIdentificationMacro"
@@ -158,6 +147,36 @@ DefineMacro="ImageSOPInstanceReferenceMacro" InformationEntity="Image"
 	Name="ReferencedSegmentNumber"					Type="1C"	NoCondition=""	NotZeroError=""	# cannot just check SOP Class and mbpo false, since may be absent for segmentation if applies to all segments :(
 	Verify="ReferencedSegmentNumber"							Condition="ReferencedSegmentNumberPresentAndReferencedSOPClassUIDIsNotSegmentationOrSurfaceSegmentation"	ThenErrorMessage="May not be present for Referenced SOP Class that is not segmentation"
 	Verify="ReferencedSegmentNumber"							Condition="ReferencedFrameNumberAndReferencedSegmentNumberPresent"	ThenErrorMessage="May not be present when ReferencedFrameNumber is present"
+MacroEnd
+
+DefineMacro="ReferencedInstancesAndAccessMacro" InformationEntity="Image"
+	Name="TypeOfInstances"					Type="1"	VM="1"	StringDefinedTerms="TypeOfInstances"
+	Name="StudyInstanceUID"					Type="1C"	VM="1"	Condition="TypeOfInstancesIsDICOM"
+	Name="SeriesInstanceUID"				Type="1C"	VM="1"	Condition="TypeOfInstancesIsDICOM"
+	Sequence="ReferencedSOPSequence"		Type="1"	VM="1-n"
+		Name="ReferencedSOPClassUID"		Type="1"
+		Name="ReferencedSOPInstanceUID"		Type="1"
+		Name="HL7InstanceIdentifier"		Type="1C"	VM="1"	Condition="TypeOfInstancesInParentIsCDA"
+		Name="ReferencedFrameNumber"		Type="1C"	VM="1"	NoCondition="" mbpo="true"	# real-world - could check mutually exclusive with ReferencedSegmentNumber though :(
+		Name="ReferencedSegmentNumber"		Type="1C"	VM="1"	NoCondition="" mbpo="true"	# real-world - could check mutually exclusive with ReferencedFrameNumber though :(
+	SequenceEnd
+	Sequence="DICOMRetrievalSequence"		Type="1C"	VM="1"	Condition="NeedDICOMRetrievalSequence" mbpo="true"
+		Name="RetrieveAETitle"				Type="1"
+	SequenceEnd
+	Sequence="DICOMMediaRetrievalSequence"	Type="1C"	VM="1"	Condition="NeedDICOMMediaRetrievalSequence" mbpo="true"
+		Name="StorageMediaFileSetID"		Type="2"
+		Name="StorageMediaFileSetUID"		Type="1"
+	SequenceEnd
+	Sequence="WADORetrievalSequence"		Type="1C"	VM="1"	Condition="NeedWADORetrievalSequence" mbpo="true"
+		Name="RetrieveURI"					Type="1"
+	SequenceEnd
+	Sequence="XDSRetrievalSequence"			Type="1C"	VM="1"	Condition="NeedXDSRetrievalSequence" mbpo="true"
+		Name="RepositoryUniqueID"			Type="1"
+		Name="HomeCommunityID"				Type="3"
+	SequenceEnd
+	Sequence="WADORSRetrievalSequence"		Type="1C"	VM="1"	Condition="NeedWADORSRetrievalSequence" mbpo="true"
+		Name="RetrieveURL"					Type="1"
+	SequenceEnd
 MacroEnd
 
 DefineMacro="SeriesAndInstanceReferenceMacro" InformationEntity="Image"
@@ -484,7 +503,13 @@ Module="Patient"
 	InvokeMacro="IssuerOfPatientIDMacro"
 	Name="TypeOfPatientID"					Type="3"	StringDefinedTerms="TypeOfPatientID"
 	Name="PatientBirthDate"					Type="2"
+	Name="PatientBirthDateInAlternativeCalendar"	Type="3"
+	Name="PatientDeathDateInAlternativeCalendar"	Type="3"
+	Name="PatientAlternativeCalendar"				Type="1C"	Condition="PatientAlternativeCalendarNeeded"	StringDefinedTerms="PatientAlternativeCalendar"
 	Name="PatientSex"						Type="2"	StringEnumValues="Sex"
+	Sequence="ReferencedPatientPhotoSequence"	Type="3"	VM="1"
+		InvokeMacro="ReferencedInstancesAndAccessMacro"
+	SequenceEnd
 	Name="QualityControlSubject"			Type="3"	StringEnumValues="YesNoFull"
 	Sequence="ReferencedPatientSequence"	Type="3"	VM="1"
 		InvokeMacro="SOPInstanceReferenceMacro"
@@ -564,6 +589,10 @@ Module="GeneralStudy"
 	Sequence="ReferringPhysicianIdentificationSequence"		Type="3"	VM="1"
 		InvokeMacro="PersonIdentificationMacro"
 	SequenceEnd
+	Name="ConsultingPhysicianName"							Type="3"
+	Sequence="ConsultingPhysicianIdentificationSequence"	Type="3"	VM="1-n"
+		InvokeMacro="PersonIdentificationMacro"
+	SequenceEnd
 	Name="StudyID"											Type="2"
 	Name="AccessionNumber"									Type="2"
 	Sequence="IssuerOfAccessionNumberSequence"				Type="3"	VM="1"
@@ -576,10 +605,6 @@ Module="GeneralStudy"
 	SequenceEnd
 	Name="NameOfPhysiciansReadingStudy"						Type="3"
 	Sequence="PhysiciansReadingStudyIdentificationSequence"	Type="3"	VM="1-n"
-		InvokeMacro="PersonIdentificationMacro"
-	SequenceEnd
-	Name="ConsultingPhysicianName"							Type="3"
-	Sequence="ConsultingPhysicianIdentificationSequence"	Type="3"	VM="1-n"
 		InvokeMacro="PersonIdentificationMacro"
 	SequenceEnd
 	Sequence="RequestingServiceCodeSequence"				Type="3"	VM="1"
@@ -604,9 +629,18 @@ Module="PatientStudy"
 	Name="PatientAge"							Type="3"
 	Name="PatientSize"							Type="3"	NotZeroWarning=""
 	Name="PatientWeight"						Type="3"	NotZeroWarning=""
+	Name="PatientBodyMassIndex"					Type="3"	NotZeroWarning=""
+	Name="MeasuredAPDimension"					Type="3"	NotZeroWarning=""
+	Name="MeasuredLateralDimension"				Type="3"	NotZeroWarning=""
 	Sequence="PatientSizeCodeSequence"			Type="3"	VM="1-n"
 		InvokeMacro="CodeSequenceMacro"
 	SequenceEnd
+	Name="MedicalAlerts"						Type="3"
+	Name="Allergies"							Type="3"
+	Name="SmokingStatus"						Type="3"	StringEnumValues="SmokingStatus"
+	Name="PregnancyStatus"						Type="3"	BinaryEnumValues="PregnancyStatus"
+	Name="LastMenstrualDate"					Type="3"
+	Name="PatientState"							Type="3"
 	Name="Occupation"							Type="3"
 	Name="AdditionalPatientHistory"				Type="3"
 	Name="AdmissionID"							Type="3"
@@ -649,6 +683,12 @@ Module="GeneralSeries"
 		InvokeMacro="PersonIdentificationMacro"
 	SequenceEnd
 	Name="ProtocolName"										Type="3"
+	Sequence="ReferencedDefinedProtocolSequence"			Type="1C"	VM="1-n"	NoCondition="" mbpo="true"
+		InvokeMacro="SOPInstanceReferenceMacro"
+	SequenceEnd
+	Sequence="ReferencedPerformedProtocolSequence"			Type="1C"	VM="1-n"	NoCondition="" mbpo="true"
+		InvokeMacro="SOPInstanceReferenceMacro"
+	SequenceEnd
 	Name="SeriesDescription"								Type="3"
 	Sequence="SeriesDescriptionCodeSequence"				Type="3"	VM="1"
 		InvokeMacro="CodeSequenceMacro"
@@ -709,12 +749,14 @@ Module="GeneralEquipment"
 		InvokeMacro="CodeSequenceMacro"									BaselineContextID="7030"
 	SequenceEnd
 	Name="ManufacturerModelName"							Type="3"
+	Name="ManufacturerDeviceClassUID"						Type="3"
 	Name="DeviceSerialNumber"								Type="3"
 	Name="SoftwareVersions"									Type="3"
 	Name="GantryID"											Type="3"
 	Sequence="UDISequence"									Type="3"	VM="1-n"
 		InvokeMacro="UDIMacro"
 	SequenceEnd
+	Name="DeviceUID"										Type="3"
 	Name="SpatialResolution"								Type="3"
 	Name="DateOfLastCalibration"							Type="3"
 	Name="TimeOfLastCalibration"							Type="3"
@@ -824,13 +866,31 @@ DefineMacro="ImagePixelMacro" InformationEntity="Instance"
 	Verify="SamplesPerPixel"						Condition="MPEG2TransferSyntaxAndNotThreeSamples"		ThenErrorMessage="May only be 3 for MPEG Transfer Syntax"
 	
 	Name="PhotometricInterpretation"				Type="1"	StringDefinedTerms="PhotometricInterpretation"
-	Verify="PhotometricInterpretation"				Condition="JPEGLossyTransferSyntaxAndThreeSamplesOtherThanWSI"			StringEnumValues="PhotometricInterpretationYBRFull422"
-	Verify="PhotometricInterpretation"				Condition="JPEGLosslessTransferSyntaxAndThreeSamples"					StringEnumValues="PhotometricInterpretationYBRFullOrRGBorYBR_RCT"
-	Verify="PhotometricInterpretation"				Condition="JPEG2000LosslessTransferSyntaxAndThreeSamplesOtherThanWSI"	StringEnumValues="PhotometricInterpretationYBRRCT"
-	Verify="PhotometricInterpretation"				Condition="JPEG2000TransferSyntaxAndThreeSamplesOtherThanWSI"			StringEnumValues="PhotometricInterpretationYBRRCTOrICT"
+	#PS3.5 constraints only - others checked with IOD-specific modules
+	Verify="PhotometricInterpretation"				Condition="JPEGLossyTransferSyntaxAndOneSample"							StringEnumValues="PhotometricInterpretationMonochrome"
+	Verify="PhotometricInterpretation"				Condition="JPEGLossyTransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRFull422OrRGB"
+
+	Verify="PhotometricInterpretation"				Condition="JPEGLosslessTransferSyntaxAndOneSample"						StringEnumValues="PhotometricInterpretationMonochromeOrPaletteColor"
+	Verify="PhotometricInterpretation"				Condition="JPEGLosslessTransferSyntaxAndThreeSamples"					StringEnumValues="PhotometricInterpretationYBRFullOrRGB"
+
+	Verify="PhotometricInterpretation"				Condition="JPEGLSLosslessTransferSyntaxAndOneSample"					StringEnumValues="PhotometricInterpretationMonochromeOrPaletteColor"
+	Verify="PhotometricInterpretation"				Condition="JPEGLSLosslessTransferSyntaxAndThreeSamples"					StringEnumValues="PhotometricInterpretationYBRFullOrRGB"
+
+	Verify="PhotometricInterpretation"				Condition="JPEGLSNearLosslessTransferSyntaxAndOneSample"				StringEnumValues="PhotometricInterpretationMonochrome"
+	Verify="PhotometricInterpretation"				Condition="JPEGLSNearLosslessTransferSyntaxAndThreeSamples"				StringEnumValues="PhotometricInterpretationYBRFullOrRGB"
+
+	Verify="PhotometricInterpretation"				Condition="JPEG2000LosslessTransferSyntaxAndOneSample"					StringEnumValues="PhotometricInterpretationMonochromeOrPaletteColor"
+	Verify="PhotometricInterpretation"				Condition="JPEG2000LosslessTransferSyntaxAndThreeSamples"				StringEnumValues="PhotometricInterpretationYBRFullOrRGBOrYBR_RCT"
+
+	Verify="PhotometricInterpretation"				Condition="JPEG2000TransferSyntaxAndOneSample"							StringEnumValues="PhotometricInterpretationMonochrome"
+	Verify="PhotometricInterpretation"				Condition="JPEG2000TransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRFullOrRGBOrYBR_RCTOrYBR_ICT"
+
 	Verify="PhotometricInterpretation"				Condition="MPEG2TransferSyntax"											StringEnumValues="PhotometricInterpretationYBRPartial420"	# regardless of number of samples (required to be 3 by PS 3.5)
+
+	Verify="PhotometricInterpretation"				Condition="RLETransferSyntaxAndOneSample"								StringEnumValues="PhotometricInterpretationMonochromeOrPaletteColor"
 	Verify="PhotometricInterpretation"				Condition="RLETransferSyntaxAndThreeSamples"							StringEnumValues="PhotometricInterpretationYBRFullOrRGB"
-	Verify="PhotometricInterpretation"				Condition="UncompressedTransferSyntaxAndThreeSamples"					StringEnumValues="PhotometricInterpretationYBRFullOrRGBorYBR_RCTorYBR_ICT"
+
+	Verify="PhotometricInterpretation"				Condition="UncompressedTransferSyntaxAndThreeSamples"					StringEnumValues="PhotometricInterpretationYBRFullOrRGBOrYBR_RCTOrYBR_ICT"
 	
 	Name="Rows"										Type="1"	NotZeroError=""
 	Verify="Rows"									Condition="MPEG2MPMLTransferSyntaxAndRowsGreaterThan480NTSCOr576PAL"	ThenErrorMessage="Must be <= 480 (NTSC) or 576 (PAL) for MPEG MP@MLTransfer Syntax"
@@ -1516,13 +1576,13 @@ ModuleEnd
 
 Module="NMPETPatientOrientation"
 	Sequence="PatientOrientationCodeSequence"				Type="2"	VM="0-1"
-		InvokeMacro="CodeSequence99SDMMacro"							BaselineContextID="19"
+		InvokeMacro="CodeSequenceMeaningOptionalMacro"							BaselineContextID="19"
 		Sequence="PatientOrientationModifierCodeSequence"   Type="2C"	VM="0-1"	NoCondition=""	# real-world - orientation wrt. gravity
- 			InvokeMacro="CodeSequence99SDMMacro"						BaselineContextID="20"
+ 			InvokeMacro="CodeSequenceMeaningOptionalMacro"						BaselineContextID="20"
 		SequenceEnd
 	SequenceEnd
 	Sequence="PatientGantryRelationshipCodeSequence"		Type="2"	VM="0-1"
-		InvokeMacro="CodeSequence99SDMMacro"							BaselineContextID="21"
+		InvokeMacro="CodeSequenceMeaningOptionalMacro"							BaselineContextID="21"
 	SequenceEnd
 ModuleEnd
 
@@ -1623,7 +1683,7 @@ Module="NMIsotope"
 	SequenceEnd
 	Sequence="RadiopharmaceuticalInformationSequence"  	Type="2"	VM="0-n"
 		Sequence="RadionuclideCodeSequence"				Type="2"	VM="0-1"
-			InvokeMacro="CodeSequence99SDMMacro"		BaselineContextID="18"
+			InvokeMacro="CodeSequenceMeaningOptionalMacro"		BaselineContextID="18"
 	    SequenceEnd
 		Name="RadiopharmaceuticalRoute"					Type="3"
 		Sequence="AdministrationRouteCodeSequence"		Type="3"	VM="1"
@@ -1793,6 +1853,15 @@ Module="USImage"
 	Verify="SamplesPerPixel"									Condition="PhotometricInterpretationNeedsOneSample"	BinaryEnumValues="SamplesPerPixelIsOne"
 	Verify="SamplesPerPixel"									Condition="PhotometricInterpretationNeedsThreeSamples"	BinaryEnumValues="SamplesPerPixelIsThree"
 	Name="PhotometricInterpretation"				Type="1"	StringDefinedTerms="USPhotometricInterpretation"
+
+	Verify="PhotometricInterpretation"				Condition="UncompressedTransferSyntaxAndThreeSamples"					StringEnumValues="PhotometricInterpretationRGB"
+	Verify="PhotometricInterpretation"				Condition="JPEGLSLosslessTransferSyntaxAndThreeSamples"					StringEnumValues="PhotometricInterpretationRGB"
+	Verify="PhotometricInterpretation"				Condition="JPEG2000TransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRICT"
+	Verify="PhotometricInterpretation"				Condition="JPEG2000LosslessTransferSyntaxAndThreeSamples"				StringEnumValues="PhotometricInterpretationYBRRCT"
+	Verify="PhotometricInterpretation"				Condition="MPEG2TransferSyntax"											StringEnumValues="PhotometricInterpretationYBRPartial420"	# regardless of number of samples (required to be 3 by PS 3.5)
+	Verify="PhotometricInterpretation"				Condition="JPEGLossyTransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRFull422"
+	Verify="PhotometricInterpretation"				Condition="RLETransferSyntaxAndThreeSamples"							StringEnumValues="PhotometricInterpretationYBRFullOrRGB"
+
 	Name="BitsAllocated"							Type="1"	NotZeroError=""
 	Verify="BitsAllocated"										Condition="US8BitSamples"	BinaryEnumValues="BitsAre8"
 	Verify="BitsAllocated"										Condition="US8Or16BitSamples"	BinaryEnumValues="BitsAre8Or16"
@@ -2259,10 +2328,10 @@ ModuleEnd
 Module="MultiframeTrueColorSCImagePseudo"
 
 	Name="SamplesPerPixel"				Type="1"	BinaryEnumValues="Three"
-	Name="PhotometricInterpretation"	Type="1"	StringEnumValues="PhotometricInterpretationMonochrome2OrRGBorYBR_FULL_422orYBR_RCTorYBR_ICTorYBR_PARTIAL_420"
+	Name="PhotometricInterpretation"	Type="1"	StringEnumValues="PhotometricInterpretationMonochrome2OrRGBOrYBR_FULL_422OrYBR_RCTOrYBR_ICTOrYBR_PARTIAL_420"
 	Verify="PhotometricInterpretation"				Condition="JPEGTransferSyntaxButNotYBR_FULL_422"			ThenErrorMessage="JPEG transfer syntax is required to have Photometric Interpretation of YBR_FULL422" ShowValueWithMessage="true"
 	Verify="PhotometricInterpretation"				Condition="JPEG2000LosslessTransferSyntaxButNotYBR_RCT"		ThenErrorMessage="JPEG 2000 reversible transfer syntax is required to have Photometric Interpretation of YBR_RCT" ShowValueWithMessage="true"
-	Verify="PhotometricInterpretation"				Condition="JPEG2000TransferSyntaxButNotYBR_RCTorYBR_ICT"	ThenErrorMessage="JPEG 2000 transfer syntax is required to have Photometric Interpretation of YBR_RCT or YBR_ICT" ShowValueWithMessage="true"
+	Verify="PhotometricInterpretation"				Condition="JPEG2000TransferSyntaxButNotYBR_RCTOrYBR_ICT"	ThenErrorMessage="JPEG 2000 transfer syntax is required to have Photometric Interpretation of YBR_RCT or YBR_ICT" ShowValueWithMessage="true"
 	# MPEG2TransferSyntaxButNotYBR_PARTIAL_420 is generic too ImagePixelMacro and not repeated here (PS 3.5 requirement)
 	Name="BitsAllocated"				Type="1"	BinaryEnumValues="BitsAre8"
 	Name="BitsStored"					Type="1"	BinaryEnumValues="BitsAre8"
@@ -5987,6 +6056,14 @@ Module="VLImage"
 	Verify="ImageType"									Type="1"	ValueSelector="1"	StringEnumValues="ImageType2"
 	Verify="ImageType"									Type="1"	ValueSelector="2"	StringEnumValues="VLImageType3"
 	Name="PhotometricInterpretation"					Type="1"	StringEnumValues="PhotometricInterpretationMonochrome2OrRGBorYBRFULL422orYBRPARTIAL420orYBRRCTorYBRICT"
+
+	Verify="PhotometricInterpretation"				Condition="UncompressedTransferSyntaxAndThreeSamples"					StringEnumValues="PhotometricInterpretationRGB"
+	Verify="PhotometricInterpretation"				Condition="JPEGLSLosslessTransferSyntaxAndThreeSamples"					StringEnumValues="PhotometricInterpretationRGB"
+	Verify="PhotometricInterpretation"				Condition="JPEG2000TransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRICT"
+	Verify="PhotometricInterpretation"				Condition="JPEG2000LosslessTransferSyntaxAndThreeSamples"				StringEnumValues="PhotometricInterpretationYBRRCT"
+	Verify="PhotometricInterpretation"				Condition="MPEG2TransferSyntax"											StringEnumValues="PhotometricInterpretationYBRPartial420"	# regardless of number of samples (required to be 3 by PS 3.5)
+	Verify="PhotometricInterpretation"				Condition="JPEGLossyTransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRFull422"
+
 	Name="BitsAllocated"								Type="1"	BinaryEnumValues="BitsAre8"
 	Name="BitsStored"									Type="1"	BinaryEnumValues="BitsAre8"
 	Name="HighBit"										Type="1"	BinaryEnumValues="BitsAre7"
@@ -6077,6 +6154,14 @@ Module="OphthalmicPhotographyImage"
 	Verify="SamplesPerPixel"										Condition="PhotometricInterpretationNeedsThreeSamples"	BinaryEnumValues="Three"
 	Name="SamplesPerPixelUsed"							Type="1C"	NoCondition="" BinaryEnumValues="SamplesPerPixelUsedIsTwo"		# condition is real world
 	Name="PhotometricInterpretation"					Type="1"	StringEnumValues="PhotometricInterpretationMonochrome2OrRGBorYBRFULL422orYBRPARTIAL420orYBRRCTorYBRICT"
+
+	Verify="PhotometricInterpretation"				Condition="UncompressedTransferSyntaxAndThreeSamples"					StringEnumValues="PhotometricInterpretationRGB"
+	Verify="PhotometricInterpretation"				Condition="JPEGLSLosslessTransferSyntaxAndThreeSamples"					StringEnumValues="PhotometricInterpretationRGB"
+	Verify="PhotometricInterpretation"				Condition="JPEG2000TransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRICT"
+	Verify="PhotometricInterpretation"				Condition="JPEG2000LosslessTransferSyntaxAndThreeSamples"				StringEnumValues="PhotometricInterpretationYBRRCT"
+	Verify="PhotometricInterpretation"				Condition="MPEG2TransferSyntax"											StringEnumValues="PhotometricInterpretationYBRPartial420"	# regardless of number of samples (required to be 3 by PS 3.5)
+	Verify="PhotometricInterpretation"				Condition="JPEGLossyTransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRFull422"
+
 	Name="PixelRepresentation"							Type="1"	BinaryEnumValues="PixelRepresentationUnsigned"
 	Name="PlanarConfiguration"							Type="1C"	BinaryEnumValues="PlanarConfigurationIsColorByPixel"	Condition="SamplesPerPixelGreaterThanOne"
 	Name="PixelSpacing"									Type="1C"	NotZeroError=""	NoCondition=""		# too hard to check code in Acquisition Device Type Code Sequence :(
@@ -6313,12 +6398,18 @@ Module="WholeSlideMicroscopyImage"
 	Verify="SamplesPerPixel"										Condition="PhotometricInterpretationNeedsOneSample"	BinaryEnumValues="One"
 	Verify="SamplesPerPixel"										Condition="PhotometricInterpretationNeedsThreeSamples"	BinaryEnumValues="Three"
 	Name="PhotometricInterpretation"					Type="1"	StringEnumValues="PhotometricInterpretationMonochrome2OrRGBorYBRFULL422orYBRRCTorYBRICT"
-	Verify="PhotometricInterpretation"								Condition="JPEGLossyTransferSyntaxAndThreeSamples"			StringEnumValues="PhotometricInterpretationYBRFull422OrRGB"
+
+	Verify="PhotometricInterpretation"								Condition="UncompressedTransferSyntaxAndOneSample"			StringEnumValues="PhotometricInterpretationMonochrome2"
+	# it probably isn't intended, but current text actually prohibits compression of monochrome WSI
+	Verify="PhotometricInterpretation"								Condition="UncompressedTransferSyntaxAndThreeSamples"		StringEnumValues="PhotometricInterpretationRGB"
+	Verify="PhotometricInterpretation"								Condition="JPEGLSLosslessTransferSyntaxAndThreeSamples"		StringEnumValues="PhotometricInterpretationRGB"
 	Verify="PhotometricInterpretation"								Condition="JPEG2000LosslessTransferSyntaxAndThreeSamples"	StringEnumValues="PhotometricInterpretationYBRRCTOrRGB"
 	Verify="PhotometricInterpretation"								Condition="JPEG2000TransferSyntaxAndThreeSamples"			StringEnumValues="PhotometricInterpretationYBRRCTOrICTOrRGB"
+	Verify="PhotometricInterpretation"								Condition="JPEGLossyTransferSyntaxAndThreeSamples"			StringEnumValues="PhotometricInterpretationYBRFull422OrRGB"
+
 	Name="PlanarConfiguration"							Type="1C"	BinaryEnumValues="PlanarConfigurationIsColorByPixel"	Condition="SamplesPerPixelGreaterThanOne"
 	Name="NumberOfFrames"								Type="1"
-	Verify="NumberOfFrames"											Condition="ImageTypeValue3LocalizerOrLabel"	BinaryEnumValues="One"
+	Verify="NumberOfFrames"											Condition="ImageTypeValue3LocalizerOrLabelOrOverview"	BinaryEnumValues="One"
 	Name="BitsAllocated"								Type="1"	BinaryEnumValues="BitsAre8Or16"
 	Name="BitsStored"									Type="1"	BinaryEnumValues="BitsAre8Or16"
 	Name="HighBit"										Type="1"	BinaryEnumValues="BitsAre7Or15"
@@ -8441,7 +8532,15 @@ Module="EnhancedMRImage"
 
 	Name="PhotometricInterpretation"				Type="1"
 	Verify="PhotometricInterpretation"							Condition="EnhancedMRImageInstance"      StringEnumValues="PhotometricInterpretationMonochrome2"
-	Verify="PhotometricInterpretation"							Condition="EnhancedMRColorImageInstance" StringEnumValues="PhotometricInterpretationRGBorYBR_FULL_422orYBR_RCTorYBR_ICTorYBR_PARTIAL_420"
+	Verify="PhotometricInterpretation"							Condition="EnhancedMRColorImageInstance" StringEnumValues="PhotometricInterpretationRGBOrYBR_FULL_422OrYBR_RCTOrYBR_ICTOrYBR_PARTIAL_420"
+
+	Verify="PhotometricInterpretation"				Condition="UncompressedTransferSyntaxAndThreeSamples"					StringEnumValues="PhotometricInterpretationRGB"
+	Verify="PhotometricInterpretation"				Condition="JPEGLSLosslessTransferSyntaxAndThreeSamples"					StringEnumValues="PhotometricInterpretationRGB"
+	Verify="PhotometricInterpretation"				Condition="JPEG2000TransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRICT"
+	Verify="PhotometricInterpretation"				Condition="JPEG2000LosslessTransferSyntaxAndThreeSamples"				StringEnumValues="PhotometricInterpretationYBRRCT"
+	Verify="PhotometricInterpretation"				Condition="MPEG2TransferSyntax"											StringEnumValues="PhotometricInterpretationYBRPartial420"	# regardless of number of samples (required to be 3 by PS 3.5)
+	Verify="PhotometricInterpretation"				Condition="JPEGLossyTransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRFull422"
+	Verify="PhotometricInterpretation"				Condition="RLETransferSyntaxAndThreeSamples"							StringEnumValues="PhotometricInterpretationYBRFullOrRGB"
 
 	Name="BitsAllocated"							Type="1"	
 	Verify="BitsAllocated"										Condition="PhotometricInterpretationIsMonochrome"	BinaryEnumValues="BitsAre8Or16"

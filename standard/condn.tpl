@@ -3814,14 +3814,33 @@ Condition="JPEG2000LosslessTransferSyntaxButNotYBR_RCT"
 	Element="PhotometricInterpretation"			Operator="And"	Modifier="Not" StringValue="YBR_RCT"
 ConditionEnd
 
-Condition="JPEG2000TransferSyntaxButNotYBR_RCTorYBR_ICT"
+Condition="JPEG2000TransferSyntaxButNotYBR_RCTOrYBR_ICT"
 	Element="TransferSyntaxUID"					StringValue="1.2.840.10008.1.2.4.91"
 	Element="PhotometricInterpretation"			Operator="And"	Modifier="Not" StringValue="YBR_RCT"
 	Element="PhotometricInterpretation"			Operator="And"	Modifier="Not" StringValue="YBR_ICT"
 ConditionEnd
 
+Condition="JPEGLossyTransferSyntaxAndOneSample"
+	Element="SamplesPerPixel"							BinaryValue="== 1"
+	(
+		Element="TransferSyntaxUID"						StringValue="1.2.840.10008.1.2.4.50"
+		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.51"
+		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.52"
+		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.53"
+		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.54"
+		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.55"
+		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.56"
+		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.59"
+		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.60"
+		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.61"
+		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.62"
+		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.63"
+		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.64"
+	) Operator="And"
+ConditionEnd
+
 Condition="JPEGLossyTransferSyntaxAndThreeSamples"
-	Element="SamplesPerPixel"						BinaryValue="== 3"
+	Element="SamplesPerPixel"							BinaryValue="== 3"
 	(
 		Element="TransferSyntaxUID"						StringValue="1.2.840.10008.1.2.4.50"
 		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.51"
@@ -3839,28 +3858,8 @@ Condition="JPEGLossyTransferSyntaxAndThreeSamples"
 	) Operator="And"
 ConditionEnd
 
-Condition="JPEGLossyTransferSyntaxAndThreeSamplesOtherThanWSI"
-	Element="SamplesPerPixel"						BinaryValue="== 3"
-	(
-		Element="TransferSyntaxUID"						StringValue="1.2.840.10008.1.2.4.50"
-		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.51"
-		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.52"
-		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.53"
-		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.54"
-		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.55"
-		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.56"
-		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.59"
-		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.60"
-		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.61"
-		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.62"
-		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.63"
-		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.64"
-	) Operator="And"
-	Element="SOPClassUID"				Operator="And" Modifier="Not" "StringConstantFromRootAttribute="VLWholeSlideMicroscopyImageStorageSOPClassUID"
-ConditionEnd
-
-Condition="JPEGLosslessTransferSyntaxAndThreeSamples"
-	Element="SamplesPerPixel"						BinaryValue="== 3"
+Condition="JPEGLosslessTransferSyntaxAndOneSample"
+	Element="SamplesPerPixel"							BinaryValue="== 1"
 	(
 		Element="TransferSyntaxUID"						StringValue="1.2.840.10008.1.2.4.57"
 		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.58"
@@ -3870,38 +3869,75 @@ Condition="JPEGLosslessTransferSyntaxAndThreeSamples"
 	) Operator="And"
 ConditionEnd
 
-Condition="JPEG2000LosslessTransferSyntaxAndThreeSamples"
-	Element="TransferSyntaxUID"							StringValue="1.2.840.10008.1.2.4.90"
-	Element="SamplesPerPixel"			Operator="And"	BinaryValue="== 3"
+Condition="JPEGLosslessTransferSyntaxAndThreeSamples"
+	Element="SamplesPerPixel"							BinaryValue="== 3"
+	(
+		Element="TransferSyntaxUID"						StringValue="1.2.840.10008.1.2.4.57"
+		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.58"
+		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.65"
+		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.66"
+		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.70"
+	) Operator="And"
 ConditionEnd
 
-Condition="JPEG2000LosslessTransferSyntaxAndThreeSamplesOtherThanWSI"
-	Element="TransferSyntaxUID"							StringValue="1.2.840.10008.1.2.4.90"
-	Element="SamplesPerPixel"			Operator="And"	BinaryValue="== 3"
-	Element="SOPClassUID"				Operator="And"	Modifier="Not" "StringConstantFromRootAttribute="VLWholeSlideMicroscopyImageStorageSOPClassUID"
+Condition="JPEGLSLosslessTransferSyntaxAndOneSample"
+	Element="SamplesPerPixel"							BinaryValue="== 1"
+	Element="TransferSyntaxUID"			Operator="And"	StringValue="1.2.840.10008.1.2.4.80"
+ConditionEnd
 
+Condition="JPEGLSLosslessTransferSyntaxAndThreeSamples"
+	Element="SamplesPerPixel"							BinaryValue="== 3"
+	Element="TransferSyntaxUID"			Operator="And"	StringValue="1.2.840.10008.1.2.4.80"
+ConditionEnd
+
+Condition="JPEGLSNearLosslessTransferSyntaxAndOneSample"
+	Element="SamplesPerPixel"							BinaryValue="== 1"
+	Element="TransferSyntaxUID"			Operator="And"	StringValue="1.2.840.10008.1.2.4.81"
+ConditionEnd
+
+Condition="JPEGLSNearLosslessTransferSyntaxAndThreeSamples"
+	Element="SamplesPerPixel"							BinaryValue="== 3"
+	Element="TransferSyntaxUID"			Operator="And"	StringValue="1.2.840.10008.1.2.4.81"
+ConditionEnd
+
+Condition="JPEG2000LosslessTransferSyntaxAndOneSample"
+	Element="SamplesPerPixel"							BinaryValue="== 1"
+	Element="TransferSyntaxUID"			Operator="And"	StringValue="1.2.840.10008.1.2.4.90"
+ConditionEnd
+
+Condition="JPEG2000LosslessTransferSyntaxAndThreeSamples"
+	Element="SamplesPerPixel"							BinaryValue="== 3"
+	Element="TransferSyntaxUID"			Operator="And"	StringValue="1.2.840.10008.1.2.4.90"
+ConditionEnd
+
+Condition="JPEG2000TransferSyntaxAndOneSample"
+	Element="SamplesPerPixel"							BinaryValue="== 1"
+	(
+		Element="TransferSyntaxUID"						StringValue="1.2.840.10008.1.2.4.90"
+		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.91"
+	) Operator="And"
 ConditionEnd
 
 Condition="JPEG2000TransferSyntaxAndThreeSamples"
-	Element="SamplesPerPixel"				BinaryValue="== 3"
+	Element="SamplesPerPixel"							BinaryValue="== 3"
 	(
-		Element="TransferSyntaxUID"							StringValue="1.2.840.10008.1.2.4.90"
-		Element="TransferSyntaxUID"			Operator="Or"	StringValue="1.2.840.10008.1.2.4.91"
+		Element="TransferSyntaxUID"						StringValue="1.2.840.10008.1.2.4.90"
+		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.91"
 	) Operator="And"
-ConditionEnd
-
-Condition="JPEG2000TransferSyntaxAndThreeSamplesOtherThanWSI"
-	Element="SamplesPerPixel"				BinaryValue="== 3"
-	(
-		Element="TransferSyntaxUID"							StringValue="1.2.840.10008.1.2.4.90"
-		Element="TransferSyntaxUID"			Operator="Or"	StringValue="1.2.840.10008.1.2.4.91"
-	) Operator="And"
-	Element="SOPClassUID"					Operator="And"	Modifier="Not" "StringConstantFromRootAttribute="VLWholeSlideMicroscopyImageStorageSOPClassUID"
 ConditionEnd
 
 Condition="MPEG2TransferSyntax"
-	Element="TransferSyntaxUID"						StringValue="1.2.840.10008.1.2.4.100"
-	Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.101"
+	Element="TransferSyntaxUID"							StringValue="1.2.840.10008.1.2.4.100"
+	Element="TransferSyntaxUID"			Operator="Or"	StringValue="1.2.840.10008.1.2.4.101"
+ConditionEnd
+
+Condition="UncompressedTransferSyntaxAndOneSample"
+	Element="SamplesPerPixel"				BinaryValue="== 1"
+	(
+		Element="TransferSyntaxUID"							StringValue="1.2.840.10008.1.2"
+		Element="TransferSyntaxUID"			Operator="Or"	StringValue="1.2.840.10008.1.2.1"
+		Element="TransferSyntaxUID"			Operator="Or"	StringValue="1.2.840.10008.1.2.2"
+	) Operator="And"
 ConditionEnd
 
 Condition="UncompressedTransferSyntaxAndThreeSamples"
@@ -3913,9 +3949,14 @@ Condition="UncompressedTransferSyntaxAndThreeSamples"
 	) Operator="And"
 ConditionEnd
 
+Condition="RLETransferSyntaxAndOneSample"
+	Element="SamplesPerPixel"								BinaryValue="== 1"
+	Element="TransferSyntaxUID"				Operator="And"	StringValue="1.2.840.10008.1.2.5"
+ConditionEnd
+
 Condition="RLETransferSyntaxAndThreeSamples"
-	Element="TransferSyntaxUID"					StringValue="1.2.840.10008.1.2.5"
-	Element="SamplesPerPixel"			Operator="And"	BinaryValue="== 3"
+	Element="SamplesPerPixel"								BinaryValue="== 3"
+	Element="TransferSyntaxUID"				Operator="And"	StringValue="1.2.840.10008.1.2.5"
 ConditionEnd
 
 Condition="MPEG2TransferSyntaxAndNotThreeSamples"
@@ -6484,9 +6525,10 @@ Condition="NeedOpticalPathIdentificationMacroInPerFrameFunctionalGroupSequenceFo
 	) Operator="And"
 ConditionEnd
 
-Condition="ImageTypeValue3LocalizerOrLabel"
+Condition="ImageTypeValue3LocalizerOrLabelOrOverview"
 	Element="ImageType"												ValueSelector="2"	StringValue="LOCALIZER"
 	Element="ImageType"								Operator="Or"	ValueSelector="2"	StringValue="LABEL"
+	Element="ImageType"								Operator="Or"	ValueSelector="2"	StringValue="OVERVIEW"
 ConditionEnd
 
 Condition="ExtendedDepthOfFieldIsYes"
@@ -7157,3 +7199,50 @@ Condition="CTXRayDetailsSequenceNotOneItemAndNotMultienergyAcquisition"
 	Element="MultienergyCTAcquisition"		Operator="And" Modifier="Not" StringValueFromRootAttribute="YES"
 ConditionEnd
 
+Condition="PatientAlternativeCalendarNeeded"
+	Element="PatientBirthDateInAlternativeCalendar"		ElementPresent=""
+	Element="PatientDeathDateInAlternativeCalendar"		ElementPresent=""
+ConditionEnd
+
+Condition="TypeOfInstancesIsDICOM"
+	Element="TypeOfInstances"		StringValue="DICOM"
+ConditionEnd
+
+Condition="TypeOfInstancesInParentIsCDA"
+	Element="TypeOfInstances"		StringValueAbove="DICOM"
+ConditionEnd
+
+Condition="NeedDICOMRetrievalSequence"
+	Element="DICOMMediaRetrievalSequence"				   Modifier="Not" ElementPresent=""
+	Element="WADORetrievalSequence"			Operator="And" Modifier="Not" ElementPresent=""
+	Element="XDSRetrievalSequence"			Operator="And" Modifier="Not" ElementPresent=""
+	Element="WADORSRetrievalSequence"		Operator="And" Modifier="Not" ElementPresent=""
+ConditionEnd
+
+Condition="NeedDICOMMediaRetrievalSequence"
+	Element="DICOMRetrievalSequence"					   Modifier="Not" ElementPresent=""
+	Element="WADORetrievalSequence"			Operator="And" Modifier="Not" ElementPresent=""
+	Element="XDSRetrievalSequence"			Operator="And" Modifier="Not" ElementPresent=""
+	Element="WADORSRetrievalSequence"		Operator="And" Modifier="Not" ElementPresent=""
+ConditionEnd
+
+Condition="NeedWADORetrievalSequence"
+	Element="DICOMRetrievalSequence"					   Modifier="Not" ElementPresent=""
+	Element="DICOMMediaRetrievalSequence"	Operator="And" Modifier="Not" ElementPresent=""
+	Element="XDSRetrievalSequence"			Operator="And" Modifier="Not" ElementPresent=""
+	Element="WADORSRetrievalSequence"		Operator="And" Modifier="Not" ElementPresent=""
+ConditionEnd
+
+Condition="NeedXDSRetrievalSequence"
+	Element="DICOMRetrievalSequence"					   Modifier="Not" ElementPresent=""
+	Element="DICOMMediaRetrievalSequence"	Operator="And" Modifier="Not" ElementPresent=""
+	Element="WADORetrievalSequence"			Operator="And" Modifier="Not" ElementPresent=""
+	Element="WADORSRetrievalSequence"		Operator="And" Modifier="Not" ElementPresent=""
+ConditionEnd
+
+Condition="NeedWADORSRetrievalSequence"
+	Element="DICOMRetrievalSequence"					   Modifier="Not" ElementPresent=""
+	Element="DICOMMediaRetrievalSequence"	Operator="And" Modifier="Not" ElementPresent=""
+	Element="WADORetrievalSequence"			Operator="And" Modifier="Not" ElementPresent=""
+	Element="XDSRetrievalSequence"			Operator="And" Modifier="Not" ElementPresent=""
+ConditionEnd

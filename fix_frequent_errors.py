@@ -26,6 +26,32 @@ import sctsrt
 def fix_Trivials(ds: Dataset, log: list):
     verify.SelectAndRunCompositeIOD(ds, False, log, True, '')
     # verify.PrintLog(log)
+def priorfix_RemoveIllegalTags(ds: Dataset, parent_kw:str, log:list)->bool:
+    tags_to_be_removed = []
+    fixed = False
+    for k, a in ds.items():
+        try:
+            a = ds[k]
+        except KeyError as err:
+            if not k.is_private:
+                if not Dictionary.dictionary_has_tag(k):
+                    ttaagg = validate_vr.tag2str(a.tag)
+                    eerr = mesgtext_cc.ErrorInfo("General Fix - tag {} in {}is not a standard dicom tag".format(
+                        ttaagg, parent_kw),
+                    'fixed by removing the attribute')
+                    log.append(eerr.getWholeMessage())
+                    tags_to_be_removed.append(a.tag)
+                    continue
+        if type(a.value) == Sequence:
+            for item in a.value:
+                fixed = fixed or priorfix_RemoveIllegalTags(item, a.keyword, log)
+        elif type(a.value) == Dataset:
+            fixed = fixed or priorfix_RemoveIllegalTags(a.value, a.keyword, log)
+
+    for tg in tags_to_be_removed:
+        del ds[tg]
+    return fixed
+
 
 def subfix_LookUpRegexInLog(regexp:str, log:list, appendIfNone = False,
 DefaultErrorMsg = ''):
@@ -316,6 +342,7 @@ def generalfix_RemoveEmptyCodes(parent_ds: Dataset, log:list) -> bool:
     fixed = False
     elems_to_be_removed = []
     for key, elem in parent_ds.items():
+        elem = parent_ds[key]
         if type(elem) == pydicom.dataelem.RawDataElement:
             elem = pydicom.dataelem.DataElement_from_raw(elem)
         items_to_be_removed = []
@@ -367,6 +394,7 @@ def subfix_FindAndReplaceAttribValue(
     replaced_global = False
     changed_element_lists = []
     for key, elem in ds.items():
+        elem = ds[key]
         i_count = 0
         if type(elem.value) == Sequence:
             for item in elem.value:
@@ -481,6 +509,7 @@ def LoopOverAllAtribsAndRemoveIfConditionIsTrue(ds: Dataset, cond, log:list, err
 
 
     for key, a in ds.items():
+        a = ds[key]
         if type(a) == pydicom.dataelem.RawDataElement:
             a = pydicom.dataelem.DataElement_from_raw(a)
         if type(a.value) == Sequence:
@@ -502,8 +531,8 @@ def LoopOverAllAtribsAndRemoveIfConditionIsTrue(ds: Dataset, cond, log:list, err
                 log.append(msg.getWholeMessage())
                 fixed = True
                 elements_to_be_removed.append(a)
-    for a in elements_to_be_removed:
-        del ds[a.tag]
+    for tg in elements_to_be_removed:
+        del ds[tg]
 
     return fixed
 
@@ -512,6 +541,7 @@ def LoopOverAllAtribsAndRemoveIfConditionIsTrue(ds: Dataset, cond, log:list, err
 #     fixed = False
 #     curretn_ds_has_element = False
 #     for key , a in ds.items():
+
 #         if type(a) == pydicom.dataelem.RawDataElement:
 #             a = pydicom.dataelem.DataElement_from_raw(a)
 #         if type(a.value) == Sequence:
@@ -572,6 +602,7 @@ def generalfix_TrailingNulls(ds: Dataset, log: list) -> bool:
     fixed = False
     elemsTobeCorrected = []
     for key, a in ds.items():
+        a = ds[key]
         if key.is_private:
             continue
         if a.VR == 'UI' or a.VR == 'OB' or a.VR == 'OW' or a.VR == 'UN':
@@ -826,6 +857,7 @@ def subfix_ReplaceSlashWithBackslash(attrib:DataElement, log:list)->bool:
 def generalfix_ReplaceSlashWithBackslash4CS(ds:Dataset, log:list)-> bool:
     fixed = False
     for ky,  v in ds.items():
+        v = ds[ky]
         if type(v.value) == Sequence:
             for item in v.value:
                 generalfix_ReplaceSlashWithBackslash4CS(item,log)
