@@ -1,5 +1,6 @@
 from pydicom import *
 from pydicom.tag import Tag
+from pydicom.tag import BaseTag
 from pydicom.dataset import Dataset
 from pydicom.dataelem import DataElement
 from pydicom.sequence import Sequence
@@ -34,7 +35,7 @@ def isValidText(bytecodes: bytes, encodings: list) -> list:
     return badChars
 
 
-def tag2str(ttag: Tag):
+def tag2str(ttag: BaseTag):
     if Dictionary.dictionary_has_tag(ttag):
         desc = Dictionary.dictionary_description(ttag)
         vr = Dictionary.dictionary_VR(ttag)

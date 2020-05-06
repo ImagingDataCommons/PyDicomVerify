@@ -21,6 +21,7 @@ import time
 from datetime import timedelta
 import common_tools as ctools
 import single2multi_frame
+import data_elementx
 class FileUIDS:
     StudyUID:pydicom.uid.UID
     SeriesUID:pydicom.uid.UID
@@ -85,19 +86,20 @@ log_fix, log_david):
 
     fix_it = True
     ds = read_file(dicom_file)
+    dsx = data_elementx.ConvertDataset(ds)
 
     log_mine = []
     if fix_it:
-        fix_frequent_errors.priorfix_RemoveIllegalTags(ds,'All', log_fix)
+        fix_frequent_errors.priorfix_RemoveIllegalTags(dsx,'All', log_fix)
         #(1)general fixes:
         for ffix in dir(fix_frequent_errors):
             if ffix.startswith("generalfix_"):
                 item = getattr(fix_frequent_errors, ffix)
                 if callable(item):
-                    item(ds, log_fix)
+                    item(dsx, log_fix)
 
         #(2)fix with verification:
-        fix_Trivials(ds, log_fix)
+        fix_Trivials(dsx, log_fix)
 
         #(3)specific fixes:
         for ffix in dir(fix_frequent_errors):
@@ -106,12 +108,12 @@ log_fix, log_david):
                     continue
                 item = getattr(fix_frequent_errors, ffix)
                 if callable(item):
-                    item(ds, log_fix)
+                    item(dsx, log_fix)
 
         fix_report = PrintLog(log_fix)
         fixed_file = os.path.join(f_dcm_folder, file_name)
 
-        write_file(fixed_file, ds)
+        write_file(fixed_file, dsx)
         ctools.WriteStringToFile(os.path.join(f_rpt_folder, file_name+'_fix_report.txt'),fix_report)
         VER(fixed_file, f_vfy_folder, log_david)
 
@@ -337,15 +339,16 @@ def FIX(in_folder, out_folder, prefix=''):
 
         
 
-
+small = 'TCGA-BLCA/TCGA-4Z-AA82/10-21-2003-AbdomenABDOME2FASESVOL Adult-32850/'
+small = ''
 local_dropbox_folder = "/Users/afshin/Dropbox (Partners HealthCare)"
-out_folder = os.path.join(local_dropbox_folder,"IDC-MF_DICOM/fix_output00")
-in_folder = os.path.join(local_dropbox_folder,"IDC-MF_DICOM/data/")
-# FIX(in_folder, out_folder, 'INPUT FIXING')
+out_folder = os.path.join(local_dropbox_folder,"fix_output02")
+in_folder = os.path.join(local_dropbox_folder,"IDC-MF_DICOM/data/"+small)
+FIX(in_folder, out_folder, 'INPUT FIX')
 fixed_folder = os.path.join(out_folder, 'fixed_dicom/')
 #---------------------------------------------------------------
-highdicom_folder = "/Users/afshin/Documents/Conversion/hd/"
-pixelmed_folder = "/Users/afshin/Documents/Conversion/pm/"
+highdicom_folder = os.path.join(in_folder, "Conversion/hd/")
+pixelmed_folder = os.path.join(in_folder, "Conversion/pm/")
 conversion_log = []
 single2multi_frame.Convert(fixed_folder,pixelmed_folder, highdicom_folder, 
      conversion_log)

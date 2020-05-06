@@ -14,28 +14,28 @@ import module_cc
 import validate_vr
 from pydicom.dataelem import *
 import re
-
+import data_elementx
 
 def loopOverListsInSequencesWithLog(a: DataElement, log: list, func) -> bool:
     succeeded = True
-    if type(a) == Sequence:
-        for inner_ds in a:
+    if type(a.value) == Sequence:
+        for inner_ds in a.value:
             succeeded = succeeded and func(inner_ds, log)
 
-    elif type(a) == Dataset:
-        succeeded = succeeded and func(a, log)
+    elif type(a.value) == Dataset:
+        succeeded = succeeded and func(a.value, log)
     return succeeded
 
 
 def loopOverListsInSequencesWithRootListAndLog(root_ds: Dataset, a: DataElement,
                                                log: list, func) -> bool:
     succeeded = True
-    if type(a) == Sequence:
-        for inner_ds in a:
+    if type(a.value) == Sequence:
+        for inner_ds in a.value:
             succeeded = succeeded and func(root_ds, inner_ds, log)
 
-    elif type(a) == Dataset:
-        succeeded = succeeded and func(root_ds, a, log)
+    elif type(a.value) == Dataset:
+        succeeded = succeeded and func(root_ds, a.value, log)
     return succeeded
 
 
@@ -660,7 +660,7 @@ def checkOrientationsAreOrthogonal(ds: Dataset, log: list) -> bool:
             log)
     for (key, elems) in ds.items():
         success = success and loopOverListsInSequencesWithLog(
-            elems, log, subcheckOrthogonal)
+            elems, log, checkOrientationsAreOrthogonal)
     return success
 
 
@@ -714,7 +714,7 @@ def checkOrientationsAreUnitVectors(ds: Dataset, log: list) -> bool:
 
     for (key, elems) in ds.items():
         success = success and loopOverListsInSequencesWithLog(
-            elems, log, subcheckUnitVector)
+            elems, log, checkOrientationsAreUnitVectors)
     return success
 
 
@@ -1722,3 +1722,110 @@ def validateVR(ds: Dataset, log: list) -> bool:
 
 
     return success
+def isRepeatingGroup(t:Tag)->bool:
+    g = t.group
+    return (g >= 0x5000 and g <= 0x501e) or\
+         (g >= 0x6000 and g <= 0x601e)
+def isLengthElementOrLengthToEnd(t:Tag)->bool:
+    e = t.element
+    g = t.group
+    return e == 0x0000 or (
+        g == 0x0008 and e == 0x0001
+    )
+def getRepeatingBase(t:Tag):
+
+    g=t.group
+    e=t.element
+
+    gMASKEDff00=g&0xff00
+    eMASKEDff00=e&0xff00
+    eMASKEDff0f=e&0xff0f
+
+    # Transformations must match those in dictionary ... see elmdict.awk,elmdict.tpl,attrtag.cc
+
+    # Note that some are from element 0xxx00 and others from 0xxx10
+
+    if g == 0x0020:
+        if eMASKEDff00 == 0x3100:
+            e=0x3100			# 0x31xx - PS 300 - Source Image IDs
+
+    elif g == 0x0028:
+        if eMASKEDff0f == 0x0400 and e != 0x0400:
+            e=0x0410	# 0x04x0 - PS 2 - RowsForNthOrderCoefficients
+        elif eMASKEDff0f == 0x0401 and e != 0x0401:
+             e=0x0411	# 0x04x1 - PS 2 - ColumnsForNthOrderCoefficients
+        elif eMASKEDff0f == 0x0402 and e != 0x0402:
+             e=0x0412	# 0x04x2 - PS 2 - CoefficientCoding
+        elif eMASKEDff0f == 0x0403 and e != 0x0403:
+             e=0x0413	# 0x04x3 - PS 2 - CoefficientCodingPointers
+
+        elif eMASKEDff0f == 0x0800:
+             e=0x0800			# 0x08x0 - PS 2 - CodeLabel
+        elif eMASKEDff0f == 0x0802:
+             e=0x0802			# 0x08x2 - PS 2 - NumberOfTables
+        elif eMASKEDff0f == 0x0803:
+             e=0x0803			# 0x08x3 - PS 2 - CodeTableLocation
+        elif eMASKEDff0f == 0x0804:
+             e=0x0804			# 0x08x4 - PS 2 - BitsForCodeWord
+        elif eMASKEDff0f == 0x0808:
+             e=0x0808			# 0x08x8 - PS 2 - ImageDataLocation
+
+    elif g == 0x1000:
+        if eMASKEDff0f == 0x0000 and e != 0x0000:
+             e=0x0010	# 0x00x0 - PS 2 - Escape Triplet
+        elif eMASKEDff0f == 0x0001 and e != 0x0001:
+             e=0x0011	# 0x00x1 - PS 2 - Run Length Triplet
+        elif eMASKEDff0f == 0x0002 and e != 0x0002:
+             e=0x0012	# 0x00x2 - PS 2 - Huffman Table Size
+        elif eMASKEDff0f == 0x0003 and e != 0x0003:
+             e=0x0013	# 0x00x3 - PS 2 - Huffman Table Triplet
+        elif eMASKEDff0f == 0x0004 and e != 0x0004:
+             e=0x0014	# 0x00x4 - PS 2 - Shift Table Size
+        elif eMASKEDff0f == 0x0005 and e != 0x0005:
+             e=0x0015	# 0x00x5 - PS 2 - Shift Table Triplet
+
+    elif g == 0x1010:
+        if 0x0004 <= e <= 0xfffe:
+             e=0x0004			# PS 2 - Zonal Map
+
+    elif gMASKEDff00 == 0x5000:
+        g=0x5001 if (g%2)==0  else 0x5000		# 0x50xx - PS 3 - Curve stuff
+    elif gMASKEDff00 == 0x6000:
+        g=0x6001 if (g%2)==0  else 0x6000		# 0x60xx - PS 3 and earlier - Overlay stuff
+    elif gMASKEDff00 == 0x7000:
+        g=0x7001 if (g%2)==0  else 0x7000		# 0x70xx - Private DLX TextAnnotation etc.
+    elif gMASKEDff00 == 0x7f00 and g != 0x7fe0:
+        g=0x7f00		# 0x7Fxx - PS 2 - VariablePixelData
+
+    return Tag(g,e)
+def AfterVerificationValidateUsed(ds: Dataset, log: list) -> bool:
+ 
+    succeeded = True
+    for key, a in ds.items():
+        try:
+            a = (ds[key])
+            # a.__class__=data_elementx.DataElementX
+        except KeyError as err:
+            if not key.is_private:
+                if not Dictionary.dictionary_has_tag(key):
+                    log.append("{} - {}".format(
+                        EMsgDC("AttributeIsNotARecognizedStandardAttribute"),
+                        validate_vr.tag2str(key)))
+                    succeeded == False
+                    continue 
+        if (not key.is_private and
+        key != Dictionary.tag_for_keyword("ModifiedAttributesSequence") and
+        key != Dictionary.tag_for_keyword("UnassignedSharedConvertedAttributesSequence") and
+        key != Dictionary.tag_for_keyword("UnassignedPerFrameConvertedAttributesSequence")
+        ):
+            if not loopOverListsInSequencesWithLog(a, log, AfterVerificationValidateUsed):
+                    succeeded = False
+        used = a.used_in_verification
+        if not used and isRepeatingGroup(key):
+            tt = getRepeatingBase(key)
+            if getRepeatingBase(tt) in ds:
+                used = ds[tt].used_in_verification
+        if not used and not key.is_private:
+            log.append('{} - {}'.format(WMsgDC("AttributeIsNotUsedInIOD"),
+            validate_vr.tag2str(key)))
+            succeeded =False

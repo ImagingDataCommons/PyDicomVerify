@@ -46,6 +46,7 @@ NR==1	{
 	print "from attrverify_cc import *"
 	print "from pydicom.datadict import *"
 	print "from mesgtext_cc import *"
+	print "import data_elementx"
 
 	
 	module=""
@@ -145,17 +146,16 @@ NR==1	{
 			#print "\tAttribute *" sequence " = (*list)[TagFromName(" sequence ")];"
 
 
-			#indentcode(sequencenestingdepth)
-			#if (donotsetused == "F") 
-			#	printf("\tif (" sequence ") " sequence "->setUsed();\n")
-			#if (donotsetused == "T") {
-			#	printf("\t{ Attribute *a = (*list)[TagFromName(" sequence ")];}\n")
-			#}
-			#else {
-			#	printf("\t{ Attribute *a = (*list)[TagFromName(" sequence ")]; if (a) a->setUsed(); }\n")
-			#}
+
 			
 			suffix = get_suffix_for_seq(seq_depth_counter)
+			if (donotsetused == "F")
+			{ 
+				indentcode(sequencenestingdepth)
+				print("\tif \"" sequence "\" in ds"suffix":")
+				indentcode(sequencenestingdepth)
+				print("\t\tds"suffix"[\""sequence"\"].used_in_verification = True")
+			}
 
 			indentcode(sequencenestingdepth)
 			printf("\tpartial_success = ")
@@ -398,9 +398,13 @@ NR==1	{
 			#	indentcode(sequencenestingdepth)
 #			if (donotsetused == "F") 
 #				printf("\tif (" name ") " name "->setUsed();\n") 
-				
-
-			#}
+			if (donotsetused == "F")
+			{ 
+				indentcode(sequencenestingdepth)
+				print("\tif \"" name "\" in ds"get_suffix_for_seq(seq_depth_counter)":")
+				indentcode(sequencenestingdepth)
+				print("\t\tds"get_suffix_for_seq(seq_depth_counter)"[\""name"\"].used_in_verification = True")
+			}
 			indentcode(sequencenestingdepth)
 			printf("\tpartial_success =  ");
 			if (length(type) > 0) 

@@ -530,7 +530,7 @@ def LoopOverAllAtribsAndRemoveIfConditionIsTrue(ds: Dataset, cond, log:list, err
                 
                 log.append(msg.getWholeMessage())
                 fixed = True
-                elements_to_be_removed.append(a)
+                elements_to_be_removed.append(a.tag)
     for tg in elements_to_be_removed:
         del ds[tg]
 
