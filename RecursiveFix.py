@@ -60,7 +60,7 @@ def VER(file:str, out_folder:str,log:list):
     # print('{:=^120}'.format("DAVID'S"))
     dcm_verify = "/Users/afshin/Documents/softwares/dicom3tools/exe_20200430/dciodvfy"
     out = os.path.join(out_folder, file_name + "_err.txt")
-    ctools.RunExe([dcm_verify,'-filename', file], out, '',log)
+    ctools.RunExe([dcm_verify,'-filename', file], out, '', errlog=log)
     # print('{:=^120}'.format("MY CODE"))
     my_code_output = verify(file, False, '')
     ctools.WriteStringToFile(out, '{:=^120}\n'.format("MY CODE"), True)
@@ -340,7 +340,7 @@ def FIX(in_folder, out_folder, prefix=''):
         
 
 # small = 'TCGA-UCEC/TCGA-D1-A16G/07-11-1992-NMPETCT trunk-82660/1005-TRANSAXIALTORSO 3DFDGIR CTAC-37181/'
-small = ''
+# small = ''
 local_dropbox_folder = "/Users/afshin/Dropbox (Partners HealthCare)/"
 out_folder = os.path.join(local_dropbox_folder,"fix_output02")
 in_folder = os.path.join(local_dropbox_folder,"IDC-MF_DICOM/data/"+small)

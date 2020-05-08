@@ -22,6 +22,10 @@ def Convert(in_folder, pixelmed_folder, highdicom_folder, log=[]):
     start = time.time()
     last_time_point_for_progress_update = 0
     time_interval_for_progress_update = 1
+    deslash = lambda x: x if not x.endswith('/') else x[:-1]
+    in_folder = deslash(in_folder)
+    highdicom_folder = deslash(highdicom_folder)
+    pixelmed_folder = deslash (pixelmed_folder)
 
 
     for i, folder in enumerate(folders,1):
