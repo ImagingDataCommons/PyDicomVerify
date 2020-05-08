@@ -5,9 +5,11 @@
 from pydicom.dataset import Dataset
 from condn_h import *
 from iodcomp_h import *
+import data_elementx
 def SelectAndRunCompositeIOD(ds:Dataset, verbose:bool, log:list, fix_trivials:bool, profile: str)->bool:
 
 	iod = False
+	ds = data_elementx.ConvertDataset(ds)
 	if Condition_CRImageInstance(ds, 0, ds) and profile == "":
 		iod = CompositeIOD_CRImage_verify(ds, verbose, log, fix_trivials)
 

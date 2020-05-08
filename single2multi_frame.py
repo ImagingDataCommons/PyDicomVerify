@@ -22,10 +22,7 @@ def Convert(in_folder, pixelmed_folder, highdicom_folder, log=[]):
     start = time.time()
     last_time_point_for_progress_update = 0
     time_interval_for_progress_update = 1
-    if os.path.exists(pixelmed_folder):
-        shutil.rmtree(pixelmed_folder)
-    if os.path.exists(highdicom_folder):
-        shutil.rmtree(highdicom_folder)
+
 
     for i, folder in enumerate(folders,1):
         progress = float(i) / float(len(folders))

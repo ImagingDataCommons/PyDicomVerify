@@ -6,16 +6,15 @@ import argparse
 import dicom_prechecks
 import sys
 import fix_frequent_errors
-import data_elementx
+
 
 def PrintLog(log)->str:
     out = ''
     for item in log:
         out += item + '\n'
     return out
-def verify(dicom_file_path, verbose:bool, profile:str):
+def verify(dicom_file_path, verbose:bool, profile:str, fix_trivials=False):
     ds = dcmread(dicom_file_path)
-    ds = data_elementx.ConvertDataset(ds)
 
     fm = ds.file_meta
     for [k,v] in fm.items():
@@ -29,8 +28,10 @@ def verify(dicom_file_path, verbose:bool, profile:str):
 
     dicom_prechecks.precheckInstanceReferencesAreIncludedInHierarchicalEvidenceSequences(
         ds, ds, log)
-    SelectAndRunCompositeIOD(ds, verbose, log , False, profile)
+    SelectAndRunCompositeIOD(ds, verbose, log , fix_trivials, profile)
     dicom_prechecks.AfterVerificationValidateUsed(ds, log)
+    for [k,v] in fm.items():
+        del ds[k]
     lloogg = PrintLog(log)
 
     return lloogg

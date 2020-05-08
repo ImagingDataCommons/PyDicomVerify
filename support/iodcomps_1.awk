@@ -13,10 +13,12 @@ NR==1	{
 	print "from pydicom.dataset import Dataset"
 	print "from condn_h import *"
 	print "from iodcomp_h import *"
+	print "import data_elementx"
 
 	print "def SelectAndRunCompositeIOD(ds:Dataset, verbose:bool, log:list, fix_trivials:bool, profile: str)->bool:"
 	print ""
 	print "\tiod = False"
+	print "\tds = data_elementx.ConvertDataset(ds)"
 	iodcomp=""
 	ie=""
 	}
