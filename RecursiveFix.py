@@ -68,21 +68,31 @@ def VER(file:str, out_folder:str,log:list):
 
 # =========================================================================
 def FixFile(dicom_file, in_folder,
-fixed_dcm_folder, fix_report_folder, final_vfy_folder,
-log_fix, log_david):
+fixed_dcm_folder, fixed_report_folder, pre_vfy_folder, post_vfy_folder, 
+log_fix, log_david_pre,log_david_post):
+
+#------------------------------------------------------------------
+    deslash = lambda x: x if not x.endswith('/') else x[:-1]
     parent = os.path.dirname(dicom_file)
     file_name=os.path.basename(dicom_file)
-    if in_folder.endswith('/'):
-        parent += '/'
+    fixed_dcm_folder= deslash(fixed_dcm_folder)
+    fixed_report_folder= deslash(fixed_report_folder)
+    pre_vfy_folder= deslash(pre_vfy_folder)
+    post_vfy_folder= deslash(post_vfy_folder)
+    in_folder= deslash(in_folder)
+#------------------------------------------------------------------
     f_dcm_folder = parent.replace(in_folder, fixed_dcm_folder)
-    f_rpt_folder = parent.replace(in_folder, fix_report_folder)
-    f_vfy_folder = parent.replace(in_folder, final_vfy_folder)
+    f_rpt_folder = parent.replace(in_folder, fixed_report_folder)
+    f_pre_vfy_folder = parent.replace(in_folder, pre_vfy_folder)
+    f_post_vfy_folder = parent.replace(in_folder, post_vfy_folder)
     if not os.path.exists(f_dcm_folder):
         os.makedirs(f_dcm_folder)  
     if not os.path.exists(f_rpt_folder):
         os.makedirs(f_rpt_folder)  
-    if not os.path.exists(f_vfy_folder):
-        os.makedirs(f_vfy_folder)  
+    if not os.path.exists(f_pre_vfy_folder):
+        os.makedirs(f_pre_vfy_folder)  
+    if not os.path.exists(f_post_vfy_folder):
+        os.makedirs(f_post_vfy_folder)  
     
 
     fix_it = True
@@ -90,6 +100,7 @@ log_fix, log_david):
     
 
     log_mine = []
+    VER(dicom_file, f_pre_vfy_folder, log_david_pre)
     if fix_it:
         fix_frequent_errors.priorfix_RemoveIllegalTags(ds,'All', log_fix)
         #(1)general fixes:
@@ -116,10 +127,10 @@ log_fix, log_david):
 
         write_file(fixed_file, ds)
         ctools.WriteStringToFile(os.path.join(f_rpt_folder, file_name+'_fix_report.txt'),fix_report)
-        VER(fixed_file, f_vfy_folder, log_david)
+        VER(fixed_file, f_post_vfy_folder, log_david_post)
 
-    else:
-        VER(dicom_file, f_vfy_folder, log_david)
+
+    
 
 def AddLogToStatistics(filename:str ,log:list, stat:dict, regexp = ''):
     folder = os.path.dirname(filename)
@@ -288,11 +299,16 @@ def FIX(in_folder, out_folder, prefix=''):
 
     dcm_folder = os.path.join(out_folder , "fixed_dicom/")
     fix_folder = os.path.join(out_folder , "fix_report/")
-    vfy_folder = os.path.join(out_folder , "postfix_vfy_report/")
+    pre_vfy_folder = os.path.join(out_folder , "beforefix_vfy_report/")
+    post_vfy_folder = os.path.join(out_folder , "afterfix_vfy_report/")
     fix_report_file_name = '/TCIA_fix_report_total'
+    pre_fix_report_file_name = '/TCIA_pre-fix_verification_report'
     post_fix_report_file_name = '/TCIA_post-fix_verification_report'
     fix_rep = {}
-    vfy_rep = {}
+    pre_fix_error_statistics = {}
+    post_fix_error_statistics = {}
+    pre_fix_warning_statistics = {}
+    post_fix_warning_statistics = {}
     file_list = ctools.Find(in_folder,cond_function=ctools.is_dicom,)
     start = time.time()
     repo = git.Repo(search_parent_directories=True)
@@ -310,11 +326,17 @@ def FIX(in_folder, out_folder, prefix=''):
         time_left = round(float(len(file_list)-i)* time_elapsed/float(i))
         time_elapsed_since_last_show = time_point - last_time_point_for_progress_update
         time_elapsed_since_last_record = time_point - last_time_point_record_data
-        log_david = []
+        log_david_post = []
+        log_david_pre = []
         log_fixed = []
-        FixFile(f, in_folder, dcm_folder, fix_folder,
-        vfy_folder,log_fixed, log_david)
+        FixFile(f, in_folder, dcm_folder, fix_folder, pre_vfy_folder,
+        post_vfy_folder,log_fixed, log_david_pre, log_david_post)
         fixed_file_path = f.replace(in_folder,dcm_folder)
+        AddLogToStatistics(f, log_fixed, fix_rep, '.*:\-\>:.*')
+        AddLogToStatistics(fixed_file_path, log_david_post, post_fix_error_statistics,'Error.*')
+        AddLogToStatistics(f, log_david_pre, pre_fix_error_statistics,'Error.*')
+        AddLogToStatistics(fixed_file_path, log_david_post, post_fix_warning_statistics,'Warning.*')
+        AddLogToStatistics(f, log_david_pre, pre_fix_warning_statistics,'Warning.*')
         if time_elapsed_since_last_show > time_interval_for_progress_update:
             last_time_point_for_progress_update = time_point
             ctools.ShowProgress(progress,time_elapsed, time_left, 80, prefix)
@@ -322,13 +344,25 @@ def FIX(in_folder, out_folder, prefix=''):
                 print('\n')
         if time_elapsed_since_last_record > time_interval_record_data:
             last_time_point_record_data = time_point
-            AddLogToStatistics(f, log_fixed, fix_rep, '.*:\-\>:.*')
-            WriteReportStatisticsToFile(fix_rep, out_folder + fix_report_file_name+".txt")
             WriteFixReportToWorksheet(fix_rep, out_folder + fix_report_file_name+".xlsx")
-            AddLogToStatistics(fixed_file_path, log_david, vfy_rep,'Error.*')
-            WriteReportStatisticsToFile(vfy_rep, out_folder+ post_fix_report_file_name+".txt")
-            WriteVryReportToWorksheet(vfy_rep, out_folder+ post_fix_report_file_name+".xlsx")
+            WriteVryReportToWorksheet(post_fix_error_statistics, out_folder+ post_fix_report_file_name+".xlsx")
+            WriteVryReportToWorksheet(pre_fix_error_statistics, out_folder+ pre_fix_report_file_name+".xlsx")
+
+            # WriteReportStatisticsToFile(fix_rep, out_folder + fix_report_file_name+".txt")
+            # WriteReportStatisticsToFile(post_fix_error_statistics, out_folder+ post_fix_report_file_name+".txt")
+            # WriteReportStatisticsToFile(pre_fix_error_statistics, out_folder+ pre_fix_report_file_name+".txt")
                 # WriteFixReportToWorksheet(vfy_rep, out_folder + "/stat_vfy.xlsx")
+    return (pre_fix_error_statistics,post_fix_error_statistics, pre_fix_warning_statistics, post_fix_warning_statistics)
+def SubtractDictionaries(d1, d2):
+    out = {}
+    for k, v in d1.items():
+        if k not in d2:
+            out[k] = v
+    return out
+def WriteMultiFrameOnlyReportOnWorksheet(sf_statistics, mf_statistics, filename):
+    only = SubtractDictionaries(mf_statistics, sf_statistics )
+    WriteVryReportToWorksheet(only, filename)
+
 
 
         
@@ -339,10 +373,10 @@ def FIX(in_folder, out_folder, prefix=''):
 
         
 
-# small = 'TCGA-UCEC/TCGA-D1-A16G/07-11-1992-NMPETCT trunk-82660/1005-TRANSAXIALTORSO 3DFDGIR CTAC-37181/'
+small = 'TCGA-UCEC/TCGA-D1-A16G/07-11-1992-NMPETCT trunk-82660/1005-TRANSAXIALTORSO 3DFDGIR CTAC-37181/'
 # small = ''
 local_dropbox_folder = "/Users/afshin/Dropbox (Partners HealthCare)/"
-out_folder = os.path.join(local_dropbox_folder,"fix_output02")
+out_folder = os.path.join(local_dropbox_folder,"fix_output00")
 in_folder = os.path.join(local_dropbox_folder,"IDC-MF_DICOM/data/"+small)
 if os.path.exists(out_folder):
     shutil.rmtree(out_folder)
@@ -351,7 +385,7 @@ if os.path.exists(out_folder):
 highdicom_folder = os.path.join(out_folder, "hd/files")
 pixelmed_folder = os.path.join(out_folder, "pm/files")
 inputresult_folder = os.path.join(out_folder,"in")
-FIX(in_folder, inputresult_folder, 'INPUT FIX')
+input_stats = FIX(in_folder, inputresult_folder, 'INPUT FIX')
 fixed_folder = os.path.join(inputresult_folder, 'fixed_dicom/')
 conversion_log = []
 single2multi_frame.Convert(fixed_folder,pixelmed_folder, highdicom_folder, 
@@ -359,5 +393,15 @@ single2multi_frame.Convert(fixed_folder,pixelmed_folder, highdicom_folder,
 ctools.WriteStringToFile(os.path.join(highdicom_folder,'highdicom_log.txt'),
 ctools.StrList2Txt(conversion_log))
 
-FIX(highdicom_folder,os.path.dirname(highdicom_folder), 'FIXING HD')
-FIX(pixelmed_folder, os.path.dirname(pixelmed_folder), 'FIXING PM')
+hd_stats = FIX(highdicom_folder,os.path.dirname(highdicom_folder), 'FIXING HD')
+pm_stats = FIX(pixelmed_folder, os.path.dirname(pixelmed_folder), 'FIXING PM')
+
+WriteMultiFrameOnlyReportOnWorksheet(input_stats[1], hd_stats[1],
+ os.path.join(out_folder,'hd_mfonly_post_fix_error.xlsx'))
+WriteMultiFrameOnlyReportOnWorksheet(input_stats[1], pm_stats[1],
+ os.path.join(out_folder,'pm_mfonly_post_fix_error.xlsx'))
+WriteMultiFrameOnlyReportOnWorksheet(input_stats[3], hd_stats[3],
+ os.path.join(out_folder,'hd_mfonly_post_fix_warning.xlsx'))
+WriteMultiFrameOnlyReportOnWorksheet(input_stats[3], pm_stats[3],
+ os.path.join(out_folder,'pm_mfonly_post_fix_warning.xlsx'))
+

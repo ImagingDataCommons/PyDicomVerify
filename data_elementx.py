@@ -17,9 +17,13 @@ class DataElementX(pydicom.DataElement):
             return
         self._used_in_verification=val
 
+    
+    
+
 def ConvertDataset(ds:pydicom.Dataset)->pydicom.Dataset:
     msg = 'tag VR length value value_tell is_implicit_VR is_little_endian used_in_verification'
-    MyRawDataElement = namedtuple('MyRawDataElement', msg)
+    
+    MyRawDataElement = namedtuple('RawDataElement', msg)
     if type(ds) == pydicom.dataset.FileDataset:
         ds.file_meta = ConvertDataset(ds.file_meta)
     already_coverted = False
@@ -42,9 +46,11 @@ def ConvertDataset(ds:pydicom.Dataset)->pydicom.Dataset:
             ds[key] = ds_elem
         else:
             if type(elem) == pydicom.dataelem.RawDataElement:
-                new_elem = MyRawDataElement(elem.tag, elem.VR, elem.lenght, elem.value,
-                elem.value_tell, elem.is_implicit_VR, elem.is_little_endian, False)
-                ds[key] = new_elem
+                # new_elem = pydicom.dataelem.RawDataElement(elem.tag, elem.VR, elem.length, elem.value,
+                # elem.value_tell, elem.is_implicit_VR, elem.is_little_endian, False)
+                
+                # ds[key] = elem
+                new_elem = DataElementX(elem.tag,'UN', elem.value,already_converted=already_coverted)
             elif type(elem) == pydicom.DataElement:
                 new_elem = DataElementX(elem.tag,elem.VR, elem.value,already_converted=already_coverted)
                 ds[key] = new_elem
