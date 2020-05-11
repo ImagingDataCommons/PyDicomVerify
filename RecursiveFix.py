@@ -174,7 +174,8 @@ def WriteFixReportToWorksheet(seq_, excel_file):
       'LAST FUN FILE']
     fs_1 = ["DCM FILE" , 'SOP UID', 'STUDY UID', 'SERIES UID']
     workbook = xlsxwriter.Workbook(excel_file)
-    worksheet = workbook.add_worksheet(name = "general")
+    home_sheet = "general"
+    worksheet = workbook.add_worksheet(name = home_sheet)
     col = 0
     git_url = 'https://github.com/afshinmessiah/PyDicomVerify/{}'
     repo = git.Repo(search_parent_directories=True)
@@ -222,11 +223,14 @@ def WriteFixReportToWorksheet(seq_, excel_file):
         worksheet.write_url(r, fs.index('CURRENT FUN FILE'), file1_link,string=file1_name)
         worksheet.write_string(r, fs.index('LAST FUN'), fun2)
         worksheet.write_url(r, fs.index('LAST FUN FILE'), file2_link,string=file2_name)
+
         worksheet1 = workbook.add_worksheet(name = "{}".format(r-row_offset))
+        worksheet1.write_url(0,0 , 'internal:{}!A2'.format(home_sheet), 
+        string="back to {} sheet".format(home_sheet))
         
         for header, idx in zip(fs_1, range(0, len(fs_1))):
-            worksheet1.write_string(0, idx, header)
-        secondary_row = 1
+            worksheet1.write_string(1, idx, header)
+        secondary_row = 2
         for f, fuids in obj.ErrorFiles.items():
             f = FileFromDropbox(f)
             worksheet1.write_string(secondary_row, fs_1.index('DCM FILE'),f)
@@ -252,7 +256,8 @@ def WriteVryReportToWorksheet(seq_, excel_file):
     fs = ['N','FREQ(FILES)','FREQ(FOLDER)','ERROR']
     fs_1 = ["DCM FILE" , 'SOP UID', 'STUDY UID', 'SERIES UID']
     workbook = xlsxwriter.Workbook(excel_file)
-    worksheet = workbook.add_worksheet(name = "general")
+    home_sheet = "general"
+    worksheet = workbook.add_worksheet(name = home_sheet)
     col = 0
     git_url = 'https://github.com/afshinmessiah/PyDicomVerify/{}'
     repo = git.Repo(search_parent_directories=True)
@@ -271,17 +276,20 @@ def WriteVryReportToWorksheet(seq_, excel_file):
         
 
 
-        worksheet.write_url(r,fs.index('N'), 'internal:{}!A2'.format(r - row_offset), string=str(r-row_offset))
+        worksheet.write_url(r,fs.index('N'), 'internal:{}!A1'.format(r - row_offset), string=str(r-row_offset))
         worksheet.write_number(r, fs.index('FREQ(FILES)'), obj.Count)
         worksheet.write_number(r, fs.index('FREQ(FOLDER)'), len(obj.ErrorDirs))
         worksheet.write_string(r, fs.index('ERROR'), err)
         worksheet1 = workbook.add_worksheet(name = "{}".format(r-row_offset))
+        worksheet1.write_url(0,0 , 'internal:{}!A2'.format(home_sheet), 
+        string="back to {} sheet".format(home_sheet))
         
         for header, idx in zip(fs_1, range(0, len(fs_1))):
-            worksheet1.write_string(0, idx, header)
-        secondary_row = 1
+            worksheet1.write_string(1, idx, header)
+        secondary_row = 2
         for f, fuids in obj.ErrorFiles.items():
             f = FileFromDropbox(f)
+
             worksheet1.write(secondary_row, fs_1.index('DCM FILE'), f)
             worksheet1.write(secondary_row, fs_1.index('SOP UID'), fuids.SOPInstanceUID)
             worksheet1.write(secondary_row, fs_1.index('STUDY UID'), fuids.StudyUID)
@@ -374,7 +382,7 @@ def WriteMultiFrameOnlyReportOnWorksheet(sf_statistics, mf_statistics, filename)
         
 
 small = 'TCGA-UCEC/TCGA-D1-A16G/07-11-1992-NMPETCT trunk-82660/1005-TRANSAXIALTORSO 3DFDGIR CTAC-37181/'
-# small = ''
+small = ''
 local_dropbox_folder = "/Users/afshin/Dropbox (Partners HealthCare)/"
 out_folder = os.path.join(local_dropbox_folder,"fix_output00")
 in_folder = os.path.join(local_dropbox_folder,"IDC-MF_DICOM/data/"+small)
