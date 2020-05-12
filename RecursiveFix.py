@@ -21,6 +21,7 @@ import time
 from datetime import timedelta
 import common_tools as ctools
 import single2multi_frame
+import yappi
 class FileUIDS:
     StudyUID:pydicom.uid.UID
     SeriesUID:pydicom.uid.UID
@@ -64,8 +65,7 @@ def VER(file:str, out_folder:str,log:list, write_meta=True):
 
         toxml_exe_file = "/Users/afshin/Documents/softwares/dcmtk/3.6.5/bin/bin/dcm2xml"
         ctools.RunExe([toxml_exe_file, file, meta_file],
-        os.path.join(out_folder,'err_xml.txt'),meta_file,
-                env_vars={"DYLD_LIBRARY_PATH":"/Users/afshin/Documents/softwares/dcmtk/3.6.5/bin/lib/"})
+        '','',env_vars={"DYLD_LIBRARY_PATH":"/Users/afshin/Documents/softwares/dcmtk/3.6.5/bin/lib/"})
     else:
         meta_file = ''
     # print('{:=^120}'.format("DAVID'S"))
@@ -395,9 +395,12 @@ def FIX(in_folder, out_folder, prefix=''):
     sha = repo.head.object.hexsha
     print(sha)
     time_interval_for_progress_update = .5
-    time_interval_record_data = 30
+    time_interval_record_data = 180
     last_time_point_for_progress_update = 0
     last_time_point_record_data = 0
+    analysis_started = False
+    yappi.set_clock_type("wall") # Use set_clock_type("wall") for wall time
+    
     for i, f in enumerate(file_list,1):
         progress = float(i) / float(len(file_list))
         time_point = time.time()
@@ -416,18 +419,26 @@ def FIX(in_folder, out_folder, prefix=''):
         AddLogToStatistics(f, v_pre, m_pre, log_david_pre, pre_fix_error_statistics,'Error.*')
         AddLogToStatistics(fixed_file_path, v_post, m_post, log_david_post, post_fix_warning_statistics,'Warning.*')
         AddLogToStatistics(f, v_pre, m_pre, log_david_pre, pre_fix_warning_statistics,'Warning.*')
+        if time_elapsed > 3600 and analysis_started==False:
+            yappi.start()
+            analysis_started = True
         if time_elapsed_since_last_show > time_interval_for_progress_update:
             last_time_point_for_progress_update = time_point
             ctools.ShowProgress(progress,time_elapsed, time_left, 80, prefix)
             if i == len(file_list):
                 print('\n')
         if time_elapsed_since_last_record > time_interval_record_data:
+
             last_time_point_record_data = time_point
             WriteFixReportToWorksheet(fix_rep, out_folder + fix_report_file_name+".xlsx")
             WriteVryReportToWorksheet(post_fix_error_statistics, out_folder+ post_fix_error_file_name+".xlsx")
             WriteVryReportToWorksheet(pre_fix_error_statistics, out_folder+ pre_fix_error_file_name+".xlsx")
             WriteVryReportToWorksheet(post_fix_warning_statistics, out_folder+ post_fix_warning_file_name+".xlsx")
             WriteVryReportToWorksheet(pre_fix_warning_statistics, out_folder+ pre_fix_warning_file_name+".xlsx")
+            if analysis_started == True:
+                file = open(os.path.join(out_folder, "PerformanceAnalysis.txt"),'w')
+                yappi.get_func_stats().print_all(file)
+                file.close()
 
             # WriteReportStatisticsToFile(fix_rep, out_folder + fix_report_file_name+".txt")
             # WriteReportStatisticsToFile(post_fix_error_statistics, out_folder+ post_fix_error_file_name+".txt")
