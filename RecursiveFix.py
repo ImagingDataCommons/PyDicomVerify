@@ -63,14 +63,25 @@ def VER(file:str, out_folder:str,log:list, write_meta=True):
     if write_meta:
 
         toxml_exe_file = "/Users/afshin/Documents/softwares/dcmtk/3.6.5/bin/bin/dcm2xml"
+        if not os.path.exists(toxml_exe_file):
+            toxml_exe_file = shutil.which('dcm2xml')
+            if toxml_exe_file is None:
+                print('ERROR: Please install dcm2xml in system path')
+                assert(False)
         ctools.RunExe([toxml_exe_file, file, meta_file],
         os.path.join(out_folder,'err_xml.txt'),meta_file,
-                env_vars={"DYLD_LIBRARY_PATH":"/Users/afshin/Documents/softwares/dcmtk/3.6.5/bin/lib/"})
+            env_vars={"DYLD_LIBRARY_PATH":"/Users/afshin/Documents/softwares/dcmtk/3.6.5/bin/lib/"})
     else:
         meta_file = ''
     # print('{:=^120}'.format("DAVID'S"))
   
     dcm_verify = "/Users/afshin/Documents/softwares/dicom3tools/exe_20200430/dciodvfy"
+    if not os.path.exists(dcm_verify):
+        dcm_verify = shutil.which('dciodvfy')
+        if dcm_verify is None:
+            print("Error: install dciodvfy into system path")
+            assert(False)
+
     vfy_file = os.path.join(out_folder, file_name + "_vfy.txt")
     ctools.RunExe([dcm_verify,'-filename', file], vfy_file, '', errlog=log)
     # print('{:=^120}'.format("MY CODE"))
@@ -462,8 +473,13 @@ def WriteMultiFrameOnlyReportOnWorksheet(sf_statistics, mf_statistics, filename)
 # small = 'TCGA-UCEC/TCGA-D1-A16G/07-11-1992-NMPETCT trunk-82660/1005-TRANSAXIALTORSO 3DFDGIR CTAC-37181/'
 small = ''
 local_dropbox_folder = "/Users/afshin/Dropbox (Partners HealthCare)/"
+
 out_folder = os.path.join(local_dropbox_folder,"fix_output02")
 in_folder = os.path.join(local_dropbox_folder,"IDC-MF_DICOM/data/"+small)
+
+if len(sys.argv)>1:
+    in_folder = sys.argv[1]
+
 if os.path.exists(out_folder):
     shutil.rmtree(out_folder)
 slash = lambda x: x if x.endswith('/') else x+'/'
