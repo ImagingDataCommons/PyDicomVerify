@@ -70,7 +70,7 @@ def VER(file:str, out_folder:str,log:list, write_meta=True):
                 assert(False)
         ctools.RunExe([toxml_exe_file, file, meta_file],
         os.path.join(out_folder,'err_xml.txt'),meta_file,
-        env_vars={"DYLD_LIBRARY_PATH":"/Users/afshin/Documents/softwares/dcmtk/3.6.5/bin/lib/"})
+            env_vars={"DYLD_LIBRARY_PATH":"/Users/afshin/Documents/softwares/dcmtk/3.6.5/bin/lib/"})
     else:
         meta_file = ''
     # print('{:=^120}'.format("DAVID'S"))
@@ -472,7 +472,7 @@ def WriteMultiFrameOnlyReportOnWorksheet(sf_statistics, mf_statistics, filename)
 
 # small = 'TCGA-UCEC/TCGA-D1-A16G/07-11-1992-NMPETCT trunk-82660/1005-TRANSAXIALTORSO 3DFDGIR CTAC-37181/'
 small = ''
-local_dropbox_folder = "    /Users/afshin/Dropbox (Partners HealthCare)/"
+local_dropbox_folder = "/Users/afshin/Dropbox (Partners HealthCare)/"
 
 out_folder = os.path.join(local_dropbox_folder,"fix_output02")
 in_folder = os.path.join(local_dropbox_folder,"IDC-MF_DICOM/data/"+small)
