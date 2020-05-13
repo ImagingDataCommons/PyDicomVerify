@@ -69,9 +69,7 @@ def VER(file:str, out_folder:str,log:list, write_meta=True):
             if toxml_exe_file is None:
                 print('ERROR: Please install dcm2xml in system path')
                 assert(False)
-        ctools.RunExe([toxml_exe_file, file, meta_file],
-
-        os.path.join(out_folder,'err_xml.txt'),meta_file,
+        ctools.RunExe([toxml_exe_file, file, meta_file],'', '',
             env_vars={"DYLD_LIBRARY_PATH":"/Users/afshin/Documents/softwares/dcmtk/3.6.5/bin/lib/"})
 
     else:
