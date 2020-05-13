@@ -70,12 +70,10 @@ def VER(file:str, out_folder:str,log:list, write_meta=True):
                 print('ERROR: Please install dcm2xml in system path')
                 assert(False)
         ctools.RunExe([toxml_exe_file, file, meta_file],
-<<<<<<< HEAD
-        '','',env_vars={"DYLD_LIBRARY_PATH":"/Users/afshin/Documents/softwares/dcmtk/3.6.5/bin/lib/"})
-=======
+
         os.path.join(out_folder,'err_xml.txt'),meta_file,
             env_vars={"DYLD_LIBRARY_PATH":"/Users/afshin/Documents/softwares/dcmtk/3.6.5/bin/lib/"})
->>>>>>> 2f790e9c8fd487726033c38ee31f759456a19c7b
+
     else:
         meta_file = ''
     # print('{:=^120}'.format("DAVID'S"))
@@ -410,8 +408,8 @@ def FIX(in_folder, out_folder, prefix=''):
     print(repo.active_branch)
     sha = repo.head.object.hexsha
     print(sha)
-    time_interval_for_progress_update = .5
-    time_interval_record_data = 180
+    time_interval_for_progress_update = 1
+    time_interval_record_data = 600
     last_time_point_for_progress_update = 0
     last_time_point_record_data = 0
     analysis_started = False
