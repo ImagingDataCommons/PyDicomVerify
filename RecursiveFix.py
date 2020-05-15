@@ -201,7 +201,8 @@ def WriteFilesInfoSheet(wb:xlsxwriter.Workbook,home_sheet, curr_sheet, error_fil
     for header, idx in zip(fs_1, range(0, len(fs_1))):
         worksheet1.write_string(1, idx, header)
     secondary_row = 2
-    Formula = '=HYPERLINK(CONCATENATE("file://",INDIRECT(ADDRESS(2,{},,,"{}")),"{}"),"{}")'
+    Formula = '=HYPERLINK({0},{0})'
+    link = 'CONCATENATE("file://",INDIRECT(ADDRESS(2,{},,,"{}")),"{}")'
     url_format = wb.get_default_url_format()
     for f, fuids in error_files.items():
         (f, f_col) = FileFromDropbox(f)
@@ -213,11 +214,11 @@ def WriteFilesInfoSheet(wb:xlsxwriter.Workbook,home_sheet, curr_sheet, error_fil
         worksheet1.write(secondary_row, fs_1.index('STUDY UID'), fuids.StudyUID)
         worksheet1.write(secondary_row, fs_1.index('SERIES UID'), fuids.SeriesUID)
         worksheet1.write_formula(secondary_row, fs_1.index('META FILE'),
-        Formula.format(m_col, home_sheet ,m[2:],m),url_format)
+        Formula.format(link.format(m_col, home_sheet ,m[2:])),url_format)
         worksheet1.write_formula(secondary_row, fs_1.index('VERIFICATION FILE'),
-        Formula.format(v_col, home_sheet ,v[2:],v),url_format)
+        Formula.format(link.format(v_col, home_sheet ,v[2:])),url_format)
         worksheet1.write_formula(secondary_row, fs_1.index('DCM FILE'),
-        Formula.format(f_col, home_sheet ,f[2:],f),url_format)
+        Formula.format(link.format(f_col, home_sheet ,f[2:])),url_format)
         
         
         secondary_row += 1
@@ -407,7 +408,7 @@ def FIX(in_folder, out_folder, prefix=''):
     sha = repo.head.object.hexsha
     print(sha)
     time_interval_for_progress_update = 1
-    time_interval_record_data = 1200
+    time_interval_record_data = 1800
     last_time_point_for_progress_update = 0
     last_time_point_record_data = 0
     analysis_started = False
@@ -478,7 +479,7 @@ def WriteMultiFrameOnlyReportOnWorksheet(sf_statistics, mf_statistics, filename)
 
         
 
-# small = 'TCGA-UCEC/TCGA-D1-A16G/07-11-1992-NMPETCT trunk-82660/1005-TRANSAXIALTORSO 3DFDGIR CTAC-37181/'
+small = 'TCGA-UCEC/TCGA-D1-A16G/07-11-1992-NMPETCT trunk-82660/1005-TRANSAXIALTORSO 3DFDGIR CTAC-37181/'
 small = ''
 local_dropbox_folder = "/Users/afshin/Dropbox (Partners HealthCare)/"
 
