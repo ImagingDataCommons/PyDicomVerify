@@ -483,6 +483,9 @@ small = 'TCGA-UCEC/TCGA-D1-A16G/07-11-1992-NMPETCT trunk-82660/1005-TRANSAXIALTO
 small = ''
 local_dropbox_folder = "/Users/afshin/Dropbox (Partners HealthCare)/"
 
+if not os.path.exists(local_dropbox_folder):
+    local_dropbox_folder = "."
+
 out_folder = os.path.join(local_dropbox_folder,"fix_output02")
 in_folder = os.path.join(local_dropbox_folder,"IDC-MF_DICOM/data/"+small)
 
