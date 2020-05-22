@@ -55,11 +55,12 @@ def VER(file:str, out_folder:str):
     run_exe([toxml_exe_file, file, os.path.join(out_folder,'xml.xml')],os.path.join(out_folder,'err_xml.txt'),os.path.join(out_folder,'out_xml.txt'),
             {"DYLD_LIBRARY_PATH":"/Users/afshin/Documents/softwares/dcmtk/3.6.5/bin/lib/"})
     print('{:=^120}'.format("DAVID'S"))
-    dcm_verify = "/Users/afshin/Documents/softwares/dicom3tools/dicom3tools_macexe_1.00.snapshot.20191225051647/dciodvfy"
+    dcm_verify = "/Users/afshin/Documents/softwares/dicom3tools/exe_20200430/dciodvfy"
     out = os.path.join(out_folder, "devids.txt")
     run_exe([dcm_verify,'-filename', file], out, '')
     print('{:=^120}'.format("MY CODE"))
     log = verify(file, False, '')
+    print(log)
     write_str_to_text(out, '{:=^120}\n'.format("MY CODE"), True)
     write_str_to_text(out, log, True)
 
@@ -72,7 +73,9 @@ def write_str_to_text(file_name, content, append = False):
     n = text_file.write(content)
     text_file.close()
 out_folder = "/Users/afshin/Documents/work/dicom_xmls"
-dicom_file = '/Users/afshin/Documents/work/dicom_xmls01//dcm/TCGA-UCEC/TCGA-D1-A16D/07-26-1990-MRI PELVIS wow-35736/1-3 plane scout-16221/000001.dcm'
+dicom_file = '/Users/afshin/Dropbox (Partners HealthCare)/IDC-MF_DICOM/out_00/hd/fixed_dicom//TCGA-UCEC/TCGA-D1-A0ZU/08-22-1987-MRI - PELVIS-71997/411-lava arc-03407/MR_00_.dcm'
+if not os.path.exists(out_folder):
+    os.makedirs(out_folder)
 if os.path.isdir(dicom_file):
     files = os.listdir(dicom_file)
     for f in files:

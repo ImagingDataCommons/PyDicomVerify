@@ -313,6 +313,9 @@ def WriteFixReportToWorksheet(seq_, excel_file):
 def FileFromDropbox(f)->str:
     global in_folder
     global out_folder
+    deslash = lambda x: x if not x.endswith('/') else x[:-1]
+    in_folder = deslash(in_folder)
+    out_folder = deslash(out_folder)
     col = -1
     if f.find(in_folder) != -1:
         f=f.replace(in_folder,'./')
@@ -483,7 +486,7 @@ small = 'TCGA-UCEC/TCGA-D1-A16G/07-11-1992-NMPETCT trunk-82660/1005-TRANSAXIALTO
 small = ''
 local_dropbox_folder = "/Users/afshin/Dropbox (Partners HealthCare)/"
 
-out_folder = os.path.join(local_dropbox_folder,"fix_output02")
+out_folder = os.path.join(local_dropbox_folder,"fix_output00")
 in_folder = os.path.join(local_dropbox_folder,"IDC-MF_DICOM/data/"+small)
 
 if len(sys.argv)>1:

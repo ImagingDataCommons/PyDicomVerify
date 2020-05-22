@@ -39,10 +39,10 @@ def tag2str(ttag: BaseTag):
     if Dictionary.dictionary_has_tag(ttag):
         desc = Dictionary.dictionary_description(ttag)
         vr = Dictionary.dictionary_VR(ttag)
-        txt = "->{}:{}".format(desc, vr)
+        txt = "-> \t {}:\t{}".format(vr, desc)
     else:
         txt = ''
-    msg = "(0x{:0>4x}, 0x{:0>4x})".format(ttag.group, ttag.element, txt)
+    msg = "(0x{:0>4x}, 0x{:0>4x}) {}".format(ttag.group, ttag.element, txt)
     return msg
 
 
