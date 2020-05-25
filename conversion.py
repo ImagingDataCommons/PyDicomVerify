@@ -6,6 +6,7 @@ from pydicom.filereader import dcmread
 from pydicom.filewriter import dcmwrite
 from pydicom.errors import InvalidDicomError
 from highdicom.legacy import sop
+import sopclc_h as sop_class_uids
 import os, re
 
 
@@ -52,6 +53,16 @@ class PositionBaseCategoryElement:
         print(Prefix +"========================================================")
         for el in self.DicomDataset:
             print(Prefix +"---> position {}".format(el[1]))
+
+def GetSopClassCategory(ds_list):
+    sop_classes = {}
+    for ds in ds_list:
+        sop_class = ds.SOPClassUID
+        if sop_class in sop_classes:
+            sop_classes[sop_class].append(ds)
+        else:
+            sop_classes[sop_class] = [ds]
+    return sop_classes
 
 
 def GetStudyCategory(ds_list):
@@ -166,14 +177,17 @@ def ConvertByHighDicom(SingleFrameDir, OutputPrefix, log=[]):
         else:
             ModalityCategory[ds.Modality] = [ds]
     n = 0
+    supported_sop_classes = {sop_class_uids.MRImageStorageSOPClassUID: "MR", 
+    sop_class_uids.CTImageStorageSOPClassUID: "CT" ,
+    sop_class_uids.PETImageStorageSOPClassUID: "PET"}
+    SOPClassCategory = GetSopClassCategory(ds)
 
-
-    for ModalityName, ModalityDatasets in ModalityCategory.items():
-        if ModalityName != 'CT' and ModalityName != 'MR' and ModalityName != 'PT':
-            err_message = " MODALITY ERROR: Modality name {} is not supported".format(ModalityName)
+    for SOPClassUID, SOPClassDatasets in SOPClassCategory.items():
+        if SOPClassUID not in supported_sop_classes:
+            err_message = " MODALITY ERROR: Modality name {} is not supported".format(supported_sop_classes[SOPClassUID])
             Output.append((False, err_message))
             continue
-        Modality_Studies = GetStudyCategory(ModalityDatasets)
+        Modality_Studies = GetStudyCategory(SOPClassDatasets)
         for stdy_UID, stdy_ds in Modality_Studies:
             Modality_Series = GetSeriesCategory(stdy_ds)
             for sris_UID, sris_ds in Modality_Series:
@@ -188,8 +202,9 @@ def ConvertByHighDicom(SingleFrameDir, OutputPrefix, log=[]):
                             success = True
                             err_message = "Input folder {} \n \t\tNumber of files = {}". \
                                 format(SingleFrameDir, len(uniform_class.DicomDataset))
-                            Modlity = 'PET' if ModalityName=="PT" else ModalityName
-                            ModalityConvertorClass = getattr(sop, "LegacyConvertedEnhanced" + Modlity + "Image")
+                            
+                            Modality = supported_sop_classes[SOPClassUID]
+                            ModalityConvertorClass = getattr(sop, "LegacyConvertedEnhanced" + Modality + "Image")
                             log.append("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
                             log.extend(re.split('\n',"Distinguish Series ({}):\n\t\tSourceStudyUID:".format(n, stdy_UID) +
                                   "\n\t\tSourceSeriesUID {}\n\t\tPixelSpacing = [{}\t{}\t{}]".
@@ -211,7 +226,7 @@ def ConvertByHighDicom(SingleFrameDir, OutputPrefix, log=[]):
                                                                               instance_number=final_ds[
                                                                                   0].InstanceNumber)
                                 id = "_%02d_.dcm" % n
-                                FileName = os.path.join(OutputPrefix, ModalityName + id)
+                                FileName = os.path.join(OutputPrefix, Modality + id)
                                 folder = os.path.dirname(FileName)
                                 if not os.path.exists(folder):
                                     os.makedirs(folder)
@@ -226,4 +241,4 @@ def ConvertByHighDicom(SingleFrameDir, OutputPrefix, log=[]):
                                 log.append(err_message)
                                 success = False
                             Output.append((success, err_message))
-    return Output
+    return tuple(SOPClassCategory)

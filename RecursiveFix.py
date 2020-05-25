@@ -26,16 +26,20 @@ class FileUIDS:
     StudyUID:pydicom.uid.UID
     SeriesUID:pydicom.uid.UID
     SOPInstanceUID:pydicom.uid.UID
+    SOPClassUID:pydicom.uid.UID
+    SOPClassTxt:str
     VerifincationFilePath:str
     MetaFilePath:str
     def __init__(self, file, vfile, mfile):
         try:
             ds = pydicom.read_file(file, specific_tags=[
-                'SOPInstanceUID', 'StudyInstanceUID', 'SeriesInstanceUID'
+                'SOPInstanceUID','SOPClassUID', 'StudyInstanceUID', 'SeriesInstanceUID'
             ])
             self.SOPInstanceUID = ds['SOPInstanceUID'].value
             self.StudyUID = ds['StudyInstanceUID'].value
             self.SeriesUID = ds['SeriesInstanceUID'].value
+            self.SOPClassUID = ds['SOPClassUID'].value
+            self.SOPClassTxt = single2multi_frame.SopClassUID2Txt(self.SOPClassUID)
             self.VerificationFilePath = vfile
             self.MetaFilePath = mfile
             
@@ -49,11 +53,13 @@ class ErrStatistics:
     SampleTargetFile:str
     ErrorDirs:set
     ErrorFiles:dict
+    SOPClasses:set
     Count:int
     def __init__(self):
         self.SampleTargetFile = ''
         self.ErrorDirs = set()
         self.ErrorFiles = {}
+        self.SOPClasses = set()
         self.Count = 0
 # import condn_cc
 def VER(file:str, out_folder:str,log:list, write_meta=True):
@@ -169,12 +175,15 @@ def AddLogToStatistics(filename:str, vfilename:str, mfilename:str ,log:list, sta
             
             stat[i].ErrorDirs.add(folder)
             stat[i].Count += 1
+            
             if filename not in stat[i].ErrorFiles:
                 stat[i].ErrorFiles[filename] = FileUIDS(filename, vfilename, mfilename)
+                stat[i].SOPClasses.add(stat[i].ErrorFiles[filename].SOPClassTxt)
         else:
             stat_let = ErrStatistics()
             stat_let.ErrorDirs = {folder}
             stat_let.ErrorFiles [filename] = FileUIDS(filename, vfilename, mfilename)
+            stat_let.SOPClasses={(stat_let.ErrorFiles[filename].SOPClassTxt)}
             stat_let.Count = 1
             stat[i] = stat_let
 
@@ -327,7 +336,7 @@ def FileFromDropbox(f)->str:
         
 
 def WriteVryReportToWorksheet(seq_, excel_file):
-    fs = ['N','FREQ(FILES)','FREQ(FOLDER)','ERROR']
+    fs = ['N','FREQ(FILES)','FREQ(FOLDER)','ERROR', 'SOP Classes']
     fs_1 = ["DCM FILE" , 'SOP UID', 'STUDY UID', 'SERIES UID']
     workbook = xlsxwriter.Workbook(excel_file)
     home_sheet = "general"
@@ -347,9 +356,6 @@ def WriteVryReportToWorksheet(seq_, excel_file):
     worksheet.write_string(0, 3, 'LOCAL OUTPUT FOLDER')
     worksheet.write_string(1, 3, out_folder)
     
-
-
-
     row_offset = 2
     for value, idx in zip(fs, range(0, len(fs))):
         worksheet.write_string(row_offset, idx, value)
@@ -363,6 +369,9 @@ def WriteVryReportToWorksheet(seq_, excel_file):
         worksheet.write_number(r, fs.index('FREQ(FILES)'), obj.Count)
         worksheet.write_number(r, fs.index('FREQ(FOLDER)'), len(obj.ErrorDirs))
         worksheet.write_string(r, fs.index('ERROR'), err)
+        for i, sop in enumerate(obj.SOPClasses):
+            worksheet.write_string(r, fs.index('SOP Classes')+i , sop)
+
         WriteFilesInfoSheet(workbook, home_sheet, "{}".format(r-row_offset), obj.ErrorFiles)
 
         # worksheet1 = workbook.add_worksheet(name = "{}".format(r-row_offset))
@@ -404,6 +413,8 @@ def FIX(in_folder, out_folder, prefix=''):
     post_fix_error_statistics = {}
     pre_fix_warning_statistics = {}
     post_fix_warning_statistics = {}
+    if not os.path.exists(in_folder):
+        return (pre_fix_error_statistics,post_fix_error_statistics, pre_fix_warning_statistics, post_fix_warning_statistics)
     file_list = ctools.Find(in_folder,cond_function=ctools.is_dicom,)
     start = time.time()
     repo = git.Repo(search_parent_directories=True)
@@ -482,7 +493,7 @@ def WriteMultiFrameOnlyReportOnWorksheet(sf_statistics, mf_statistics, filename)
 
         
 
-small = 'TCGA-UCEC/TCGA-D1-A16G/07-11-1992-NMPETCT trunk-82660/1005-TRANSAXIALTORSO 3DFDGIR CTAC-37181/'
+small = 'TCGA-UCEC/TCGA-D1-A16G/07-11-1992-NMPETCT trunk-82660/'
 small = ''
 local_dropbox_folder = "/Users/afshin/Dropbox (Partners HealthCare)/"
 

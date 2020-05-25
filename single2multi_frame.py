@@ -3,6 +3,9 @@ import conversion as conv
 import common_tools as ctools
 import time
 import shutil
+import collections
+# import sopclc_h as sop_class_uids
+from sopclc_h import *
 def pixelMed(input_folder:str, output_folder:str, 
 output_file_pattern="{:03d}.dcm",log=[]):
     pixelmed_exe = "/Users/afshin/Documents/work/pixelmedjavadico"\
@@ -16,8 +19,19 @@ output_file_pattern="{:03d}.dcm",log=[]):
         for n, f in enumerate(files,0):
             new_name = os.path.join(os.path.dirname(f), output_file_pattern.format(n))
             os.rename(f, new_name)
+def SopClassUID2Txt(u_id):
+    x = globals()
+    for txt, iidd in x.items():
+        if not txt.endswith('SOPClassUID'):
+            continue
+        if iidd == u_id:
+            return txt
+    return ''
 
 def Convert(in_folder, pixelmed_folder, highdicom_folder, log=[]):
+    supported_sop_class_uids = [MRImageStorageSOPClassUID, 
+    CTImageStorageSOPClassUID, 
+    PETImageStorageSOPClassUID]
     folders = ctools.Find(in_folder, cond_function=ctools.is_dicom, find_parent_folder=True)
     start = time.time()
     last_time_point_for_progress_update = 0
@@ -26,7 +40,8 @@ def Convert(in_folder, pixelmed_folder, highdicom_folder, log=[]):
     in_folder = deslash(in_folder)
     highdicom_folder = deslash(highdicom_folder)
     pixelmed_folder = deslash (pixelmed_folder)
-
+    output = [{},{}]
+    
 
     for i, folder in enumerate(folders,1):
         progress = float(i) / float(len(folders))
@@ -38,15 +53,36 @@ def Convert(in_folder, pixelmed_folder, highdicom_folder, log=[]):
             ctools.ShowProgress(progress,time_elapsed, time_left, 80, 'CONVERSION:')
             if i == len(folders):
                 print("\n")
-        pm_folder = folder.replace(in_folder, pixelmed_folder)
-        if not os.path.exists(pm_folder):
-            os.makedirs(pm_folder)
-        pixelMed(folder, pm_folder, log=log)
         hd_folder = folder.replace(in_folder, highdicom_folder)
         if not os.path.exists(hd_folder):
             os.makedirs(hd_folder)
         try:
-            conv.ConvertByHighDicom(folder, hd_folder, log)
+            SOPClassList= conv.ConvertByHighDicom(folder, hd_folder, log)
         except(BaseException) as err:
             log.append(str(err))
+            SOPClassList = []
+        UidsAreSupported = False
+        log_txt = "SOP Class UIDs:\n"
+        sop_class_txt = []
+        for u_id in SOPClassList:
+            txt = SopClassUID2Txt(u_id)
+            sop_class_txt.append(txt)
+            log_txt += '\t\t{}\n'.format(txt)
+            if u_id in supported_sop_class_uids: 
+                UidsAreSupported = True
+        log.append(log_txt)
+        
+        if UidsAreSupported:
+            pm_folder = folder.replace(in_folder, pixelmed_folder)
+            if not os.path.exists(pm_folder):
+                os.makedirs(pm_folder)
+            pixelMed(folder, pm_folder, log=log)
+            output[1][pm_folder] = (folder, sop_class_txt)
+            output[0][hd_folder] = (folder, sop_class_txt)
+        else:
+            log.append("SOP class uids are not supported")
+    return output
+            
+
+
 
