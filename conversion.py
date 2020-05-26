@@ -165,6 +165,7 @@ def ConvertByHighDicom(SingleFrameDir, OutputPrefix, log=[]):
     Files = ctools.Find(SingleFrameDir,1, ctools.is_dicom)
     Output = []
     err_counter = 1
+    all_ds = []
     for f in Files:
         try:
             ds = dcmread(f);
@@ -172,15 +173,16 @@ def ConvertByHighDicom(SingleFrameDir, OutputPrefix, log=[]):
             err_message = "Input Err #{} type {} -> {}".format(err_counter, type(err), err)
             Output.append((False, err_message))
             continue
-        if ds.Modality in ModalityCategory:
-            ModalityCategory[ds.Modality].append(ds)
-        else:
-            ModalityCategory[ds.Modality] = [ds]
+        all_ds.append(ds)
+        # if ds.Modality in ModalityCategory:
+        #     ModalityCategory[ds.Modality].append(ds)
+        # else:
+        #     ModalityCategory[ds.Modality] = [ds]
     n = 0
     supported_sop_classes = {sop_class_uids.MRImageStorageSOPClassUID: "MR", 
     sop_class_uids.CTImageStorageSOPClassUID: "CT" ,
     sop_class_uids.PETImageStorageSOPClassUID: "PET"}
-    SOPClassCategory = GetSopClassCategory(ds)
+    SOPClassCategory = GetSopClassCategory(all_ds)
 
     for SOPClassUID, SOPClassDatasets in SOPClassCategory.items():
         if SOPClassUID not in supported_sop_classes:
