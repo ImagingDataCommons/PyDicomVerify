@@ -494,7 +494,7 @@ def WriteMultiFrameOnlyReportOnWorksheet(sf_statistics, mf_statistics, filename)
         
 
 small = 'TCGA-UCEC/TCGA-D1-A16G/07-11-1992-NMPETCT trunk-82660/1005-TRANSAXIALTORSO 3DFDGIR CTAC-37181/'
-# small = ''
+small = ''
 local_dropbox_folder = "/Users/afshin/Dropbox (Partners HealthCare)/"
 
 

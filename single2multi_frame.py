@@ -82,7 +82,38 @@ def Convert(in_folder, pixelmed_folder, highdicom_folder, log=[]):
         else:
             log.append("SOP class uids are not supported")
     return output
+
+def ConvertNewVersion(in_folder, out_folder, log=[]):
+    folders = ctools.Find(in_folder, cond_function=ctools.is_dicom, find_parent_folder=True)
+    start = time.time()
+    last_time_point_for_progress_update = 0
+    time_interval_for_progress_update = 1
+    deslash = lambda x: x if not x.endswith('/') else x[:-1]
+    in_folder = deslash(in_folder)
+    out_folder = deslash(out_folder)
+    output = [{},{}]
+    for i, folder in enumerate(folders,1):
+        progress = float(i) / float(len(folders))
+        time_point = time.time()
+        time_elapsed = round(time_point - start)
+        time_left = round(float(len(folders)-i)* time_elapsed/float(i))
+        time_elapsed_since_last_show = time_point - last_time_point_for_progress_update
+        if time_elapsed_since_last_show > time_interval_for_progress_update:
+            ctools.ShowProgress(progress,time_elapsed, time_left, 80, 'CONVERSION:')
+            if i == len(folders):
+                print("\n")
+        hd_folder = folder.replace(in_folder, out_folder)
+        if not os.path.exists(hd_folder):
+            os.makedirs(hd_folder)
+        try:
+            PrntChld = conv.ConvertByHighDicomNew(folder, hd_folder, log)
+        except(BaseException) as err:
+            log.append(str(err))
+            PrntChld = []
+        
+    return PrntChld
             
+
 
 
 

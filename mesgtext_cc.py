@@ -52,8 +52,8 @@ class ErrorType(Enum):
     BadValue = "Bad Value"
     Required = "Required Absent"
     RequiredEmpty = "Required Empty"
-    RequiredVR = "RequiredVR"
-    RequiredVM = "RequiredVM"
+    RequiredVR = "Required VR"
+    RequiredVM = "Required VM"
 def EMsgDC(key_:str)->str:
     try:
         modifier = EMSGDC_Table["Error"]

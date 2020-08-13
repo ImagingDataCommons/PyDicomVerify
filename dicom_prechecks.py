@@ -282,7 +282,7 @@ def subcheckPatientOrientationValuesForQuadruped(ds: Dataset, log: list) -> bool
 def checkUIDs(ds: Dataset, log: list) -> bool:
     for (key, elems) in ds.items():
         if type(elems.value) == UID:
-            unique_id = elems.val
+            unique_id = elems.value
             if len(unique_id) < 2:
                 msg = "{} - {} = \\{}\\".format(
                     EMsgDC("IllegalRootForUID"), key, unique_id)

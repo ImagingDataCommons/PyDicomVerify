@@ -747,22 +747,22 @@ def subfix_ConvertImageData16(ds:Dataset, log:list):
         #     b = v[i*2+1]
         #     c = data[i]
         #     print( "{:x} {:x} {:x}".format(a, b, c))
-def fix_BitsAllocated8ToBitsAllocated16(ds:Dataset, log:list):
-    log_l = len(log)
-    ErrorPattern = "Error - Unrecognized enumerated value <{}> for value 1 of " \
-    "attribute {} BinaryValueDescription_BitsAre{}"
+# def fix_BitsAllocated8ToBitsAllocated16(ds:Dataset, log:list):
+#     log_l = len(log)
+#     ErrorPattern = "Error - Unrecognized enumerated value <{}> for value 1 of " \
+#     "attribute {} BinaryValueDescription_BitsAre{}"
 
-    convert = False
-    for i in range(0, log_l):
-        if log[i] == ErrorPattern.format(8, "Bits Allocated", 16) or\
-                log[i] == ErrorPattern.format(8, "Bits Stored", 16) or\
-                log[i] == ErrorPattern.format(7, "High Bit", 15) :
-            x = "fixed by conversion of PixelData to 16 bits"
-            msg = mesgtext_cc.ErrorInfo(log[i], x)
-            log[i] += msg.getWholeMessage()
-            convert = True
-    if convert:
-        subfix_ConvertImageData16(ds, log)
+#     convert = False
+#     for i in range(0, log_l):
+#         if log[i] == ErrorPattern.format(8, "Bits Allocated", 16) or\
+#                 log[i] == ErrorPattern.format(8, "Bits Stored", 16) or\
+#                 log[i] == ErrorPattern.format(7, "High Bit", 15) :
+#             x = "fixed by conversion of PixelData to 16 bits"
+#             msg = mesgtext_cc.ErrorInfo(log[i], x)
+#             log[i] += msg.getWholeMessage()
+#             convert = True
+#     if convert:
+#         subfix_ConvertImageData16(ds, log)
 def subfix_AddOrChangeAttrib(ds:Dataset, log:list, error_regexp:str,
                              fix_message:str,
                              keyword:str, value)->bool:

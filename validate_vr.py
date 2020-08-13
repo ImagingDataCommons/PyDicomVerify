@@ -6,6 +6,7 @@ from pydicom.dataelem import DataElement
 from pydicom.sequence import Sequence
 from pydicom.multival import MultiValue
 import pydicom.datadict as Dictionary
+from pydicom.valuerep import DT, DA, TM
 from pydicom.uid import UID
 from pydicom.valuerep import *
 from numpy import *
@@ -307,7 +308,7 @@ def validateVR_DA(elem: DataElement,
     else:
         val = [elem.value]
     for i, vn in zip(val, range(0, len(val))):
-        if type(i) == date:
+        if type(i) == DA:
             i = i.original_string
         l = len(i)
         if l == 0:
@@ -415,7 +416,7 @@ def validateVR_DT(elem: DataElement,
         l = len(i)
         if l == 0:
             continue
-        if type(i) == datetime:
+        if type(i) == DT:
             i = i.original_string
         if l >= 2 or l <= 26:
             idx = 0
@@ -882,7 +883,7 @@ def validateVR_TM(elem: DataElement,
         l = len(i)
         if l == 0:
             continue
-        if type(i) == time:
+        if type(i) == DA:
             i = i.original_string
         if l >= 2 or l <= 16:
             idx = 0
