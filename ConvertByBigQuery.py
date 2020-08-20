@@ -22,7 +22,20 @@ import time
 from datetime import timedelta
 import common_tools as ctools
 import conversion as conv
-from BigQueryStuff import create_all_tables, query_string
+from BigQueryStuff import create_all_tables,\
+                          query_string,\
+                          query_string_with_result
+                          
+from DicomStoreStuff import list_dicom_stores,\
+                            create_dicom_store,\
+                            create_dataset,\
+                            import_dicom_instance,\
+                            export_dicom_instance_bigquery,\
+                            exists_dicom_store,\
+                            exists_dataset
+from DicomWebStuff import dicomweb_retrieve_instance,\
+                          _BASE_URL
+
 PROJECT_NAME = 'idc-tcia'
 dataset = 'afshin_test00'
 
@@ -443,7 +456,7 @@ def FixFile(dicom_file, in_folder,
 def BuildQueries(header:str, qs:list, dataset_id: str) -> list:
     out_q = []
     ch_limit = 1024*1024
-    row_limit = 2000
+    row_limit = 1500
     elem_q = ''
     n = 0
     rn = 0
@@ -587,7 +600,18 @@ def FIX_AND_CONVERT(in_folder, out_folder, prefix =''):
         post_fix_warning_statistics
         )
 
-create_all_tables('{}.{}'.format(PROJECT_NAME, dataset), True)
+def CreateDicomStore(project_id: str,
+                     cloud_region: str,
+                     dataset_id: str,
+                     diocm_store_id:str):
+    if not exists_dataset(project_id, cloud_region, dataset_id):
+        create_dataset(project_id, cloud_region, dicom_store_dataset_id)
+    if not exists_dicom_store(project_id, 
+                       cloud_region, dataset_id, 
+                       dicom_store_id):
+        create_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id)
+
+# create_all_tables('{}.{}'.format(PROJECT_NAME, dataset), True)
 small = 'TCGA-UCEC/TCGA-D1-A16G/07-11-1992-NMPETCT trunk-82660/'\
     '1005-TRANSAXIALTORSO 3DFDGIR CTAC-37181/'
 # small = ''
@@ -595,19 +619,71 @@ local_dropbox_folder = "/Users/afshin/Dropbox (Partners HealthCare)/"
 if not os.path.exists(local_dropbox_folder):
     local_dropbox_folder = "."
 out_folder = os.path.join(local_dropbox_folder,"bgq_output")
-in_folder = os.path.join(local_dropbox_folder,"IDC-MF_DICOM/data/"+small)
-if len(sys.argv) > 1:
-    in_folder = sys.argv[1]
-if os.path.exists(out_folder):
-    shutil.rmtree(out_folder)
-slash = lambda x: x if x.endswith('/') else x+'/'
-in_folder = slash(in_folder)
-out_folder = slash(out_folder)
-# ---------------------------------------------------------------
-highdicom_folder = os.path.join(out_folder, "hd/files")
-pixelmed_folder = os.path.join(out_folder, "pm/files")
-inputresult_folder = os.path.join(out_folder,"in")
-input_stats = FIX_AND_CONVERT(in_folder, inputresult_folder, 'INPUT FIX')
+in_folder = os.path.join(local_dropbox_folder,"bgq_input")
+# in_folder = os.path.join(local_dropbox_folder,"IDC-MF_DICOM/data/"+small)
+
+bucket_address = ''
+project_id = 'idc-tcia'
+cloud_region = 'us'
+dicom_store_dataset_id = 'afshin-dataset-test01'
+dicom_store_id = 'dicom-store-test01'
+content_uri = 'afshin-test/t/13-Perfusion-59033/*.dcm'
+bigquery_dataset = 'afshin_test00'
+bigquery_table_id = 'INPUT'
+uri_prefix = '`{}.{}.{}`'.format(project_id, bigquery_dataset, bigquery_table_id )
+
+CreateDicomStore(project_id, cloud_region,
+                 dicom_store_dataset_id, dicom_store_id)
+import_dicom_instance(project_id, cloud_region, dicom_store_dataset_id,
+                      dicom_store_id, content_uri)
+export_dicom_instance_bigquery(project_id, cloud_region, dicom_store_dataset_id,
+                      dicom_store_id, uri_prefix)
+study_query = 'SELECT STUDYINSTANCEUID, SERIESINSTANCEUID, SOPINSTANCEUID FROM `{0}` ORDER BY STUDYINSTANCEUID, SERIESINSTANCEUID, SOPINSTANCEUID'
+uids: dict = {}
+q_dataset_uid = '{}.{}.{}'.format(project_id, bigquery_dataset, bigquery_table_id)
+studies = query_string_with_result(study_query.format(q_dataset_uid))
+for row in studies:
+    stuid = row.STUDYINSTANCEUID
+    seuid = row.SERIESINSTANCEUID
+    sopuid = row.SOPINSTANCEUID
+    if stuid in uids:
+        if seuid in uids[stuid]:
+            uids[stuid][seuid].append(sopuid)
+        else:
+            uids[stuid][seuid] = [sopuid]
+    else:
+        uids[stuid] = {seuid: [sopuid]}
+for study_uid, sub_study in uids.items():
+    for series_uid, instances in sub_study.items():
+        for instance_uid in instances:
+            destination_file = os.path.join(in_folder, '{}/{}/{}.dcm'.format(
+                study_uid, series_uid, instance_uid
+            ))
+            dicomweb_retrieve_instance(_BASE_URL, project_id, cloud_region,
+                                    dicom_store_dataset_id,
+                                    dicom_store_id, 
+                                    study_uid, series_uid, instance_uid,
+                                    destination_file)
+    input_stats = FIX_AND_CONVERT(os.path.join(in_folder,
+        '/{}'.format(study_uid)),
+        out_folder, 'INPUT FIX')
+        
+
+
+# print(uids)
+# d_list = list_dicom_stores('idc-tcia', 'us', 'issues')
+# if len(sys.argv) > 1:
+#     in_folder = sys.argv[1]
+# if os.path.exists(out_folder):
+#     shutil.rmtree(out_folder)
+# slash = lambda x: x if x.endswith('/') else x+'/'
+# in_folder = slash(in_folder)
+# out_folder = slash(out_folder)
+# # ---------------------------------------------------------------
+# highdicom_folder = os.path.join(out_folder, "hd/files")
+# pixelmed_folder = os.path.join(out_folder, "pm/files")
+# inputresult_folder = os.path.join(out_folder,"in")
+# input_stats = FIX_AND_CONVERT(in_folder, inputresult_folder, 'INPUT FIX')
 # fixed_folder = os.path.join(inputresult_folder, 'fixed_dicom/')
 # conversion_log = []
 # single2multi_frame.Convert(fixed_folder, pixelmed_folder, highdicom_folder,

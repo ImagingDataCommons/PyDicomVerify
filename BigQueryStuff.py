@@ -1,6 +1,5 @@
 from google.cloud import bigquery
 from google.oauth2 import service_account
-import googleapiclient.discovery
 
 
 def delete_dataset(dataset_id):
@@ -41,7 +40,17 @@ def query_string (q: str):
     except BaseException as err:
         # print(err)
         print('sth went wrong')
-        
+
+def query_string_with_result(q: str):
+     # print(q)    
+    client = bigquery.Client()
+    try:
+        query_job = client.query(q)
+        return query_job.result()
+    except BaseException as err:
+        print(err)
+        # print('sth went wrong')  
+        return None 
 
 def create_all_tables(dataset_id: str, rmove_if_exists: bool=False):
     if not dataset_exists(dataset_id):
@@ -132,3 +141,5 @@ def create_all_tables(dataset_id: str, rmove_if_exists: bool=False):
         q += s
     query_job = client.query(q.format(dataset_id))
     query_job.result()
+
+
