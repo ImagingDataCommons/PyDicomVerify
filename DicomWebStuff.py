@@ -6,7 +6,8 @@ import os
 def get_session():
     """Creates an authorized Requests Session."""
     credentials = service_account.Credentials.from_service_account_file(
-        filename='/Users/afshin/.config/gcloud/idc-tcia-b9f07d34173d.json',
+        # filename='~/.config/gcloud/service_account_key.json',
+        filename=os.environ["GOOGLE_APPLICATION_CREDENTIALS"],
         scopes=["https://www.googleapis.com/auth/cloud-platform"],
     )
     # Create a requests Session object with the credentials.

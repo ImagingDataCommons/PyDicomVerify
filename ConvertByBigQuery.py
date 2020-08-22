@@ -40,7 +40,25 @@ PROJECT_NAME = 'idc-tcia'
 dataset = 'afshin_test00'
 
 
-    
+class DataInfo:
+
+    def __init__(self, project_id: str,
+                 cloud_region: str,
+                 bucket_name: str,
+                 dicom_store_dataset: str,
+                 dicom_store: str,
+                 bigquery_dataset: str,
+                 bigquery_table: str
+                 ):
+        self.ProjectID = project_id
+        self.CloudRegion = cloud_region
+        self.BucketName = bucket_name
+        self.DicomStoreDataset = dicom_store_dataset
+        self.DicomStore = dicom_store
+        self.BigQueryDataset = bigquery_dataset
+        self.BigQueryTable = bigquery_table
+
+
 class MessageError(Exception):
 
     def __init__(self, original_msg: str):
@@ -360,25 +378,10 @@ class FileUIDS:
             self.SeriesUID = ''
 
 
-def VER(file:str, out_folder:str, log:list, write_meta=True):
+def VER(file:str, log:list):
     file_name = os.path.basename(file)
     if file_name.endswith('.dcm'):
         file_name = file_name[:-4]
-    meta_file = os.path.join(out_folder, file_name +'.xml')
-    if write_meta:
-        toxml_exe_file =\
-        "/Users/afshin/Documents/softwares/dcmtk/3.6.5/bin/bin/dcm2xml"
-        if not os.path.exists(toxml_exe_file):
-            toxml_exe_file = shutil.which('dcm2xml')
-            if toxml_exe_file is None:
-                print('ERROR: Please install dcm2xml in system path')
-                assert(False)
-        ctools.RunExe([toxml_exe_file, file, meta_file],'', '',
-            env_vars = {"DYLD_LIBRARY_PATH":"/Users/afshin/"
-            "Documents/softwares/dcmtk/3.6.5/bin/lib/"})
-    else:
-        meta_file = ''
-    # print('{:=^120}'.format("DAVID'S"))
     dcm_verify = "/Users/afshin/Documents/softwares"\
         "/dicom3tools/exe_20200430/dciodvfy"
     if not os.path.exists(dcm_verify):
@@ -386,45 +389,28 @@ def VER(file:str, out_folder:str, log:list, write_meta=True):
         if dcm_verify is None:
             print("Error: install dciodvfy into system path")
             assert(False)
-    vfy_file = os.path.join(out_folder, file_name + "_vfy.txt")
-    ctools.RunExe([dcm_verify,'-filename', file], vfy_file, '', errlog = log)
-    # print('{:=^120}'.format("MY CODE"))
+    ctools.RunExe([dcm_verify,'-filename', file], '', '', errlog = log)
     my_code_output = verify(file, False, '')
-    ctools.WriteStringToFile(vfy_file, '{:=^120}\n'.format("MY CODE"), True)
-    ctools.WriteStringToFile(vfy_file, my_code_output, True)
-    return(vfy_file, meta_file)
+    
 # == == == == == == == == == == == == == == == == == == == == == == == == == 
 
 
-def FixFile(dicom_file, in_folder,
-            fixed_dcm_folder, fixed_report_folder,
-            pre_vfy_folder, post_vfy_folder,
+def FixFile(dicom_file, in_folder, 
+            fixed_dcm_folder,
             log_fix, log_david_pre, log_david_post):
     # ------------------------------------------------------------------
     deslash = lambda x: x if not x.endswith('/') else x[:-1]
     parent = os.path.dirname(dicom_file)
     file_name = os.path.basename(dicom_file)
-    fixed_dcm_folder = deslash(fixed_dcm_folder)
-    fixed_report_folder = deslash(fixed_report_folder)
-    pre_vfy_folder = deslash(pre_vfy_folder)
-    post_vfy_folder = deslash(post_vfy_folder)
+
     in_folder = deslash(in_folder)
     # ------------------------------------------------------------------
     f_dcm_folder = parent.replace(in_folder, fixed_dcm_folder)
-    f_rpt_folder = parent.replace(in_folder, fixed_report_folder)
-    f_pre_vfy_folder = parent.replace(in_folder, pre_vfy_folder)
-    f_post_vfy_folder = parent.replace(in_folder, post_vfy_folder)
     if not os.path.exists(f_dcm_folder):
         os.makedirs(f_dcm_folder)
-    if not os.path.exists(f_rpt_folder):
-        os.makedirs(f_rpt_folder)
-    if not os.path.exists(f_pre_vfy_folder):
-        os.makedirs(f_pre_vfy_folder)
-    if not os.path.exists(f_post_vfy_folder):
-        os.makedirs(f_post_vfy_folder)
     ds = read_file(dicom_file)
     log_mine = []
-    (v_file_pre, m_file_pre) = VER(dicom_file, f_pre_vfy_folder, log_david_pre)
+    (v_file_pre, m_file_pre) = VER(dicom_file, log_david_pre)
     fix_frequent_errors.priorfix_RemoveIllegalTags(ds,'All', log_fix)
     #(1)general fixes:
     for ffix in dir(fix_frequent_errors):
@@ -443,15 +429,8 @@ def FixFile(dicom_file, in_folder,
             if callable(item):
                 item(ds, log_fix)
     fix_report = PrintLog(log_fix)
-    fixed_file = os.path.join(f_dcm_folder, file_name)
-    write_file(fixed_file, ds)
-    ctools.WriteStringToFile(os.path.join(f_rpt_folder,
-                             file_name +'_fix_report.txt'),
-                             fix_report)
     (v_file_post, m_file_post) = VER(fixed_file,
-                                     f_post_vfy_folder,
                                      log_david_post)
-    return(v_file_pre, m_file_pre, v_file_post, m_file_post)
 
 def BuildQueries(header:str, qs:list, dataset_id: str) -> list:
     out_q = []
@@ -479,27 +458,14 @@ def BuildQueries(header:str, qs:list, dataset_id: str) -> list:
 def FIX_AND_CONVERT(in_folder, out_folder, prefix =''):
     dcm_folder = os.path.join(out_folder, "fixed_dicom/")
     mfdcm_folder = os.path.join(out_folder, "multiframe/")
-    mfvfy_folder = os.path.join(out_folder, "mf_vfy/")
-    fix_folder = os.path.join(out_folder, "fix_report/")
-    pre_vfy_folder = os.path.join(out_folder, "pre-fix_vfy_report/")
-    post_vfy_folder = os.path.join(out_folder, "post-fix_vfy_report/")
-    fix_report_file_name = '/TCIA_fix_report_total'
-    pre_fix_error_file_name = '/TCIA_pre-fix_verification_error'
-    post_fix_error_file_name = '/TCIA_post-fix_verification_error'
-    pre_fix_warning_file_name = '/TCIA_pre-fix_verification_warning'
-    post_fix_warning_file_name = '/TCIA_post-fix_verification_warning'
+    
     input_table = 'InputTable'
     fixed_table = 'FixedTable'
     mf_table = 'MultiFrameTable'
     dataset_id = '{}.{}'.format(PROJECT_NAME, dataset)
-    fix_rep = {}
-    pre_fix_error_statistics = {}
-    post_fix_error_statistics = {}
-    pre_fix_warning_statistics = {}
-    post_fix_warning_statistics = {}
+    print(in_folder)
     if not os.path.exists(in_folder):
-        return(pre_fix_error_statistics, post_fix_error_statistics,
-            pre_fix_warning_statistics, post_fix_warning_statistics)
+        return
     folder_list = ctools.Find(in_folder, cond_function=ctools.is_dicom, find_parent_folder=True)
     start = time.time()
     repo = git.Repo(search_parent_directories=True)
@@ -531,32 +497,21 @@ def FIX_AND_CONVERT(in_folder, out_folder, prefix =''):
             log_fixed = []
             (v_pre, m_pre, v_post, m_post) = FixFile(
                 f, in_folder, dcm_folder,
-                fix_folder, pre_vfy_folder,
-                post_vfy_folder, log_fixed,
+                fix_folder, log_fixed,
                 log_david_pre, log_david_post)
             fixed_file_path = f.replace(in_folder, dcm_folder)
             fixes_all = FixCollection(log_fixed, f)
             q_fix_string.extend(fixes_all.GetQuery())
-                
-            #query_string(fixes_all.GetQuery().format(dataset_id))
             pre_issues = IssueCollection(log_david_pre[1:], input_table, f)
             q_issue_string.extend(pre_issues.GetQuery())
-            #query_string(pre_issues.GetQuery().format(dataset_id))
             post_issues = IssueCollection(log_david_post[1:], fixed_table, 
                 f.replace(in_folder, dcm_folder))
             q_issue_string.extend(post_issues.GetQuery())
-            #query_string(post_issues.GetQuery().format(dataset_id))
             fixed_input_ref = conv.ParentChildDicoms(pre_issues.SOPInstanceUID,
                                    post_issues.SOPInstanceUID,
                                    f.replace(in_folder, dcm_folder))
             q_origin_string.extend(fixed_input_ref.GetQuery(input_table, fixed_table))
-            #query_string(
-                # fixed_input_ref.GetQuery(input_table, fixed_table).format(
-                #     dataset_id
-                # )
-            # )
         #  -------------------------------------------------------------
-        
         mf_log:list = []
         single_fixed_folder = folder.replace(in_folder, dcm_folder)
         mf_folder = folder.replace(in_folder, mfdcm_folder)
@@ -573,6 +528,7 @@ def FIX_AND_CONVERT(in_folder, out_folder, prefix =''):
                 # dataset_id))
             q_origin_string.extend(pr_ch.GetQuery(input_table, fixed_table))
             multiframe_log = []
+
             (v_file_post, m_file_post) = VER(pr_ch.child_dicom_file,
                                         mfvfy_folder,
                                         multiframe_log)
@@ -605,7 +561,7 @@ def CreateDicomStore(project_id: str,
                      dataset_id: str,
                      diocm_store_id:str):
     if not exists_dataset(project_id, cloud_region, dataset_id):
-        create_dataset(project_id, cloud_region, dicom_store_dataset_id)
+        create_dataset(project_id, cloud_region, dataset_id)
     if not exists_dicom_store(project_id, 
                        cloud_region, dataset_id, 
                        dicom_store_id):
@@ -615,58 +571,114 @@ def CreateDicomStore(project_id: str,
 small = 'TCGA-UCEC/TCGA-D1-A16G/07-11-1992-NMPETCT trunk-82660/'\
     '1005-TRANSAXIALTORSO 3DFDGIR CTAC-37181/'
 # small = ''
-local_dropbox_folder = "/Users/afshin/Dropbox (Partners HealthCare)/"
-if not os.path.exists(local_dropbox_folder):
-    local_dropbox_folder = "."
-out_folder = os.path.join(local_dropbox_folder,"bgq_output")
-in_folder = os.path.join(local_dropbox_folder,"bgq_input")
-# in_folder = os.path.join(local_dropbox_folder,"IDC-MF_DICOM/data/"+small)
+home = os.path.expanduser("~")
+local_tmp_folder = os.path.join(home,"Tmp")
+# if os.path.exists(local_tmp_folder):
+#     shutil.rmtree(local_tmp_folder)
+# os.makedirs(local_tmp_folder)
 
-bucket_address = ''
-project_id = 'idc-tcia'
-cloud_region = 'us'
-dicom_store_dataset_id = 'afshin-dataset-test01'
-dicom_store_id = 'dicom-store-test01'
-content_uri = 'afshin-test/t/13-Perfusion-59033/*.dcm'
-bigquery_dataset = 'afshin_test00'
-bigquery_table_id = 'INPUT'
-uri_prefix = '`{}.{}.{}`'.format(project_id, bigquery_dataset, bigquery_table_id )
+out_folder = os.path.join(local_tmp_folder,"bgq_output")
+in_folder = os.path.join(local_tmp_folder,"bgq_input")
+# in_folder = os.path.join(local_tmp_folder,"IDC-MF_DICOM/data/"+small)
 
-CreateDicomStore(project_id, cloud_region,
-                 dicom_store_dataset_id, dicom_store_id)
-import_dicom_instance(project_id, cloud_region, dicom_store_dataset_id,
-                      dicom_store_id, content_uri)
-export_dicom_instance_bigquery(project_id, cloud_region, dicom_store_dataset_id,
-                      dicom_store_id, uri_prefix)
-study_query = 'SELECT STUDYINSTANCEUID, SERIESINSTANCEUID, SOPINSTANCEUID FROM `{0}` ORDER BY STUDYINSTANCEUID, SERIESINSTANCEUID, SOPINSTANCEUID'
-uids: dict = {}
-q_dataset_uid = '{}.{}.{}'.format(project_id, bigquery_dataset, bigquery_table_id)
-studies = query_string_with_result(study_query.format(q_dataset_uid))
-for row in studies:
-    stuid = row.STUDYINSTANCEUID
-    seuid = row.SERIESINSTANCEUID
-    sopuid = row.SOPINSTANCEUID
-    if stuid in uids:
-        if seuid in uids[stuid]:
-            uids[stuid][seuid].append(sopuid)
-        else:
-            uids[stuid][seuid] = [sopuid]
-    else:
-        uids[stuid] = {seuid: [sopuid]}
-for study_uid, sub_study in uids.items():
-    for series_uid, instances in sub_study.items():
-        for instance_uid in instances:
-            destination_file = os.path.join(in_folder, '{}/{}/{}.dcm'.format(
-                study_uid, series_uid, instance_uid
-            ))
-            dicomweb_retrieve_instance(_BASE_URL, project_id, cloud_region,
-                                    dicom_store_dataset_id,
-                                    dicom_store_id, 
-                                    study_uid, series_uid, instance_uid,
-                                    destination_file)
-    input_stats = FIX_AND_CONVERT(os.path.join(in_folder,
-        '/{}'.format(study_uid)),
-        out_folder, 'INPUT FIX')
+# bucket_address = ''
+# project_id = 'idc-tcia'
+# cloud_region = 'us'
+# dicom_store_dataset_id = 'afshin-dataset-test01'
+# dicom_store_id = 'dicom-store-test01'
+# content_uri = 'afshin-test/t/13-Perfusion-59033/*.dcm'
+# bigquery_dataset = 'afshin_test00'
+# bigquery_table_id = 'INPUT'
+# uri_prefix = '`{}.{}.{}`'.format(project_id, bigquery_dataset, bigquery_table_id )
+# in_dicoms = DataInfo(
+#     'idc-dev-etl',
+#     'us-central1',
+#     '',
+#     'idc_tcia_mvp_wave0',
+#     'idc_tcia',
+#     'idc_tcia_mvp_wave0',
+#     'idc_tcia_dicom_metadata'
+#     )
+# fx_dicoms = DataInfo(
+#     'idc-tcia',
+#     'us-central1',
+#     '',
+#     'afshin-results' + in_dicoms.DicomStoreDataset,
+#     'FIXED',
+#     'afshin-results' + in_dicoms.DicomStoreDataset,
+#     'FIXED'
+#     )
+# mf_dicoms = DataInfo(
+#     'idc-tcia',
+#     'us-central1',
+#     '',
+#     'afshin-results' + in_dicoms.DicomStoreDataset,
+#     'MULTIFRAME',
+#     'afshin-results' + in_dicoms.DicomStoreDataset,
+#     'MULTIFRAME'
+#     )
+# CreateDicomStore(
+#     fx_dicoms.ProjectID,
+#     fx_dicoms.CloudRegion,
+#     fx_dicoms.DicomStoreDataset,
+#     fx_dicoms.DicomStore)
+# CreateDicomStore(
+#     mf_dicoms.ProjectID,
+#     mf_dicoms.CloudRegion,
+#     mf_dicoms.DicomStoreDataset,
+#     mf_dicoms.DicomStore)
+
+# # import_dicom_instance(project_id, cloud_region, dicom_store_dataset_id,
+# #                       dicom_store_id, content_uri)
+# # export_dicom_instance_bigquery(project_id, cloud_region, dicom_store_dataset_id,
+# #                       dicom_store_id, uri_prefix)
+# study_query = 'SELECT STUDYINSTANCEUID, SERIESINSTANCEUID, SOPINSTANCEUID FROM `{0}` ORDER BY STUDYINSTANCEUID, SERIESINSTANCEUID, SOPINSTANCEUID'
+# uids: dict = {}
+# q_dataset_uid = '{}.{}.{}'.format(
+#     in_dicoms.ProjectID,
+#     in_dicoms.BigQueryDataset,
+#     in_dicoms.BigQueryTable
+#     )
+# max_number_of_instances = 2
+# max_number_of_series = 2
+# max_number_of_studies = 2
+# studies = query_string_with_result(study_query.format(q_dataset_uid))
+# if studies is not None:
+#     for row in studies:
+#         stuid = row.STUDYINSTANCEUID
+#         seuid = row.SERIESINSTANCEUID
+#         sopuid = row.SOPINSTANCEUID
+#         if stuid in uids:
+#             if seuid in uids[stuid]:
+#                 uids[stuid][seuid].append(sopuid)
+#             else:
+#                 uids[stuid][seuid] = [sopuid]
+#         else:
+#             uids[stuid] = {seuid: [sopuid]}
+#     for number_of_studies, (study_uid, sub_study) in enumerate(uids.items()):
+#         if number_of_studies > max_number_of_studies:
+#             break
+#         for number_of_series, (series_uid, instances) in enumerate(sub_study.items()):
+#             if number_of_series > max_number_of_series:
+#                 break
+#             number_of_instances = 0
+#             for instance_uid in instances:
+#                 destination_file = os.path.join(
+#                     in_folder, '{}/{}/{}.dcm'.format(
+#                         study_uid, series_uid, instance_uid
+#                     )
+#                 )
+#                 dicomweb_retrieve_instance(
+#                     _BASE_URL, in_dicoms.ProjectID, in_dicoms.CloudRegion,
+#                     in_dicoms.DicomStoreDataset, in_dicoms.DicomStore,
+#                     study_uid, series_uid, instance_uid, destination_file)
+#                 number_of_instances += 1
+#                 if number_of_instances > max_number_of_instances:
+#                     break
+study_uids = os.listdir(in_folder)
+for study_uid in study_uids:
+    input_stats = FIX_AND_CONVERT(os.path.join(
+        in_folder, '/{}'.format(study_uid)), out_folder, 'INPUT FIX')
         
 
 
