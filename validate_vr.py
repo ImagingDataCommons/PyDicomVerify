@@ -702,7 +702,7 @@ def validateVR_PN(elem: DataElement,
     else:
         val = [elem.value]
     for i, vn in zip(val, range(0, len(val))):
-        if type(i) == PersonName or type(i) == PersonName3 or \
+        if type(i) == PersonName or type(i) == pydicom.PersonName3 or \
                 type(i) == PersonNameUnicode:
             i = i.original_string
             decoded = pydicom.charset.decode_string(i, SpecificCharacterSetInfo,
