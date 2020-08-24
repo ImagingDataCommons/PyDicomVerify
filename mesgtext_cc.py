@@ -11,17 +11,16 @@ class ErrorInfo:
     fix:str
     
     def getWholeMessage(self)->str:
-        fixmsg = "{} :->: {} <function {} from file:{}> <function {} from file:{}>"
+        fixmsg = "{} :->: {} <function {} from file:{} line_number: {}> <function {} from file:{} line_number: {}>"
         function = sys._getframe(1).f_code.co_name
         filename = sys._getframe(1).f_code.co_filename
+        line = sys._getframe(1).f_code.co_firstlineno
         function1 = sys._getframe(2).f_code.co_name
         filename1 = sys._getframe(2).f_code.co_filename
+        line1 = sys._getframe(2).f_code.co_firstlineno
         fixmsg = fixmsg.format(self.msg,self.fix,function,
-         filename, function1, filename1)
+         filename, line, function1, filename1, line1)
         return fixmsg
-
-
-
 
 
 class ErrorType(Enum):

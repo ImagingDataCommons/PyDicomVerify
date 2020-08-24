@@ -124,16 +124,27 @@ def patch_dicom_store(
     )
     return response
 
+
 def export_dicom_instance_bigquery(
-    project_id, cloud_region, dataset_id, dicom_store_id, uri_prefix
+    dicomstore_project_id,
+    dicomstore_cloud_region,
+    dicomstore_dataset_id,
+    dicom_store_id,
+    bigquery_project_id,
+    bigquery_dataset_id,
+    bigquery_table_id
 ):
-    """Export data to a Google Cloud Storage bucket by copying
-    it from the DICOM store."""
     client = get_client()
     dicom_store_parent = "projects/{}/locations/{}/datasets/{}".format(
-        project_id, cloud_region, dataset_id
+        dicomstore_project_id, dicomstore_cloud_region, dicomstore_dataset_id
     )
-    dicom_store_name = "{}/dicomStores/{}".format(dicom_store_parent, dicom_store_id)
+    dicom_store_name = "{}/dicomStores/{}".format(
+        dicom_store_parent,
+        dicom_store_id)
+    uri_prefix = '{}.{}.{}'.format(
+        dicomstore_project_id,
+        bigquery_dataset_id,
+        bigquery_table_id)
     body = {"bigqueryDestination": {"tableUri": "bq://{}".format(uri_prefix)}}
     request = (
         client.projects()
@@ -143,7 +154,7 @@ def export_dicom_instance_bigquery(
         .export(name=dicom_store_name, body=body)
     )
     response = request.execute()
-    print("Exported DICOM instances to bucket: bq://{}".format(uri_prefix))
+    # print("Exported DICOM instances to bigquery: bq://{}".format(uri_prefix))
     return response
 
 def export_dicom_instance(

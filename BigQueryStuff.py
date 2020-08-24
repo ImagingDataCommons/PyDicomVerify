@@ -9,14 +9,12 @@ def delete_dataset(dataset_id):
     )  
                     
 
-def create_dataset(dataset_id):
-    
-    
+def create_dataset(dataset_id, region: str):
+    client = bigquery.Client()
     dataset = bigquery.Dataset(dataset_id)
-    dataset.location = "US"
+    dataset.location = region
     dataset = client.create_dataset(dataset)  # Make an API request.
     print("Created dataset {}.{}".format(client.project, dataset.dataset_id))
-    # [END bigquery_create_dataset]
 
 
 def dataset_exists(dataset_id) -> bool:
@@ -52,9 +50,10 @@ def query_string_with_result(q: str):
         # print('sth went wrong')  
         return None 
 
-def create_all_tables(dataset_id: str, rmove_if_exists: bool=False):
+def create_all_tables(
+    dataset_id: str, dataset_region: str, rmove_if_exists: bool=False):
     if not dataset_exists(dataset_id):
-        create_dataset(dataset_id)
+        create_dataset(dataset_id, dataset_region)
     schema_originated_from = [
         bigquery.SchemaField("PARENT_TABLE", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("PARENT_SOP_INSATANCE_UID", "STRING", mode="REQUIRED"),
@@ -83,13 +82,15 @@ def create_all_tables(dataset_id: str, rmove_if_exists: bool=False):
         bigquery.SchemaField("KEYWORD", "STRING", mode="NULLABLE"),
         bigquery.SchemaField("TAG", "INT64", mode="NULLABLE"),
         bigquery.SchemaField("FIX_FUNCTION1", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("FIX_FUNCTION1_LINK", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("FIX_FUNCTION2", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("FIX_FUNCTION2_LINK", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("MESSAGE", "STRING", mode="REQUIRED"),
     ]
 
-
-    tables: dict = {'ORIGINATED_FROM': schema_originated_from,
-        'FIX': schema_fix,
+    tables: dict = {
+        'ORIGINATED_FROM': schema_originated_from,
+        'FIX_REPORT': schema_fix,
         'ISSUE': schema_issue,
     }
     client = bigquery.Client()

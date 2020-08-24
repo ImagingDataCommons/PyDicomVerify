@@ -30,8 +30,8 @@ def dicomweb_store_instance(
     headers = {"Content-Type": content_type}
     response = session.post(dicomweb_path, data=dcm_content, headers=headers)
     response.raise_for_status()
-    print("Stored DICOM instance:")
-    print(response.text)
+    # print("Stored DICOM instance:{}".format(dcm_file))
+    # print(response.text)
     return response
 
 def dicomweb_search_instance(
@@ -125,11 +125,11 @@ def dicomweb_retrieve_instance(
     response.raise_for_status()
     with open(destination_file_name, "wb") as f:
         f.write(response.content)
-        print(
-            "Retrieved DICOM instance and saved to {} in current directory".format(
-                destination_file_name
-            )
-        )
+        # print(
+        #     "Retrieved DICOM instance and saved to {} in current directory".format(
+        #         destination_file_name
+        #     )
+        # )
     return response
 
 def dicomweb_retrieve_rendered(
