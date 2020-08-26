@@ -672,9 +672,9 @@ mf_dicoms = DataInfo(
             'MULTIFRAME')
     )
 
-# create_all_tables('{}.{}'.format(
-#     fx_dicoms.BigQuery.ProjectID, fx_dicoms.BigQuery.Dataset),
-#     fx_dicoms.BigQuery.CloudRegion, True)
+create_all_tables('{}.{}'.format(
+    fx_dicoms.BigQuery.ProjectID, fx_dicoms.BigQuery.Dataset),
+    fx_dicoms.BigQuery.CloudRegion, True)
 CreateDicomStore(
     fx_dicoms.DicomStore.ProjectID,
     fx_dicoms.DicomStore.CloudRegion,
