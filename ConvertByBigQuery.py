@@ -694,7 +694,7 @@ q_dataset_uid = '{}.{}.{}'.format(
     in_dicoms.BigQuery.DataObject
     )
 max_number = 2^63 - 1
-max_number = 3
+# max_number = 3
 max_number_of_instances = max_number
 max_number_of_series = max_number
 max_number_of_studies = max_number
