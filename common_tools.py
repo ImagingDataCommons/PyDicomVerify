@@ -113,7 +113,8 @@ def is_dicom(filename: str) -> bool:
         except pydicom.errors.InvalidDicomError:
             is_dicom = False
     return is_dicom
-def ShowProgress(progress, time_elapsed=None, time_left=None, length=120,prefix='' ):
+def ShowProgress(progress, time_elapsed=None, time_left=None,
+                 length=120,prefix='' , Print: bool=True) -> str:
     t_e = ''
     if time_elapsed is not None:
         t_e = 'time elapsed: {}'.format(str(timedelta(seconds = time_elapsed)))
@@ -124,8 +125,9 @@ def ShowProgress(progress, time_elapsed=None, time_left=None, length=120,prefix=
     prog_str = '{:.2%}'.format(progress)
     ll = int(progress*length)
     rr = length - ll
-    form = '{{:|>{}}}{{:.<{}}}'.format(ll,rr)
+    form = '{{:|>{}}}{{:.<{}}}'.format(ll, rr)
     progress_bar = form.format(prog_str, '')
-    
-    print('{} {} ({}) {}        '.
-    format(prefix,t_e, progress_bar, t_l),end='\r', flush=True)
+    out_string = '{} {} ({}) {}        '.format(prefix,t_e, progress_bar, t_l)
+    if Print:
+        print(out_string, end='\r', flush=True)
+    return out_string

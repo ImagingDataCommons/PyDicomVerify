@@ -1,0 +1,39 @@
+{
+    "version": 1,
+    "formatters": {
+        "date_time": {
+            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        }
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "level": "DEBUG",
+            "formatter": "date_time",
+            "stream": "ext://sys.stdout"
+        },
+        "file": {
+            "class": "logging.FileHandler",
+            "formatter": "date_time",
+            "mode": "w",
+            "filename": "./Logs/log[26-08-2020][16-03-21].log"
+        }
+    },
+    "loggers": {
+        "simple": {
+            "level": "INFO",
+            "handlers": [
+                "console",
+                "file"
+            ],
+            "propagate": "no"
+        }
+    },
+    "root": {
+        "level": "DEBUG",
+        "handlers": [
+            "file"
+        ],
+        "propagate": "no"
+    }
+}

@@ -22,6 +22,8 @@ import time
 from datetime import timedelta
 import common_tools as ctools
 import conversion as conv
+import json
+from datetime import datetime
 from BigQueryStuff import create_all_tables,\
                           query_string,\
                           query_string_with_result
@@ -36,6 +38,23 @@ from DicomStoreStuff import list_dicom_stores,\
 from DicomWebStuff import dicomweb_retrieve_instance,\
                           dicomweb_store_instance,\
                           _BASE_URL
+
+# Logger setup --------------------------------------------------------
+import logging
+import logging.config
+with open('log_config.json') as json_file:
+    d = json.load(json_file)
+dt_string = datetime.now().strftime("[%d-%m-%Y][%H-%M-%S]")
+file_name = './Logs/log{}.log'.format(dt_string)
+folder = os.path.dirname(file_name)
+if not os.path.exists(folder):
+    os.makedirs(folder)
+d["handlers"]['file']['filename'] = file_name
+with open('log_config.json', 'w') as json_file:
+    json.dump(d, json_file, indent=4)
+logging.config.dictConfig(d)
+logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.CRITICAL)
+# -----------------------------------------------------------------------
 
 
 class Datalet:
@@ -463,6 +482,8 @@ def FIX_AND_CONVERT(in_folder, out_folder,
                     in_gcloud_info: DataInfo,
                     fx_gcloud_info: DataInfo,
                     mf_gcloud_info: DataInfo, prefix=''):
+    logger = logging.getLogger(__name__)
+    logger.info('\tStarted Fix and Convert for study {}'.format(in_folder))
     dcm_folder = os.path.join(out_folder, "fixed_dicom/")
     mfdcm_folder = os.path.join(out_folder, "multiframe/")
     in_table = '{}.{}.{}'.format(
@@ -477,20 +498,33 @@ def FIX_AND_CONVERT(in_folder, out_folder,
         mf_gcloud_info.BigQuery.ProjectID,
         mf_gcloud_info.BigQuery.Dataset,
         mf_gcloud_info.BigQuery.DataObject)
-    print(in_folder)
     if not os.path.exists(in_folder):
         return
     folder_list = ctools.Find(in_folder, cond_function=ctools.is_dicom, find_parent_folder=True)
+    whole_instance_list = ctools.Find(in_folder, cond_function=ctools.is_dicom, find_parent_folder=False)
     repo = git.Repo(search_parent_directories=True)
-    print(repo.active_branch)
     sha = repo.head.object.hexsha
-    print(sha)
     q_fix_string = []
     q_issue_string = []
     q_origin_string = []
+    time_interval_for_progress_update = 1
+    last_time_point_for_progress_update = 0
+    start = time.time()
+    number_of_instances = len(whole_instance_list)
+    current_instance_number = 0
     for i, folder in enumerate(folder_list, 1):
-        in_files = ctools.Find(in_folder, 1, ctools.is_dicom)
-        for f in in_files:
+        in_files = ctools.Find(folder, 1, ctools.is_dicom)
+        logger.info('\tStart fixing series({}) out of {}'.format(
+            i, len(folder_list)))
+        for j, f in enumerate(in_files, 1):
+            current_instance_number += 1
+            progress = float(current_instance_number) / float(number_of_instances)
+            time_point = time.time()
+            time_elapsed = round(time_point - start)
+            time_left = round(number_of_instances - current_instance_number) *\
+                time_elapsed/float(current_instance_number)
+            time_elapsed_since_last_show = time_point - \
+                last_time_point_for_progress_update
             log_david_post = []
             log_david_pre = []
             log_fixed = []
@@ -516,7 +550,16 @@ def FIX_AND_CONVERT(in_folder, out_folder,
             fixed_input_ref = conv.ParentChildDicoms(pre_issues.SOPInstanceUID,
                                    post_issues.SOPInstanceUID,
                                    f.replace(in_folder, dcm_folder))
-            q_origin_string.extend(fixed_input_ref.GetQuery(in_table, fx_table))
+            q_origin_string.extend(fixed_input_ref.GetQuery(in_table, fx_table))    
+            if time_elapsed_since_last_show > time_interval_for_progress_update or True:
+                last_time_point_for_progress_update = time_point
+                header = '\t\t{}/{})Instance {} was fixed successfully'.format(
+                j, len(in_files), os.path.basename(f))
+                progress_string = ctools.ShowProgress(
+                progress, time_elapsed, time_left,60, header, False)
+                logger.info(progress_string)
+        logger.info('\tEnd fixing series({}) out of {}'.format(
+            i, len(folder_list)))
         #  -------------------------------------------------------------
         mf_log:list = []
         single_fixed_folder = folder.replace(in_folder, dcm_folder)
@@ -526,6 +569,10 @@ def FIX_AND_CONVERT(in_folder, out_folder,
         # try:
         PrntChld = conv.ConvertByHighDicomNew(
             single_fixed_folder, mf_folder, mf_log)
+        logger.info(
+            '\tSeries {}/{} was successfully converted into {} multiframe files'.
+            format(i, len(folder_list), len(PrntChld))
+            )
         # except(BaseException) as err:
         #     mf_log.append(str(err))
         #     PrntChld = []
@@ -566,6 +613,7 @@ def FIX_AND_CONVERT(in_folder, out_folder,
         file_name,
         ctools.StrList2Txt(
             BuildQueries(origin_header, q_origin_string, dataset_id)), True)
+    logger.info('\tFinished Fix and Convert for study {}'.format(in_folder))
 
 def CreateDicomStore(project_id: str,
                      cloud_region: str,
@@ -624,9 +672,9 @@ mf_dicoms = DataInfo(
             'MULTIFRAME')
     )
 
-create_all_tables('{}.{}'.format(
-    fx_dicoms.BigQuery.ProjectID, fx_dicoms.BigQuery.Dataset),
-    fx_dicoms.BigQuery.CloudRegion, True)
+# create_all_tables('{}.{}'.format(
+#     fx_dicoms.BigQuery.ProjectID, fx_dicoms.BigQuery.Dataset),
+#     fx_dicoms.BigQuery.CloudRegion, True)
 CreateDicomStore(
     fx_dicoms.DicomStore.ProjectID,
     fx_dicoms.DicomStore.CloudRegion,
@@ -637,10 +685,7 @@ CreateDicomStore(
     mf_dicoms.DicomStore.CloudRegion,
     mf_dicoms.DicomStore.Dataset,
     mf_dicoms.DicomStore.DataObject)
-# import_dicom_instance(project_id, cloud_region, dicom_store_dataset_id,
-#                       dicom_store_id, content_uri)
-# export_dicom_instance_bigquery(project_id, cloud_region, dicom_store_dataset_id,
-#                       dicom_store_id, uri_prefix)
+
 study_query = 'SELECT STUDYINSTANCEUID, SERIESINSTANCEUID, SOPINSTANCEUID FROM `{0}` ORDER BY STUDYINSTANCEUID, SERIESINSTANCEUID, SOPINSTANCEUID'
 uids: dict = {}
 q_dataset_uid = '{}.{}.{}'.format(
@@ -649,6 +694,7 @@ q_dataset_uid = '{}.{}.{}'.format(
     in_dicoms.BigQuery.DataObject
     )
 max_number = 2^63 - 1
+max_number = 3
 max_number_of_instances = max_number
 max_number_of_series = max_number
 max_number_of_studies = max_number
@@ -657,6 +703,7 @@ last_time_point_for_progress_update = 0
 start = time.time()
 analysis_started = False
 studies = query_string_with_result(study_query.format(q_dataset_uid))
+logger = logging.getLogger(__name__)
 if studies is not None:
     for row in studies:
         stuid = row.STUDYINSTANCEUID
@@ -684,6 +731,8 @@ if studies is not None:
         os.makedirs(local_tmp_folder)
         if number_of_studies > max_number_of_studies:
             break
+        logger.info('Start fixing study({}) out of {}'.format(
+            number_of_studies, study_count))
         for number_of_series, (series_uid, instances) in enumerate(sub_study.items(), 1):
             if number_of_series > max_number_of_series:
                 break
@@ -706,8 +755,12 @@ if studies is not None:
             in_folder, '{}'.format(study_uid)), out_folder,
             in_dicoms, fx_dicoms, mf_dicoms, 'INPUT FIX')
         if time_elapsed_since_last_show > time_interval_for_progress_update:
+            header = '{}/{})Study {} was fix/convert-ed successfully'.format(
+                number_of_studies, study_count, study_uid)
             last_time_point_for_progress_update = time_point
-            ctools.ShowProgress(progress, time_elapsed, time_left, 100, 'STUDY')
+            progress_string = ctools.ShowProgress(progress, time_elapsed, time_left, 60, header, False)
+            logger.info(progress_string)
+
 
 # study_uids = os.listdir(in_folder)
 # for study_uid in study_uids:
