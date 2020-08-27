@@ -240,7 +240,11 @@ def verifyEnumValues_uint16(elem: DataElement, bin_method, verbose: bool,
             log.append(
                 EMsgDC("TriedToVerifyEnumeratedValueForNonNumericAttribute") + \
                 MMsgDC("ForAttribute") + "  <" + elem.description() + ">")
-        output = bin_method(uint16(i))
+        try:
+            int_input = uint16(i)
+            output = bin_method(int_input)
+        except:
+            output = []
         if len(output) == 0:
             msg="{} <{}> {} {} {} {} {}".format(
                     EMsgDC("UnrecognizedEnumeratedValue"),

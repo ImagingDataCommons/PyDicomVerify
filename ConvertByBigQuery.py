@@ -481,7 +481,8 @@ def BuildQueries(header:str, qs:list, dataset_id: str) -> list:
 def FIX_AND_CONVERT(in_folder, out_folder,
                     in_gcloud_info: DataInfo,
                     fx_gcloud_info: DataInfo,
-                    mf_gcloud_info: DataInfo, prefix=''):
+                    mf_gcloud_info: DataInfo,
+                    write_in_table: bool=True, prefix=''):
     logger = logging.getLogger(__name__)
     logger.info('\tStarted Fix and Convert for study {}'.format(in_folder))
     dcm_folder = os.path.join(out_folder, "fixed_dicom/")
@@ -601,18 +602,20 @@ def FIX_AND_CONVERT(in_folder, out_folder,
     dataset_id = '{}.{}'.format(
         fx_gcloud_info.BigQuery.ProjectID,
         fx_gcloud_info.BigQuery.Dataset)
-    ctools.WriteStringToFile(
-        file_name,
-        ctools.StrList2Txt(
-            BuildQueries(fix_header, q_fix_string, dataset_id)))
-    ctools.WriteStringToFile(
-        file_name,
-        ctools.StrList2Txt(
-            BuildQueries(issue_header, q_issue_string, dataset_id)), True)
-    ctools.WriteStringToFile(
-        file_name,
-        ctools.StrList2Txt(
-            BuildQueries(origin_header, q_origin_string, dataset_id)), True)
+    if write_in_table:
+        ctools.WriteStringToFile(
+            file_name,
+            ctools.StrList2Txt(
+                BuildQueries(fix_header, q_fix_string, dataset_id)))
+        ctools.WriteStringToFile(
+            file_name,
+            ctools.StrList2Txt(
+                BuildQueries(issue_header, q_issue_string, dataset_id)), True)
+        ctools.WriteStringToFile(
+            file_name,
+            ctools.StrList2Txt(
+                BuildQueries(
+                    origin_header, q_origin_string, dataset_id)), True)
     logger.info('\tFinished Fix and Convert for study {}'.format(in_folder))
 
 def CreateDicomStore(project_id: str,
@@ -672,9 +675,9 @@ mf_dicoms = DataInfo(
             'MULTIFRAME')
     )
 
-create_all_tables('{}.{}'.format(
-    fx_dicoms.BigQuery.ProjectID, fx_dicoms.BigQuery.Dataset),
-    fx_dicoms.BigQuery.CloudRegion, True)
+# create_all_tables('{}.{}'.format(
+#     fx_dicoms.BigQuery.ProjectID, fx_dicoms.BigQuery.Dataset),
+#     fx_dicoms.BigQuery.CloudRegion, True)
 CreateDicomStore(
     fx_dicoms.DicomStore.ProjectID,
     fx_dicoms.DicomStore.CloudRegion,
@@ -686,7 +689,7 @@ CreateDicomStore(
     mf_dicoms.DicomStore.Dataset,
     mf_dicoms.DicomStore.DataObject)
 
-study_query = 'SELECT STUDYINSTANCEUID, SERIESINSTANCEUID, SOPINSTANCEUID FROM `{0}` ORDER BY STUDYINSTANCEUID, SERIESINSTANCEUID, SOPINSTANCEUID'
+study_query = 'SELECT STUDYINSTANCEUID, SERIESINSTANCEUID, SOPINSTANCEUID FROM `{0}` ORDER BY STUDYINSTANCEUID, SERIESINSTANCEUID, SOPINSTANCEUID WHERE STUDYINSTANCEUID >= "1.3.6.1.4.1.14519.5.2.1.1188.4001.213420711084714071744561785405"'
 uids: dict = {}
 q_dataset_uid = '{}.{}.{}'.format(
     in_dicoms.BigQuery.ProjectID,
@@ -766,7 +769,7 @@ if studies is not None:
 # for study_uid in study_uids:
 #     FIX_AND_CONVERT(os.path.join(
 #         in_folder, '{}'.format(study_uid)), out_folder,
-#         in_dicoms, fx_dicoms, mf_dicoms, 'INPUT FIX')
+#         in_dicoms, fx_dicoms, mf_dicoms, False, 'INPUT FIX')
 export_dicom_instance_bigquery(
     fx_dicoms.DicomStore.ProjectID,
     fx_dicoms.DicomStore.CloudRegion,

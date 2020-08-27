@@ -3,7 +3,7 @@ __pycache__/*
 *.py[cod]
 *$py.class
 Logs/*
-nohup.out
+*.out
 # C extensions
 *.so
 *gitexcluded_*
