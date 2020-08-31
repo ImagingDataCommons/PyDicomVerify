@@ -179,6 +179,33 @@ def export_dicom_instance(
     print("Exported DICOM instances to bucket: gs://{}".format(uri_prefix))
     return response
 
+def import_dicom_bucket(
+    dicom_dataset_project_id, 
+    dicom_dataset_cloud_region, 
+    dicom_dataset_id, dicom_store_id, 
+    bucket_project_id,
+    bucket_name,
+    sub_bucket_name=None
+):
+    client = get_client()
+    dicom_store_parent = "projects/{}/locations/{}/datasets/{}".format(
+        dicom_dataset_project_id, dicom_dataset_cloud_region, dicom_dataset_id
+    )
+    dicom_store_name = "{}/dicomStores/{}".format(dicom_store_parent, dicom_store_id)
+    sub_bucket = '' if sub_bucket_name is None else '{}/'.format(sub_bucket_name)
+    body = {"gcsSource": {"uri": "gs://{}/{}**.dcm".format(bucket_name, sub_bucket_name)}}
+    request = (
+        client.projects()
+        .locations()
+        .datasets()
+        .dicomStores()
+        .import_(name=dicom_store_name, body=body)
+    )
+    response = request.execute()
+    print("Imported DICOM instance: {}".format(bucket_name))
+    return response
+
+
 def import_dicom_instance(
     project_id, cloud_region, dataset_id, dicom_store_id, content_uri
 ):

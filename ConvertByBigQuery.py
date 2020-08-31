@@ -31,13 +31,19 @@ from BigQueryStuff import create_all_tables,\
 from DicomStoreStuff import list_dicom_stores,\
                             create_dicom_store,\
                             create_dataset,\
-                            import_dicom_instance,\
+                            import_dicom_bucket,\
                             export_dicom_instance_bigquery,\
                             exists_dicom_store,\
                             exists_dataset
 from DicomWebStuff import dicomweb_retrieve_instance,\
                           dicomweb_store_instance,\
                           _BASE_URL
+from StorageBucketStuff import\
+    list_buckets,\
+    download_blob,\
+    upload_blob,\
+    create_bucket,\
+    bucket_metadata
 
 # Logger setup --------------------------------------------------------
 import logging
@@ -67,6 +73,14 @@ class Datalet:
         self.CloudRegion = cloud_region
         self.Dataset = dataset
         self.DataObject = dataobject
+
+    def GetBigQueryStyleAddress(self) -> str:
+        output = '`{}.{}.{}`'.format(
+            self.ProjectID,
+            self.Dataset,
+            self.DataObject
+        )
+        return output
 
 
 class DataInfo:
@@ -533,14 +547,14 @@ def FIX_AND_CONVERT(in_folder, out_folder,
                 f, in_folder, dcm_folder, log_fixed, 
                 log_david_pre, log_david_post)
             fixed_file_path = f.replace(in_folder, dcm_folder)
-            dicomweb_store_instance(
-                _BASE_URL, 
-                fx_gcloud_info.DicomStore.ProjectID,
-                fx_gcloud_info.DicomStore.CloudRegion,
-                fx_gcloud_info.DicomStore.Dataset,
-                fx_gcloud_info.DicomStore.DataObject,
-                fixed_file_path
-                )
+            fixed_blob_path = f.replace(
+                in_folder, fx_gcloud_info.Bucket.DataObject)
+            upload_blob(
+                fx_gcloud_info.Bucket.ProjectID,
+                fx_gcloud_info.Bucket.Dataset,
+                fixed_file_path,
+                fixed_blob_path
+            )
             fixes_all = FixCollection(log_fixed, f)
             q_fix_string.extend(fixes_all.GetQuery())
             pre_issues = IssueCollection(log_david_pre[1:], in_table, f)
@@ -594,6 +608,15 @@ def FIX_AND_CONVERT(in_folder, out_folder,
                 mf_gcloud_info.DicomStore.DataObject,
                 pr_ch.child_dicom_file
                 )
+            mf_blob_path = pr_ch.child_dicom_file.replace(
+                mfdcm_folder, 
+                mf_gcloud_info.Bucket.DataObject)
+            upload_blob(
+                mf_gcloud_info.Bucket.ProjectID,
+                mf_gcloud_info.Bucket.Dataset,
+                pr_ch.child_dicom_file,
+                mf_blob_path
+            )
 
     fix_header = fixes_all.GetQueryHeader()
     issue_header = mf_issues.GetQueryHeader()
@@ -649,9 +672,10 @@ in_dicoms = DataInfo(
             'idc_tcia_dicom_metadata'),
     )
 fx_dicoms = DataInfo(
-    Datalet('idc-dev-etl',      # Bucket
-            'us-central1',
-            '', ''),
+    Datalet('idc-tcia',      # Bucket
+            'us',
+            'afshin_results_' + in_dicoms.BigQuery.Dataset, 
+            'FIXED'),
     Datalet('idc-tcia',      # Dicom Store
             'us',
             'afshin_results_' + in_dicoms.BigQuery.Dataset,
@@ -662,9 +686,10 @@ fx_dicoms = DataInfo(
             'FIXED')
     )
 mf_dicoms = DataInfo(
-    Datalet('idc-dev-etl',      # Bucket
-            'us-central1',
-            '', ''),
+    Datalet('idc-tcia',      # Bucket
+            'us',
+            'afshin_results_' + in_dicoms.BigQuery.Dataset,
+            'MULTIFRAME'),
     Datalet('idc-tcia',      # Dicom Store
             'us',
             'afshin_results_' + in_dicoms.BigQuery.Dataset,
@@ -674,6 +699,11 @@ mf_dicoms = DataInfo(
             'afshin_results_' + in_dicoms.BigQuery.Dataset,
             'MULTIFRAME')
     )
+BigQueryInputCollectionInfo = Datalet(
+    'idc-dev-etl',      # Bigquery
+    'us',
+    'idc_tcia_mvp_wave0',
+    'idc_tcia_auxilliary_metadata')
 
 # create_all_tables('{}.{}'.format(
 #     fx_dicoms.BigQuery.ProjectID, fx_dicoms.BigQuery.Dataset),
@@ -688,15 +718,41 @@ CreateDicomStore(
     mf_dicoms.DicomStore.CloudRegion,
     mf_dicoms.DicomStore.Dataset,
     mf_dicoms.DicomStore.DataObject)
+create_bucket(
+    fx_dicoms.Bucket.ProjectID,
+    fx_dicoms.Bucket.Dataset,
+    False)
+create_bucket(
+    mf_dicoms.Bucket.ProjectID,
+    mf_dicoms.Bucket.Dataset,
+    False)
 
-study_query = 'SELECT STUDYINSTANCEUID, SERIESINSTANCEUID, SOPINSTANCEUID FROM `{0}` WHERE STUDYINSTANCEUID >= "1.3.6.1.4.1.14519.5.2.1.1188.4001.213420711084714071744561785405" ORDER BY STUDYINSTANCEUID, SERIESINSTANCEUID, SOPINSTANCEUID'
+study_query = """
+            WITH DICOMS AS (
+            SELECT STUDYINSTANCEUID, SERIESINSTANCEUID, SOPINSTANCEUID  
+            FROM {} 
+            WHERE
+                SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.2" OR 
+                SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.4" OR 
+                SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.128"
+                ) 
+                SELECT DICOMS.STUDYINSTANCEUID, 
+                    DICOMS.SERIESINSTANCEUID, 
+                    DICOMS.SOPINSTANCEUID, 
+                    COLLECTION_TABLE.IDC_GCS_CollectionID, 
+                FROM DICOMS JOIN 
+                    {} AS 
+                    COLLECTION_TABLE ON 
+                    COLLECTION_TABLE.SOPINSTANCEUID = DICOMS.SOPINSTANCEUID 
+""".format(in_dicoms.BigQuery.GetBigQueryStyleAddress(),
+           BigQueryInputCollectionInfo.GetBigQueryStyleAddress())
 uids: dict = {}
 q_dataset_uid = '{}.{}.{}'.format(
     in_dicoms.BigQuery.ProjectID,
     in_dicoms.BigQuery.Dataset,
     in_dicoms.BigQuery.DataObject
     )
-max_number = 2^63 - 1
+max_number = 2**63 - 1
 # max_number = 3
 max_number_of_instances = max_number
 max_number_of_series = max_number
@@ -706,26 +762,29 @@ last_time_point_for_progress_update = 0
 start = time.time()
 analysis_started = False
 studies = query_string_with_result(study_query.format(q_dataset_uid))
+number_of_all_inst = studies.total_rows
+number_of_inst_processed = 1
 logger = logging.getLogger(__name__)
 if studies is not None:
     for row in studies:
         stuid = row.STUDYINSTANCEUID
         seuid = row.SERIESINSTANCEUID
         sopuid = row.SOPINSTANCEUID
+        cln_id = 'idc-tcia-1-'+row.IDC_GCS_CollectionID
         if stuid in uids:
             if seuid in uids[stuid]:
-                uids[stuid][seuid].append(sopuid)
+                uids[stuid][1][seuid].append(sopuid)
             else:
-                uids[stuid][seuid] = [sopuid]
+                uids[stuid][1][seuid] = [sopuid]
         else:
-            uids[stuid] = {seuid: [sopuid]}
+            uids[stuid] = (cln_id, {seuid: [sopuid]})
     study_count = min(len(uids), max_number_of_studies)
     for number_of_studies, (study_uid, sub_study) in enumerate(uids.items(), 1):
-        progress = float(number_of_studies) / float(study_count)
+        progress = float(number_of_inst_processed) / float(number_of_all_inst)
         time_point = time.time()
         time_elapsed = round(time_point - start)
-        time_left = round(study_count-number_of_studies) *\
-            time_elapsed/float(number_of_studies)
+        time_left = round(number_of_all_inst-number_of_inst_processed) *\
+            time_elapsed/float(number_of_inst_processed)
         time_elapsed_since_last_show = time_point - \
             last_time_point_for_progress_update
         # remove the temp folder
@@ -734,9 +793,11 @@ if studies is not None:
         os.makedirs(local_tmp_folder)
         if number_of_studies > max_number_of_studies:
             break
+        number_of_inst_in_study = 0
         logger.info('Start fixing study({}) out of {}'.format(
             number_of_studies, study_count))
-        for number_of_series, (series_uid, instances) in enumerate(sub_study.items(), 1):
+        collection_id = sub_study[0]
+        for number_of_series, (series_uid, instances) in enumerate(sub_study[1].items(), 1):
             if number_of_series > max_number_of_series:
                 break
             for number_of_instances, instance_uid in enumerate(instances, 1):
@@ -745,15 +806,21 @@ if studies is not None:
                         study_uid, series_uid, instance_uid
                     )
                 )
-                dicomweb_retrieve_instance(
-                    _BASE_URL, in_dicoms.DicomStore.ProjectID,
-                    in_dicoms.DicomStore.CloudRegion,
-                    in_dicoms.DicomStore.Dataset,
-                    in_dicoms.DicomStore.DataObject,
-                    study_uid, series_uid, instance_uid, destination_file)
-                number_of_instances += 1
+                src_blob_address = 'dicom/{}/{}/{}.dcm'.format(
+                    study_uid,
+                    series_uid,
+                    instance_uid
+                )
+                download_blob(
+                    in_dicoms.DicomStore.ProjectID,
+                    collection_id,
+                    src_blob_address, 
+                    destination_file
+                    )
                 if number_of_instances > max_number_of_instances:
                     break
+                number_of_inst_in_study += 1
+        number_of_inst_processed += number_of_inst_in_study
         FIX_AND_CONVERT(os.path.join(
             in_folder, '{}'.format(study_uid)), out_folder,
             in_dicoms, fx_dicoms, mf_dicoms, 'INPUT FIX')
@@ -770,6 +837,24 @@ if studies is not None:
 #     FIX_AND_CONVERT(os.path.join(
 #         in_folder, '{}'.format(study_uid)), out_folder,
 #         in_dicoms, fx_dicoms, mf_dicoms, False, 'INPUT FIX')
+import_dicom_bucket(
+    fx_dicoms.DicomStore.ProjectID,
+    fx_dicoms.DicomStore.CloudRegion,
+    fx_dicoms.DicomStore.Dataset,
+    fx_dicoms.DicomStore.DataObject,
+    fx_dicoms.Bucket.ProjectID,
+    fx_dicoms.Bucket.Dataset,
+    fx_dicoms.Bucket.DataObject
+    )
+import_dicom_bucket(
+    mf_dicoms.DicomStore.ProjectID,
+    mf_dicoms.DicomStore.CloudRegion,
+    mf_dicoms.DicomStore.Dataset,
+    mf_dicoms.DicomStore.DataObject,
+    mf_dicoms.Bucket.ProjectID,
+    mf_dicoms.Bucket.Dataset,
+    mf_dicoms.Bucket.DataObject
+    )
 export_dicom_instance_bigquery(
     fx_dicoms.DicomStore.ProjectID,
     fx_dicoms.DicomStore.CloudRegion,
