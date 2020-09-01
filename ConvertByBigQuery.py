@@ -659,8 +659,8 @@ local_tmp_folder = os.path.join(home,"Tmp")
 out_folder = os.path.join(local_tmp_folder,"bgq_output")
 in_folder = os.path.join(local_tmp_folder,"bgq_input")
 in_dicoms = DataInfo(
-    Datalet('idc-dev-etl',      # Bucket
-            'us-central1',
+    Datalet('idc-tcia',      # Bucket
+            'us',
             '', ''),
     Datalet('idc-dev-etl',      # Dicom Store
             'us-central1',
@@ -770,7 +770,7 @@ if studies is not None:
         stuid = row.STUDYINSTANCEUID
         seuid = row.SERIESINSTANCEUID
         sopuid = row.SOPINSTANCEUID
-        cln_id = 'idc-tcia-1-'+row.IDC_GCS_CollectionID
+        cln_id = 'idc-tcia-'+row.IDC_GCS_CollectionID
         if stuid in uids:
             if seuid in uids[stuid]:
                 uids[stuid][1][seuid].append(sopuid)
@@ -812,7 +812,7 @@ if studies is not None:
                     instance_uid
                 )
                 download_blob(
-                    in_dicoms.DicomStore.ProjectID,
+                    in_dicoms.Bucket.ProjectID,
                     collection_id,
                     src_blob_address, 
                     destination_file
@@ -830,7 +830,6 @@ if studies is not None:
             last_time_point_for_progress_update = time_point
             progress_string = ctools.ShowProgress(progress, time_elapsed, time_left, 60, header, False)
             logger.info(progress_string)
-
 
 # study_uids = os.listdir(in_folder)
 # for study_uid in study_uids:

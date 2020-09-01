@@ -2,7 +2,7 @@ import subprocess
 import pydicom
 import re, os, numpy
 from datetime import timedelta
-import inspect, logging
+import logging, traceback
 def Find(address, max_depth=0, cond_function = os.path.isfile, 
 sort_key=None, reverse_sort=False,
 find_parent_folder = False)->list:
@@ -133,13 +133,12 @@ def ShowProgress(progress, time_elapsed=None, time_left=None,
     return out_string
 
 
-def GetFunctionLugger(indent: str = '    '):
-    depth = len(inspect.stack())-2
-    f_name = inspect.stack()[1][3]
-    if len(f_name) > 32:
-        f_name = f_name[0:32]
-    else:
-        f_name = "{: <32}".format(f_name)
-    indent = indent*(depth)
-    logger = logging.getLogger(f_name)
-    return (logger, indent)
+class IndentAdapter(logging.LoggerAdapter):
+    @staticmethod
+    def indent():
+        indentation_level = len(traceback.extract_stack())
+        return indentation_level-4  # Remove logging infrastructure frames
+    
+    def process(self, msg, kwargs):
+        ind_str = '{{: <{}}}'.format(self.indent()*4)
+        return '{i} {m}'.format(i=ind_str.format(self.indent()), m=msg), kwargs

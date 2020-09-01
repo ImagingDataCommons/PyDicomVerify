@@ -16,7 +16,7 @@
             "class": "logging.FileHandler",
             "formatter": "date_time",
             "mode": "w",
-            "filename": "./Logs/log[31-08-2020][17-57-58].log"
+            "filename": "./Logs/log[01-09-2020][17-32-30].log"
         }
     },
     "loggers": {
