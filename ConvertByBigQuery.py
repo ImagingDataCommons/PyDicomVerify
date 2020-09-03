@@ -44,7 +44,10 @@ from StorageBucketStuff import\
     upload_blob,\
     create_bucket,\
     bucket_metadata
-
+# ---------------- Global Vars --------------------------:
+git_url = 'https://github.com/afshinmessiah/PyDicomVerify/{}'
+repo = git.Repo(search_parent_directories=True)
+commit = repo.head.object.hexsha
 # Logger setup --------------------------------------------------------
 import logging
 import logging.config
@@ -205,13 +208,9 @@ class DicomIssue:
 
 class IssueCollection:
 
-    def __init__(self, issues: list, table_name: str, dcmfile:str) -> None:
+    def __init__(self, issues: list, table_name: str, sop_uid:str) -> None:
         self.table_name = table_name
-        try: 
-            ds = pydicom.read_file(dcmfile, specific_tags = ['SOPInstanceUID'])
-            self.SOPInstanceUID = ds['SOPInstanceUID'].value
-        except BaseException:
-            self.SOPInstanceUID = None
+        self.SOPInstanceUID = sop_uid
         self.issues: list = []
         for issue in issues:
             try:
@@ -237,10 +236,7 @@ class DicomFix:
     
     def __init__(self, fix_msg: str) -> None:
         self.message = fix_msg
-        git_url = 'https://github.com/afshinmessiah/PyDicomVerify/{}'
-        repo = git.Repo(search_parent_directories=True)
-        commit = repo.head.object.hexsha
-        repo = git.Repo(search_parent_directories=True)
+        
         regexp = '([^-]*)\s-\s(.*):-\>:(.*)\<function(.*)from file:(.*) line_number: (.*)\> \<function(.*)from file:(.*) line_number: (.*)\>'
         
         m = re.search(regexp, fix_msg)
@@ -367,12 +363,8 @@ class DicomFix:
 
 class FixCollection:
 
-    def __init__(self, fixes: list, dcmfile:str) -> None:
-        try: 
-            ds = pydicom.read_file(dcmfile, specific_tags = ['SOPInstanceUID'])
-            self.SOPInstanceUID = ds['SOPInstanceUID'].value
-        except BaseException:
-            self.SOPInstanceUID = None
+    def __init__(self, fixes: list, sop_uid:str) -> None:
+        self.SOPInstanceUID = sop_uid
         self.fixes: list = []
         for fix in fixes:
             try:
@@ -468,6 +460,7 @@ def FixFile(dicom_file, in_folder,
     fixed_file = os.path.join(f_dcm_folder, file_name)
     write_file(fixed_file, ds)
     VER(fixed_file, log_david_post)
+    return ds.SOPInstanceUID
 
 def BuildQueries(header:str, qs:list, dataset_id: str) -> list:
     out_q = []
@@ -543,9 +536,10 @@ def FIX_AND_CONVERT(in_folder, out_folder,
             log_david_post = []
             log_david_pre = []
             log_fixed = []
-            FixFile(
+            sop_uid = FixFile(
                 f, in_folder, dcm_folder, log_fixed, 
                 log_david_pre, log_david_post)
+            
             fixed_file_path = f.replace(in_folder, dcm_folder)
             fixed_blob_path = f.replace(
                 in_folder, fx_gcloud_info.Bucket.DataObject)
@@ -568,13 +562,15 @@ def FIX_AND_CONVERT(in_folder, out_folder,
             q_origin_string.extend(fixed_input_ref.GetQuery(in_table, fx_table))    
             if time_elapsed_since_last_show > time_interval_for_progress_update or True:
                 last_time_point_for_progress_update = time_point
-                header = '\t\t{}/{})Instance {} was fixed successfully'.format(
-                j, len(in_files), os.path.basename(f))
-                progress_string = ctools.ShowProgress(
+                logger.debug (
+                    '\t\t{}/{})Instance {} was fixed successfully'.format(
+                        j, len(in_files), os.path.basename(f))
+                )
+        header = '\tEnd fixing series({}) out of {}'.format(
+            i, len(folder_list))
+        progress_string = ctools.ShowProgress(
                 progress, time_elapsed, time_left,60, header, False)
-                logger.info(progress_string)
-        logger.info('\tEnd fixing series({}) out of {}'.format(
-            i, len(folder_list)))
+        logger.info(progress_string)
         #  -------------------------------------------------------------
         mf_log:list = []
         single_fixed_folder = folder.replace(in_folder, dcm_folder)
@@ -598,16 +594,8 @@ def FIX_AND_CONVERT(in_folder, out_folder,
             VER(pr_ch.child_dicom_file,
                                         multiframe_log)
             mf_issues = IssueCollection(multiframe_log[1:], mf_table, 
-                pr_ch.child_dicom_file)
+                pr_ch.child_sop_instance_uid)
             q_issue_string.extend(mf_issues.GetQuery())
-            dicomweb_store_instance(
-                _BASE_URL, 
-                mf_gcloud_info.DicomStore.ProjectID,
-                mf_gcloud_info.DicomStore.CloudRegion,
-                mf_gcloud_info.DicomStore.Dataset,
-                mf_gcloud_info.DicomStore.DataObject,
-                pr_ch.child_dicom_file
-                )
             mf_blob_path = pr_ch.child_dicom_file.replace(
                 mfdcm_folder, 
                 mf_gcloud_info.Bucket.DataObject)
@@ -753,7 +741,7 @@ q_dataset_uid = '{}.{}.{}'.format(
     in_dicoms.BigQuery.DataObject
     )
 max_number = 2**63 - 1
-# max_number = 3
+max_number = 20
 max_number_of_instances = max_number
 max_number_of_series = max_number
 max_number_of_studies = max_number
@@ -772,7 +760,7 @@ if studies is not None:
         sopuid = row.SOPINSTANCEUID
         cln_id = 'idc-tcia-'+row.IDC_GCS_CollectionID
         if stuid in uids:
-            if seuid in uids[stuid]:
+            if seuid in uids[stuid][1]:
                 uids[stuid][1][seuid].append(sopuid)
             else:
                 uids[stuid][1][seuid] = [sopuid]

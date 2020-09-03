@@ -29,9 +29,9 @@ def dataset_exists(dataset_id) -> bool:
 
 def query_string (q: str):
     # print(q)
+    client = bigquery.Client()
     job_config = bigquery.QueryJobConfig(priority=bigquery.QueryPriority.BATCH)
     
-    client = bigquery.Client()
     try:
         query_job = client.query(q, job_config=job_config)
         # query_job.result()
