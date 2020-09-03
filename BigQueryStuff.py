@@ -1,5 +1,6 @@
 from google.cloud import bigquery
 from google.oauth2 import service_account
+import logging
 
 
 def delete_dataset(dataset_id):
@@ -29,6 +30,7 @@ def dataset_exists(dataset_id) -> bool:
 
 def query_string (q: str):
     # print(q)
+    
     client = bigquery.Client()
     job_config = bigquery.QueryJobConfig(priority=bigquery.QueryPriority.BATCH)
     
@@ -36,7 +38,8 @@ def query_string (q: str):
         query_job = client.query(q, job_config=job_config)
         # query_job.result()
     except BaseException as err:
-        # print(err)
+        logging.error('{:-^100}'.format('BIG QUERY POPULATING ERROR'))
+        logging.error(err)
         print('sth went wrong')
 
 def query_string_with_result(q: str):

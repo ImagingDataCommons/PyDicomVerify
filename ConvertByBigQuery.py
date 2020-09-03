@@ -16,9 +16,10 @@ from verify import *
 import pydicom.charset
 import subprocess
 import PrivateDicFromDavid
-import os
 import xlsxwriter
 import time
+from threading import Thread, Lock
+from queue import Queue
 from datetime import timedelta
 import common_tools as ctools
 import conversion as conv
@@ -64,7 +65,42 @@ with open('log_config.json', 'w') as json_file:
 logging.config.dictConfig(d)
 logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.CRITICAL)
 # -----------------------------------------------------------------------
+class MyThread(Thread):
+    number_of_inst_processed = 1
+    number_of_st_processed = 1
+    number_of_all_studies = 1
+    instance_counter_lock = Lock()
 
+    def __init__(self, queue: Queue, **kwarg):
+        Thread.__init__(self, **kwarg)
+        self._queue = queue
+        
+
+    def run(self): 
+        while True:
+            (study_processor, args) = self._queue.get()
+            logger.info('Start fixing study({}) out of {}'.format(
+                MyThread.number_of_st_processed, 
+                MyThread.number_of_all_studies,))
+            instances = study_processor(*args)
+            study_uid = args[2][0]
+            with MyThread.instance_counter_lock:
+                MyThread.number_of_inst_processed += instances
+                MyThread.number_of_st_processed += 1
+            progress = float(MyThread.number_of_inst_processed) /\
+                float(number_of_all_inst)
+            time_point = time.time()
+            time_elapsed = round(time_point - start)
+            time_left = round(
+                number_of_all_inst-MyThread.number_of_inst_processed) *\
+                time_elapsed/float(MyThread.number_of_inst_processed)
+            header = '{}/{})Study {} was fix/convert-ed successfully'.format(
+                MyThread.number_of_st_processed, 
+                MyThread.number_of_all_studies, study_uid)
+            progress_string = ctools.ShowProgress(
+                progress, time_elapsed, time_left, 60, header, False)
+            logger.info(progress_string)
+            self._queue.task_done()
 
 class Datalet:
 
@@ -465,7 +501,7 @@ def FixFile(dicom_file, in_folder,
 def BuildQueries(header:str, qs:list, dataset_id: str) -> list:
     out_q = []
     ch_limit = 1024*1024
-    row_limit = 1500
+    row_limit = 1000
     elem_q = ''
     n = 0
     rn = 0
@@ -641,6 +677,47 @@ def CreateDicomStore(project_id: str,
         create_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id)
 
 
+def ProcessOneStudy(in_folder: str, out_folder: str, uids: tuple,
+                    in_gc_info, fx_gc_info, mf_gc_info,
+                    max_number:int = 2**63 - 1) -> int:
+    max_number_of_instances = max_number
+    max_number_of_series = max_number
+    number_of_inst_in_study = 0
+    study_uid = uids[0]
+    collection_id = uids[1]
+    for number_of_series, (series_uid, instances) in enumerate(uids[2].items(), 1):
+        if number_of_series > max_number_of_series:
+            break
+        for number_of_instances, instance_uid in enumerate(instances, 1):
+            destination_file = os.path.join(
+                in_folder, '{}/{}/{}.dcm'.format(
+                    study_uid, series_uid, instance_uid
+                )
+            )
+            src_blob_address = 'dicom/{}/{}/{}.dcm'.format(
+                study_uid,
+                series_uid,
+                instance_uid
+            )
+            download_blob(
+                in_gc_info.Bucket.ProjectID,
+                collection_id,
+                src_blob_address, 
+                destination_file
+                )
+            if number_of_instances > max_number_of_instances:
+                break
+            number_of_inst_in_study += 1
+    loaded_study_folder = os.path.join( in_folder, '{}'.format(study_uid))
+    FIX_AND_CONVERT(loaded_study_folder, out_folder,
+        in_gc_info, fx_gc_info, mf_gc_info, True)
+    # remove the study folder
+    if os.path.exists(loaded_study_folder):
+        shutil.rmtree(loaded_study_folder)
+    return number_of_inst_in_study
+
+
+
 home = os.path.expanduser("~")
 local_tmp_folder = os.path.join(home,"Tmp")
 
@@ -723,7 +800,7 @@ study_query = """
                 SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.2" OR 
                 SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.4" OR 
                 SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.128"
-                ) 
+                LIMIT 5000 ) 
                 SELECT DICOMS.STUDYINSTANCEUID, 
                     DICOMS.SERIESINSTANCEUID, 
                     DICOMS.SOPINSTANCEUID, 
@@ -741,9 +818,7 @@ q_dataset_uid = '{}.{}.{}'.format(
     in_dicoms.BigQuery.DataObject
     )
 max_number = 2**63 - 1
-max_number = 20
-max_number_of_instances = max_number
-max_number_of_series = max_number
+# max_number = 10
 max_number_of_studies = max_number
 time_interval_for_progress_update = 1
 last_time_point_for_progress_update = 0
@@ -752,6 +827,12 @@ analysis_started = False
 studies = query_string_with_result(study_query.format(q_dataset_uid))
 number_of_all_inst = studies.total_rows
 number_of_inst_processed = 1
+max_number_of_threads = 8
+q = Queue()
+for ii in range(max_number_of_threads):
+    t = MyThread(q, name='afn_th{:02d}'.format(ii))
+    t.daemon = True
+    t.start()
 logger = logging.getLogger(__name__)
 if studies is not None:
     for row in studies:
@@ -766,64 +847,23 @@ if studies is not None:
                 uids[stuid][1][seuid] = [sopuid]
         else:
             uids[stuid] = (cln_id, {seuid: [sopuid]})
-    study_count = min(len(uids), max_number_of_studies)
+    MyThread.number_of_all_studies = min(len(uids), max_number_of_studies)
     for number_of_studies, (study_uid, sub_study) in enumerate(uids.items(), 1):
-        progress = float(number_of_inst_processed) / float(number_of_all_inst)
-        time_point = time.time()
-        time_elapsed = round(time_point - start)
-        time_left = round(number_of_all_inst-number_of_inst_processed) *\
-            time_elapsed/float(number_of_inst_processed)
-        time_elapsed_since_last_show = time_point - \
-            last_time_point_for_progress_update
-        # remove the temp folder
-        if os.path.exists(local_tmp_folder):
-            shutil.rmtree(local_tmp_folder)
-        os.makedirs(local_tmp_folder)
         if number_of_studies > max_number_of_studies:
             break
-        number_of_inst_in_study = 0
-        logger.info('Start fixing study({}) out of {}'.format(
-            number_of_studies, study_count))
-        collection_id = sub_study[0]
-        for number_of_series, (series_uid, instances) in enumerate(sub_study[1].items(), 1):
-            if number_of_series > max_number_of_series:
-                break
-            for number_of_instances, instance_uid in enumerate(instances, 1):
-                destination_file = os.path.join(
-                    in_folder, '{}/{}/{}.dcm'.format(
-                        study_uid, series_uid, instance_uid
-                    )
+        q.put(
+            (
+                ProcessOneStudy,
+                (
+                    in_folder, out_folder,
+                    (study_uid, sub_study[0], sub_study[1]),
+                    in_dicoms, fx_dicoms, mf_dicoms,
+                    max_number
                 )
-                src_blob_address = 'dicom/{}/{}/{}.dcm'.format(
-                    study_uid,
-                    series_uid,
-                    instance_uid
-                )
-                download_blob(
-                    in_dicoms.Bucket.ProjectID,
-                    collection_id,
-                    src_blob_address, 
-                    destination_file
-                    )
-                if number_of_instances > max_number_of_instances:
-                    break
-                number_of_inst_in_study += 1
-        number_of_inst_processed += number_of_inst_in_study
-        FIX_AND_CONVERT(os.path.join(
-            in_folder, '{}'.format(study_uid)), out_folder,
-            in_dicoms, fx_dicoms, mf_dicoms, 'INPUT FIX')
-        if time_elapsed_since_last_show > time_interval_for_progress_update:
-            header = '{}/{})Study {} was fix/convert-ed successfully'.format(
-                number_of_studies, study_count, study_uid)
-            last_time_point_for_progress_update = time_point
-            progress_string = ctools.ShowProgress(progress, time_elapsed, time_left, 60, header, False)
-            logger.info(progress_string)
-
-# study_uids = os.listdir(in_folder)
-# for study_uid in study_uids:
-#     FIX_AND_CONVERT(os.path.join(
-#         in_folder, '{}'.format(study_uid)), out_folder,
-#         in_dicoms, fx_dicoms, mf_dicoms, False, 'INPUT FIX')
+            )
+        )
+        
+q.join() # waiting for all tasks to be done
 import_dicom_bucket(
     fx_dicoms.DicomStore.ProjectID,
     fx_dicoms.DicomStore.CloudRegion,
