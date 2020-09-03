@@ -719,7 +719,8 @@ def ProcessOneStudy(in_folder: str, out_folder: str, uids: tuple,
 
 
 home = os.path.expanduser("~")
-local_tmp_folder = os.path.join(home,"Tmp")
+pid = os.getpid()
+local_tmp_folder = os.path.join(home,"Tmp-{:05d}".format(pid))
 
 out_folder = os.path.join(local_tmp_folder,"bgq_output")
 in_folder = os.path.join(local_tmp_folder,"bgq_input")
@@ -770,9 +771,9 @@ BigQueryInputCollectionInfo = Datalet(
     'idc_tcia_mvp_wave0',
     'idc_tcia_auxilliary_metadata')
 
-# create_all_tables('{}.{}'.format(
-#     fx_dicoms.BigQuery.ProjectID, fx_dicoms.BigQuery.Dataset),
-#     fx_dicoms.BigQuery.CloudRegion, True)
+create_all_tables('{}.{}'.format(
+    fx_dicoms.BigQuery.ProjectID, fx_dicoms.BigQuery.Dataset),
+    fx_dicoms.BigQuery.CloudRegion, True)
 CreateDicomStore(
     fx_dicoms.DicomStore.ProjectID,
     fx_dicoms.DicomStore.CloudRegion,
@@ -827,7 +828,7 @@ analysis_started = False
 studies = query_string_with_result(study_query.format(q_dataset_uid))
 number_of_all_inst = studies.total_rows
 number_of_inst_processed = 1
-max_number_of_threads = 8
+max_number_of_threads = 12
 q = Queue()
 for ii in range(max_number_of_threads):
     t = MyThread(q, name='afn_th{:02d}'.format(ii))
