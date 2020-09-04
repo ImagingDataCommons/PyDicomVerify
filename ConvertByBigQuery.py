@@ -813,7 +813,7 @@ create_bucket(
     mf_dicoms.Bucket.Dataset,
     False)
 max_number = 2**63 - 1
-max_number = 10
+# max_number = 10
 if max_number < 2**63 - 1:
     limit_q = 'LIMIT 1000'
 else:
@@ -851,7 +851,7 @@ analysis_started = False
 studies = query_string_with_result(study_query.format(q_dataset_uid))
 number_of_all_inst = studies.total_rows
 number_of_inst_processed = 1
-max_number_of_threads = 1
+max_number_of_threads = 8
 q = Queue()
 for ii in range(max_number_of_threads):
     t = MyThread(q, name='afn_th{:02d}'.format(ii))
