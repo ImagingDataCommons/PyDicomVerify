@@ -726,7 +726,7 @@ def ProcessOneStudy(in_folder: str, out_folder: str, uids: tuple,
     return number_of_inst_in_study
 
 def rm(folders):
-    print(folders)
+    # print(folders)
     if type(folders) == str:
         folders = (folders,)
     for a in folders:
