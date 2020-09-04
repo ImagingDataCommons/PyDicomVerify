@@ -82,11 +82,15 @@ class MyThread(Thread):
             logger.info('Start fixing study({}) out of {}'.format(
                 MyThread.number_of_st_processed, 
                 MyThread.number_of_all_studies,))
-            instances = study_processor(*args)
-            study_uid = args[2][0]
-            with MyThread.instance_counter_lock:
-                MyThread.number_of_inst_processed += instances
-                MyThread.number_of_st_processed += 1
+            try:
+                instances = study_processor(*args)
+                study_uid = args[2][0]
+                with MyThread.instance_counter_lock:
+                    MyThread.number_of_inst_processed += instances
+                    MyThread.number_of_st_processed += 1
+            except BaseException as err:
+                logger.error(err)
+
             progress = float(MyThread.number_of_inst_processed) /\
                 float(number_of_all_inst)
             time_point = time.time()
@@ -525,11 +529,13 @@ def FIX_AND_CONVERT(in_folder, out_folder,
                     in_gcloud_info: DataInfo,
                     fx_gcloud_info: DataInfo,
                     mf_gcloud_info: DataInfo,
-                    write_in_table: bool=True, prefix=''):
+                    write_in_table: bool=True, 
+                    fx_subfolder='fixed_dicom',
+                    mf_subfolder='multiframe'):
     logger = logging.getLogger(__name__)
     logger.info('\tStarted Fix and Convert for study {}'.format(in_folder))
-    dcm_folder = os.path.join(out_folder, "fixed_dicom/")
-    mfdcm_folder = os.path.join(out_folder, "multiframe/")
+    dcm_folder = os.path.join(out_folder, "{}/".format(fx_subfolder))
+    mfdcm_folder = os.path.join(out_folder, "{}/".format(mf_subfolder))
     in_table = '{}.{}.{}'.format(
         in_gcloud_info.BigQuery.ProjectID,
         in_gcloud_info.BigQuery.Dataset,
@@ -685,6 +691,8 @@ def ProcessOneStudy(in_folder: str, out_folder: str, uids: tuple,
     number_of_inst_in_study = 0
     study_uid = uids[0]
     collection_id = uids[1]
+    fx_sub_dir = 'FIXED'
+    mf_sub_dir = 'MULTIFRAME'
     for number_of_series, (series_uid, instances) in enumerate(uids[2].items(), 1):
         if number_of_series > max_number_of_series:
             break
@@ -708,14 +716,25 @@ def ProcessOneStudy(in_folder: str, out_folder: str, uids: tuple,
             if number_of_instances > max_number_of_instances:
                 break
             number_of_inst_in_study += 1
-    loaded_study_folder = os.path.join( in_folder, '{}'.format(study_uid))
-    FIX_AND_CONVERT(loaded_study_folder, out_folder,
-        in_gc_info, fx_gc_info, mf_gc_info, True)
+    input_study_folder = os.path.join( in_folder, '{}'.format(study_uid))
+    output_study_folder = os.path.join( out_folder, '{}'.format(study_uid))
+    FIX_AND_CONVERT(input_study_folder, output_study_folder,
+        in_gc_info, fx_gc_info, mf_gc_info, True,
+        fx_sub_dir, mf_sub_dir)
     # remove the study folder
-    if os.path.exists(loaded_study_folder):
-        shutil.rmtree(loaded_study_folder)
+    rm((input_study_folder, output_study_folder,))
     return number_of_inst_in_study
 
+def rm(folders):
+    print(folders)
+    if type(folders) == str:
+        folders = (folders,)
+    for a in folders:
+        if os.path.exists(a):
+            logging.info(' XXX -> REMOVING FOLDER {}'.format(a))
+            shutil.rmtree(a)
+        else:
+            logging.info("FOLDER {} DOESN'T EXIST TO BE ROMOVED".format(a))
 
 
 home = os.path.expanduser("~")
@@ -737,32 +756,33 @@ in_dicoms = DataInfo(
             'idc_tcia_mvp_wave0',
             'idc_tcia_dicom_metadata'),
     )
+general_dataset_name = 'afshin_results_01' + in_dicoms.BigQuery.Dataset
 fx_dicoms = DataInfo(
     Datalet('idc-tcia',      # Bucket
             'us',
-            'afshin_results_' + in_dicoms.BigQuery.Dataset, 
+            general_dataset_name,
             'FIXED'),
     Datalet('idc-tcia',      # Dicom Store
             'us',
-            'afshin_results_' + in_dicoms.BigQuery.Dataset,
+            general_dataset_name,
             'FIXED'),
     Datalet('idc-tcia',      # Bigquery
             'us',
-            'afshin_results_' + in_dicoms.BigQuery.Dataset,
+            general_dataset_name,
             'FIXED')
     )
 mf_dicoms = DataInfo(
     Datalet('idc-tcia',      # Bucket
             'us',
-            'afshin_results_' + in_dicoms.BigQuery.Dataset,
+            general_dataset_name,
             'MULTIFRAME'),
     Datalet('idc-tcia',      # Dicom Store
             'us',
-            'afshin_results_' + in_dicoms.BigQuery.Dataset,
+            general_dataset_name,
             'MULTIFRAME'),
     Datalet('idc-tcia',      # Bigquery
             'us',
-            'afshin_results_' + in_dicoms.BigQuery.Dataset,
+            general_dataset_name,
             'MULTIFRAME')
     )
 BigQueryInputCollectionInfo = Datalet(
@@ -792,7 +812,12 @@ create_bucket(
     mf_dicoms.Bucket.ProjectID,
     mf_dicoms.Bucket.Dataset,
     False)
-
+max_number = 2**63 - 1
+max_number = 10
+if max_number < 2**63 - 1:
+    limit_q = 'LIMIT 1000'
+else:
+    limit_q = ''
 study_query = """
             WITH DICOMS AS (
             SELECT STUDYINSTANCEUID, SERIESINSTANCEUID, SOPINSTANCEUID  
@@ -800,8 +825,8 @@ study_query = """
             WHERE
                 SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.2" OR 
                 SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.4" OR 
-                SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.128"
-                LIMIT 5000 ) 
+                SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.128" 
+                {} ) 
                 SELECT DICOMS.STUDYINSTANCEUID, 
                     DICOMS.SERIESINSTANCEUID, 
                     DICOMS.SOPINSTANCEUID, 
@@ -810,7 +835,7 @@ study_query = """
                     {} AS 
                     COLLECTION_TABLE ON 
                     COLLECTION_TABLE.SOPINSTANCEUID = DICOMS.SOPINSTANCEUID 
-""".format(in_dicoms.BigQuery.GetBigQueryStyleAddress(),
+""".format(in_dicoms.BigQuery.GetBigQueryStyleAddress(), limit_q,
            BigQueryInputCollectionInfo.GetBigQueryStyleAddress())
 uids: dict = {}
 q_dataset_uid = '{}.{}.{}'.format(
@@ -818,8 +843,6 @@ q_dataset_uid = '{}.{}.{}'.format(
     in_dicoms.BigQuery.Dataset,
     in_dicoms.BigQuery.DataObject
     )
-max_number = 2**63 - 1
-# max_number = 10
 max_number_of_studies = max_number
 time_interval_for_progress_update = 1
 last_time_point_for_progress_update = 0
@@ -828,7 +851,7 @@ analysis_started = False
 studies = query_string_with_result(study_query.format(q_dataset_uid))
 number_of_all_inst = studies.total_rows
 number_of_inst_processed = 1
-max_number_of_threads = 12
+max_number_of_threads = 1
 q = Queue()
 for ii in range(max_number_of_threads):
     t = MyThread(q, name='afn_th{:02d}'.format(ii))
@@ -865,6 +888,7 @@ if studies is not None:
         )
         
 q.join() # waiting for all tasks to be done
+rm(local_tmp_folder)
 import_dicom_bucket(
     fx_dicoms.DicomStore.ProjectID,
     fx_dicoms.DicomStore.CloudRegion,
