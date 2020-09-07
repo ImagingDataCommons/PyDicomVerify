@@ -504,7 +504,7 @@ def FixFile(dicom_file, in_folder,
 
 def BuildQueries(header:str, qs:list, dataset_id: str) -> list:
     out_q = []
-    ch_limit = 1024*1024
+    ch_limit = 1024*1000
     row_limit = 1000
     elem_q = ''
     n = 0
@@ -756,7 +756,7 @@ in_dicoms = DataInfo(
             'idc_tcia_mvp_wave0',
             'idc_tcia_dicom_metadata'),
     )
-general_dataset_name = 'afshin_results_01' + in_dicoms.BigQuery.Dataset
+general_dataset_name = 'afshin_results_05' + in_dicoms.BigQuery.Dataset
 fx_dicoms = DataInfo(
     Datalet('idc-tcia',      # Bucket
             'us',
@@ -851,7 +851,7 @@ analysis_started = False
 studies = query_string_with_result(study_query.format(q_dataset_uid))
 number_of_all_inst = studies.total_rows
 number_of_inst_processed = 1
-max_number_of_threads = 8
+max_number_of_threads = 5
 q = Queue()
 for ii in range(max_number_of_threads):
     t = MyThread(q, name='afn_th{:02d}'.format(ii))
