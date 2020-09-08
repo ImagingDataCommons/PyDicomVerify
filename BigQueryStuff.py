@@ -59,14 +59,14 @@ def create_all_tables(
         create_dataset(dataset_id, dataset_region)
     schema_originated_from = [
         bigquery.SchemaField("PARENT_TABLE", "STRING", mode="REQUIRED"),
-        bigquery.SchemaField("PARENT_SOP_INSATANCE_UID", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("PARENT_SOP_INSTANCE_UID", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("CHILD_TABLE", "STRING", mode="REQUIRED"),
-        bigquery.SchemaField("CHILD_SOP_INSATANCE_UID", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("CHILD_SOP_INSTANCE_UID", "STRING", mode="REQUIRED"),
 
     ]
     schema_issue = [
         bigquery.SchemaField("DCM_TABLE_NAME", "STRING", mode="REQUIRED"),
-        bigquery.SchemaField("DCM_SOP_INSATANCE_UID", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("DCM_SOP_INSTANCE_UID", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("ISSUE_MSG", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("MESSAGE", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("TYPE", "STRING", mode="REQUIRED"),
@@ -76,7 +76,7 @@ def create_all_tables(
     ]
 
     schema_fix = [
-        bigquery.SchemaField("DCM_SOP_INSATANCE_UID", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("DCM_SOP_INSTANCE_UID", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("SHORT_ISSUE", "STRING", mode="NULLABLE"),
         bigquery.SchemaField("ISSUE", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("FIX", "STRING", mode="REQUIRED"),

@@ -591,12 +591,11 @@ def FIX_AND_CONVERT(in_folder, out_folder,
                 fixed_file_path,
                 fixed_blob_path
             )
-            fixes_all = FixCollection(log_fixed, f)
+            fixes_all = FixCollection(log_fixed, sop_uid)
             q_fix_string.extend(fixes_all.GetQuery())
-            pre_issues = IssueCollection(log_david_pre[1:], in_table, f)
+            pre_issues = IssueCollection(log_david_pre[1:], in_table, sop_uid)
             q_issue_string.extend(pre_issues.GetQuery())
-            post_issues = IssueCollection(log_david_post[1:], fx_table, 
-                f.replace(in_folder, dcm_folder))
+            post_issues = IssueCollection(log_david_post[1:], fx_table, sop_uid)
             q_issue_string.extend(post_issues.GetQuery())
             fixed_input_ref = conv.ParentChildDicoms(pre_issues.SOPInstanceUID,
                                    post_issues.SOPInstanceUID,
@@ -851,7 +850,7 @@ analysis_started = False
 studies = query_string_with_result(study_query.format(q_dataset_uid))
 number_of_all_inst = studies.total_rows
 number_of_inst_processed = 1
-max_number_of_threads = 5
+max_number_of_threads = os.cpu_count() + 1
 q = Queue()
 for ii in range(max_number_of_threads):
     t = MyThread(q, name='afn_th{:02d}'.format(ii))
