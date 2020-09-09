@@ -29,6 +29,8 @@ class ParentChildDicoms:
     def __init__(self, parent_sop_instanc_uid: list,
                  child_sop_instance_uid: str,
                  child_dicom_file_path) -> None:
+        if isinstance(parent_sop_instanc_uid, str):
+            parent_sop_instanc_uid = [parent_sop_instanc_uid]
         self.parent_sop_instanc_uid = parent_sop_instanc_uid
         self.child_sop_instance_uid = child_sop_instance_uid
         self.child_dicom_file = child_dicom_file_path

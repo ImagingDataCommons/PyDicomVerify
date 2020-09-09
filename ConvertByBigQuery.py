@@ -597,7 +597,7 @@ def FIX_AND_CONVERT(in_folder, out_folder,
             q_issue_string.extend(pre_issues.GetQuery())
             post_issues = IssueCollection(log_david_post[1:], fx_table, sop_uid)
             q_issue_string.extend(post_issues.GetQuery())
-            fixed_input_ref = conv.ParentChildDicoms(pre_issues.SOPInstanceUID,
+            fixed_input_ref = conv.ParentChildDicoms([pre_issues.SOPInstanceUID],
                                    post_issues.SOPInstanceUID,
                                    f.replace(in_folder, dcm_folder))
             q_origin_string.extend(fixed_input_ref.GetQuery(in_table, fx_table))    
@@ -755,7 +755,7 @@ in_dicoms = DataInfo(
             'idc_tcia_mvp_wave0',
             'idc_tcia_dicom_metadata'),
     )
-general_dataset_name = 'afshin_results_05' + in_dicoms.BigQuery.Dataset
+general_dataset_name = 'afshin_results_00' + in_dicoms.BigQuery.Dataset
 fx_dicoms = DataInfo(
     Datalet('idc-tcia',      # Bucket
             'us',
@@ -842,6 +842,7 @@ q_dataset_uid = '{}.{}.{}'.format(
     in_dicoms.BigQuery.Dataset,
     in_dicoms.BigQuery.DataObject
     )
+logger = logging.getLogger(__name__)
 max_number_of_studies = max_number
 time_interval_for_progress_update = 1
 last_time_point_for_progress_update = 0
@@ -851,12 +852,12 @@ studies = query_string_with_result(study_query.format(q_dataset_uid))
 number_of_all_inst = studies.total_rows
 number_of_inst_processed = 1
 max_number_of_threads = os.cpu_count() + 1
+logger.info('Starting {} active threads'.format(max_number_of_threads))
 q = Queue()
 for ii in range(max_number_of_threads):
     t = MyThread(q, name='afn_th{:02d}'.format(ii))
     t.daemon = True
     t.start()
-logger = logging.getLogger(__name__)
 if studies is not None:
     for row in studies:
         stuid = row.STUDYINSTANCEUID

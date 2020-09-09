@@ -16,6 +16,22 @@ def create_bucket(project_id: str, bucket_name: str, replace: bool = False):
     logger = ct.IndentAdapter(logging.getLogger(), {})
     logger.debug("Bucket {} created".format(bucket.name))
 
+
+def list_blobs(project_id: str, bucket_name: str, prefix: str = None):
+
+    """Lists all the blobs in the bucket."""
+    # bucket_name = "your-bucket-name"
+
+    storage_client = storage.Client(project_id)
+    bucket_obj = storage_client.bucket(bucket_name, project_id)
+    if prefix is None:
+        blobs = storage_client.list_blobs(bucket_obj)
+    else:
+        blobs = storage_client.list_blobs(
+            bucket_obj, prefix=prefix, delimiter='/')
+    return blobs
+
+
 def list_buckets(project_id: str):
     """Lists all buckets."""
 
@@ -32,7 +48,8 @@ def bucket_metadata(project_id: str, bucket_name: str):
     # bucket_name = 'your-bucket-name'
 
     storage_client = storage.Client(project_id)
-    bucket = storage_client.get_bucket(bucket_name)
+    bucket_obj = storage_client.bucket(bucket_name, project_id)
+    bucket = storage_client.get_bucket(bucket_obj)
     
     logger.debug("ID: {}".format(bucket.id))
     logger.debug("Name: {}".format(bucket.name))
@@ -67,14 +84,15 @@ def add_bucket_label(project_id: str, bucket_name: str):
 
     storage_client = storage.Client(project_id)
 
-    bucket = storage_client.get_bucket(bucket_name)
+    bucket_obj = storage_client.bucket(bucket_name, project_id)
+    bucket = storage_client.get_bucket(bucket_obj)
     labels = bucket.labels
     labels["example"] = "label"
     bucket.labels = labels
     bucket.patch()
 
     logger.debug("Updated labels on {}.".format(bucket.name))
-    pprint.pprint(bucket.labels)
+    # pprint.pprint(bucket.labels)
 
 
 def get_bucket_labels(project_id: str, bucket_name: str):
@@ -83,10 +101,11 @@ def get_bucket_labels(project_id: str, bucket_name: str):
     # bucket_name = 'your-bucket-name'
     storage_client = storage.Client(project_id)
 
-    bucket = storage_client.get_bucket(bucket_name)
+    bucket_obj = storage_client.bucket(bucket_name, project_id)
+    bucket = storage_client.get_bucket(bucket_obj)
 
     labels = bucket.labels
-    pprint.pprint(labels)
+    # pprint.pprint(labels)
 
 
 def remove_bucket_label(project_id: str, bucket_name: str):
@@ -95,7 +114,8 @@ def remove_bucket_label(project_id: str, bucket_name: str):
     # bucket_name = "your-bucket-name"
 
     storage_client = storage.Client(project_id)
-    bucket = storage_client.get_bucket(bucket_name)
+    bucket_obj = storage_client.bucket(bucket_name, project_id)
+    bucket = storage_client.get_bucket(bucket_obj)
 
     labels = bucket.labels
 
@@ -106,7 +126,7 @@ def remove_bucket_label(project_id: str, bucket_name: str):
     bucket.patch()
 
     logger.debug("Removed labels on {}.".format(bucket.name))
-    pprint.pprint(bucket.labels)
+    # pprint.pprint(bucket.labels)
 
 
 def delete_bucket(project_id: str, bucket_name: str):
@@ -116,7 +136,8 @@ def delete_bucket(project_id: str, bucket_name: str):
 
     storage_client = storage.Client(project_id)
 
-    bucket = storage_client.get_bucket(bucket_name)
+    bucket_obj = storage_client.bucket(bucket_name, project_id)
+    bucket = storage_client.get_bucket(bucket_obj)
     bucket.delete()
 
     logger.debug("Bucket {} deleted".format(bucket.name))
@@ -209,7 +230,8 @@ def upload_blob(project_id: str, bucket_name: str, source_file_name, destination
 def exists_bucket(project_id: str, bucket_name: str) -> bool:
     storage_client = storage.Client(project_id)
     try:
-        bucket = storage_client.get_bucket(bucket_name)
+        bucket_obj = storage_client.bucket(bucket_name, project_id)
+        bucket = storage_client.get_bucket(bucket_obj)
         return True
     except:
         return False
