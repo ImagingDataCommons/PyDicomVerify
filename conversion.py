@@ -230,11 +230,19 @@ def ClassifySeriesByPosition(ds_list):
                         sorted_ds[idx + 1][1] - ds[1], ds))
     return category
 
-def ConvertByHighDicomNew(SingleFrameDir, OutputPrefix, log=[]) -> list:
-    Files = ctools.Find(SingleFrameDir, 1, ctools.is_dicom)
-    supported_sop_class_uids = [MRImageStorageSOPClassUID, 
-    CTImageStorageSOPClassUID, 
-    PETImageStorageSOPClassUID]
+
+def ConvertByHighDicomNew(SingleFrame, OutputPrefix, log=[]) -> list:
+    if isinstance(SingleFrame, str):
+        if os.path.exists(SingleFrame):
+            Files = ctools.Find(SingleFrame, 1, ctools.is_dicom)
+    elif isinstance(SingleFrame, list):
+        Files = SingleFrame
+    else:
+        return []
+    supported_sop_class_uids = [
+        MRImageStorageSOPClassUID,
+        CTImageStorageSOPClassUID,
+        PETImageStorageSOPClassUID]
     Output = []
     err_counter = 1
     all_ds = []
