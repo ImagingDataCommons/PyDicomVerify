@@ -65,46 +65,49 @@ with open('log_config.json', 'w') as json_file:
 logging.config.dictConfig(d)
 logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.CRITICAL)
 # -----------------------------------------------------------------------
-class MyThread(Thread):
-    number_of_inst_processed = 1
-    number_of_st_processed = 1
-    number_of_all_studies = 1
-    instance_counter_lock = Lock()
+class WorkerThread(Thread):
 
     def __init__(self, queue: Queue, **kwarg):
         Thread.__init__(self, **kwarg)
         self._queue = queue
-        
 
     def run(self): 
         while True:
             (study_processor, args) = self._queue.get()
-            logger.info('Start fixing study({}) out of {}'.format(
-                MyThread.number_of_st_processed, 
-                MyThread.number_of_all_studies,))
             try:
                 instances = study_processor(*args)
-                study_uid = args[2][0]
-                with MyThread.instance_counter_lock:
-                    MyThread.number_of_inst_processed += instances
-                    MyThread.number_of_st_processed += 1
             except BaseException as err:
                 logger.error(err)
 
-            progress = float(MyThread.number_of_inst_processed) /\
-                float(number_of_all_inst)
-            time_point = time.time()
-            time_elapsed = round(time_point - start)
-            time_left = round(
-                number_of_all_inst-MyThread.number_of_inst_processed) *\
-                time_elapsed/float(MyThread.number_of_inst_processed)
-            header = '{}/{})Study {} was fix/convert-ed successfully'.format(
-                MyThread.number_of_st_processed, 
-                MyThread.number_of_all_studies, study_uid)
-            progress_string = ctools.ShowProgress(
-                progress, time_elapsed, time_left, 60, header, False)
-            logger.info(progress_string)
             self._queue.task_done()
+
+
+class ThreadPool:
+    def __init(self, max_number_of_threads: int):
+        self._queue = Queue()
+        self._thread_pool = []
+        self.output = []
+        self._lock = Lock()
+        
+        for i in range(max_number_of_threads):
+            self._thread_pool = append(self._create_th(self._queue))
+
+    def _create_th(self) -> WorkerThread:
+        t = WorkerThread(self._queue)
+        t.daemon = True
+        t.start()
+        return t
+
+    @property
+    def queue(self):
+        return self._queue
+
+    def kill_them_all(self):
+        for t in self._thread_pool:
+            t.kill()
+        for t in self._thread_pool:
+            t.join()
+
 
 class Datalet:
 
@@ -117,12 +120,15 @@ class Datalet:
         self.Dataset = dataset
         self.DataObject = dataobject
 
-    def GetBigQueryStyleAddress(self) -> str:
-        output = '`{}.{}.{}`'.format(
+    def GetBigQueryStyleAddress(self, quoted: bool=True) -> str:
+        output = '{}.{}.{}'.format(
             self.ProjectID,
             self.Dataset,
             self.DataObject
         )
+        if quoted:
+            output = '`{}`'.format(output)
+
         return output
 
 
@@ -463,19 +469,11 @@ def VER(file: str, log: list):
     my_code_output = verify(file, False, '')
 
 
-def FixFile(dicom_file, in_folder,
-            fixed_dcm_folder,
+def FixFile(dicom_file, dicom_fixed_file,
             log_fix, log_david_pre, log_david_post):
-    # ------------------------------------------------------------------
-    deslash = lambda x: x if not x.endswith('/') else x[:-1]
     parent = os.path.dirname(dicom_file)
     file_name = os.path.basename(dicom_file)
-
-    in_folder = deslash(in_folder)
-    # ------------------------------------------------------------------
-    f_dcm_folder = parent.replace(in_folder, fixed_dcm_folder)
-    if not os.path.exists(f_dcm_folder):
-        os.makedirs(f_dcm_folder)
+    
     ds = read_file(dicom_file)
     log_mine = []
     VER(dicom_file, log_david_pre)
@@ -497,9 +495,8 @@ def FixFile(dicom_file, in_folder,
             if callable(item):
                 item(ds, log_fix)
     fix_report = PrintLog(log_fix)
-    fixed_file = os.path.join(f_dcm_folder, file_name)
-    write_file(fixed_file, ds)
-    VER(fixed_file, log_david_post)
+    write_file(dicom_fixed_file, ds)
+    VER(dicom_fixed_file, log_david_post)
     return ds.SOPInstanceUID
 
 def BuildQueries(header:str, qs:list, dataset_id: str) -> list:
@@ -681,7 +678,51 @@ def CreateDicomStore(project_id: str,
                        dicom_store_id):
         create_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id)
 
-
+def fix_one_instance(collection_id: str,
+                     download_blob: str,
+                     upload_blob: str,
+                     in_file: str,
+                     fx_file: str,
+                     input_table_name: str,
+                     fixed_table_name: str,
+                     in_gc_info, fx_gc_info):
+    download_blob(
+                in_gc_info.Bucket.ProjectID,
+                collection_id,
+                download_blob, 
+                in_file
+                )
+    fix_log = []
+    pre_fix_issues = []
+    post_fix_issues = []
+    sop_uid = FixFile(
+                in_file, fx_file, fix_log, 
+                pre_fix_issues, 
+                post_fix_issues)
+    upload_blob(
+        fx_gc_info.Bucket.ProjectID,
+        fx_gc_info.Bucket.Dataset,
+        fx_file,
+        upload_blob
+    )
+    fixes_all = FixCollection(fix_log, sop_uid)
+    fix_query_string = fixes_all.GetQuery()
+    pre_issues = IssueCollection(
+        pre_fix_issues[1:],
+        input_table_name , sop_uid)
+    issue_query_string = pre_issues.GetQuery()
+    post_issues = IssueCollection(
+        post_fix_issues[1:], 
+        fixed_table_name, 
+        sop_uid)
+    issue_query_string.extend(post_issues.GetQuery())
+    fixed_input_ref = conv.ParentChildDicoms(
+        [pre_issues.SOPInstanceUID],
+        post_issues.SOPInstanceUID,
+        fx_file)
+    return (fix_query_string, issue_query_string)
+    
+    
 def ProcessOneStudy(in_folder: str, out_folder: str, uids: tuple,
                     in_gc_info, fx_gc_info, mf_gc_info,
                     max_number:int = 2**63 - 1) -> int:
@@ -692,31 +733,47 @@ def ProcessOneStudy(in_folder: str, out_folder: str, uids: tuple,
     collection_id = uids[1]
     fx_sub_dir = 'FIXED'
     mf_sub_dir = 'MULTIFRAME'
+    begin_dl = time.time()
     for number_of_series, (series_uid, instances) in enumerate(uids[2].items(), 1):
         if number_of_series > max_number_of_series:
             break
+        series_folder = os.path.join(
+                in_folder, '{}/{}'.format(study_uid, series_uid))
+        if not os.path.exists(series_folder):
+            os.makedirs(series_folder)
         for number_of_instances, instance_uid in enumerate(instances, 1):
             destination_file = os.path.join(
-                in_folder, '{}/{}/{}.dcm'.format(
-                    study_uid, series_uid, instance_uid
-                )
+                series_folder, '{}.dcm'.format(instance_uid)
             )
             src_blob_address = 'dicom/{}/{}/{}.dcm'.format(
                 study_uid,
                 series_uid,
                 instance_uid
             )
-            download_blob(
-                in_gc_info.Bucket.ProjectID,
-                collection_id,
-                src_blob_address, 
-                destination_file
+            thread_pool.dn_queue.put(
+                (
+                    download_blob,
+                    (
+                    in_gc_info.Bucket.ProjectID,
+                    collection_id,
+                    src_blob_address, 
+                    destination_file
+                    )
                 )
+            )
+            # download_blob(
+            #     in_gc_info.Bucket.ProjectID,
+            #     collection_id,
+            #     src_blob_address, 
+            #     destination_file
+            #     )
             if number_of_instances > max_number_of_instances:
                 break
             number_of_inst_in_study += 1
+    
     input_study_folder = os.path.join( in_folder, '{}'.format(study_uid))
     output_study_folder = os.path.join( out_folder, '{}'.format(study_uid))
+    thread_pool.dn_queue.join()
     FIX_AND_CONVERT(input_study_folder, output_study_folder,
         in_gc_info, fx_gc_info, mf_gc_info, True,
         fx_sub_dir, mf_sub_dir)
@@ -852,10 +909,12 @@ studies = query_string_with_result(study_query.format(q_dataset_uid))
 number_of_all_inst = studies.total_rows
 number_of_inst_processed = 1
 max_number_of_threads = os.cpu_count() + 1
+big_q_threads = ThreadPool(max_number_of_threads)
+
 logger.info('Starting {} active threads'.format(max_number_of_threads))
 q = Queue()
 for ii in range(max_number_of_threads):
-    t = MyThread(q, name='afn_th{:02d}'.format(ii))
+    t = StudyThread(q, name='afn_th{:02d}'.format(ii))
     t.daemon = True
     t.start()
 if studies is not None:
@@ -871,7 +930,7 @@ if studies is not None:
                 uids[stuid][1][seuid] = [sopuid]
         else:
             uids[stuid] = (cln_id, {seuid: [sopuid]})
-    MyThread.number_of_all_studies = min(len(uids), max_number_of_studies)
+    StudyThread.number_of_all_studies = min(len(uids), max_number_of_studies)
     for number_of_studies, (study_uid, sub_study) in enumerate(uids.items(), 1):
         if number_of_studies > max_number_of_studies:
             break

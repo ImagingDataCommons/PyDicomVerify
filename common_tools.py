@@ -14,6 +14,7 @@ find_parent_folder = False)->list:
         approved_list.sort(key=sort_key,reverse=reverse_sort)
     return approved_list
 
+
 def RecursiveFind(address, approvedlist, current_depth:int, max_depth=0,
 cond_function = os.path.isfile, find_parent_folder = False):
     filelist = os.listdir(address)
@@ -32,6 +33,8 @@ cond_function = os.path.isfile, find_parent_folder = False):
                 break
             else:
                 approvedlist.append(filename)
+
+
 def RunExe(arg_list, stderr_file, stdout_file,outlog=None,errlog=None, env_vars=None, log=[]):
     # print(str(arg_list))
     out_text = ""
