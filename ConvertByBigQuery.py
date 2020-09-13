@@ -115,30 +115,38 @@ class WorkerThread(Thread):
         Thread.__init__(self, **kwarg)
         self.output = []
         self._queue = queue
+        self._kill = False
 
     def run(self): 
-        while True:
+        while not self._kill:
             (work_fun, args) = self._queue.get()
             try:
                 self.output.append(work_fun(*args))
             except BaseException as err:
-                logger.error(err)
+                logger.error(err, exc_info=True)
 
             self._queue.task_done()
 
+    def kill(self):
+        self._kill = True
+
+
 
 class ThreadPool:
-    def __init(self, max_number_of_threads: int):
+    def __init__(self, max_number_of_threads: int,
+               thread_name_prifix: str=''):
         self._queue = Queue()
         self._thread_pool = []
         self.output = []
         self._lock = Lock()
         
         for i in range(max_number_of_threads):
-            self._thread_pool = append(self._create_th(self._queue))
+            self._thread_pool.append(self._create_th(
+                '{}{:02d}'.format(thread_name_prifix, i)
+            ))
 
-    def _create_th(self) -> WorkerThread:
-        t = WorkerThread(self._queue)
+    def _create_th(self, th_name) -> WorkerThread:
+        t = WorkerThread(self._queue, name=th_name)
         t.daemon = True
         t.start()
         return t
@@ -309,10 +317,11 @@ class IssueCollection:
             except BaseException:
                 pass
 
-    def GetQueryHeader(self) -> str:
+    @staticmethod
+    def GetQueryHeader(cls) -> str:
         header = '''
             INSERT INTO `{0}`.ISSUE
-                VALUES {1};
+                VALUES {1}
         '''
         return header
 
@@ -462,8 +471,9 @@ class FixCollection:
                 self.fixes.append(DicomFix(fix))
             except MessageError:
                 pass
-    
-    def GetQueryHeader(self) -> str:
+
+    @staticmethod
+    def GetQueryHeader(cls) -> str:
         header = '''
             INSERT INTO `{0}`.FIX_REPORT
                 VALUES {1};
@@ -544,7 +554,8 @@ def FixFile(dicom_file, dicom_fixed_file,
     VER(dicom_fixed_file, log_david_post)
     return ds.SOPInstanceUID
 
-def BuildQueries(header:str, qs:list, dataset_id: str) -> list:
+def BuildQueries(header:str, qs: list, dataset_id: str, 
+                 return_: bool=True) -> list:
     out_q = []
     ch_limit = 1024*1000
     row_limit = 1000
@@ -560,11 +571,15 @@ def BuildQueries(header:str, qs:list, dataset_id: str) -> list:
             out_q.append(header.format(dataset_id, elem_q))
             elem_q = ''
             rn = 0
-            print('{} ->'.format(n))
+            #print('{} ->'.format(n))
             query_string(out_q[-1])
     out_q.append(header.format(dataset_id, elem_q))
     query_string(out_q[-1])
-    return out_q
+    if return_:
+        return out_q
+    else:
+        return []
+
 
 
 def FIX_AND_CONVERT(in_folder, out_folder,
@@ -724,8 +739,8 @@ def CreateDicomStore(project_id: str,
         create_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id)
 
 def fix_one_instance(collection_id: str,
-                     download_blob: str,
-                     upload_blob: str,
+                     downloading_blob: str,
+                     uploading_blob: str,
                      in_file: str,
                      fx_file: str,
                      input_table_name: str,
@@ -734,7 +749,7 @@ def fix_one_instance(collection_id: str,
     download_blob(
                 in_gc_info.Bucket.ProjectID,
                 collection_id,
-                download_blob, 
+                downloading_blob, 
                 in_file
                 )
     fix_log = []
@@ -748,21 +763,30 @@ def fix_one_instance(collection_id: str,
         fx_gc_info.Bucket.ProjectID,
         fx_gc_info.Bucket.Dataset,
         fx_file,
-        upload_blob
+        uploading_blob
     )
+    
     fixes_all = FixCollection(fix_log, sop_uid)
+    fix_queries = fixes_all.GetQuery()
     pre_issues = IssueCollection(
         pre_fix_issues[1:],
         input_table_name , sop_uid)
+    issue_queries = pre_issues.GetQuery()
     post_issues = IssueCollection(
         post_fix_issues[1:], 
         fixed_table_name, 
         sop_uid)
-    fixed_input_ref = conv.ParentChildDicoms(
+    issue_queries.extend(post_issues.GetQuery())
+    fixed_input_relation = conv.ParentChildDicoms(
         [pre_issues.SOPInstanceUID],
         post_issues.SOPInstanceUID,
         fx_file)
-    return (fix_all, pre_issues, post_issues)
+    origin_queries = fixed_input_relation.GetQuery(
+        input_table_name,
+        fixed_table_name
+    )
+    
+    return (fix_queries, issue_queries, origin_queries)
 
 
 def ProcessOneSeries(src_collection_id: str,
@@ -781,10 +805,13 @@ def ProcessOneSeries(src_collection_id: str,
     if not os.path.exists(mf_series_dir):
             os.makedirs(mf_series_dir)
     # Get table neames for populating bigquery tables:
-    in_table_name = in_gc_info.GetBigQueryStyleAddress(False)
-    fx_table_name = fx_gc_info.GetBigQueryStyleAddress(False)
+    in_table_name = in_gc_info.BigQuery.GetBigQueryStyleAddress(False)
+    fx_table_name = fx_gc_info.BigQuery.GetBigQueryStyleAddress(False)
+    mf_table_name = mf_gc_info.BigQuery.GetBigQueryStyleAddress(False)
     # Download and fix
     single_frames = []
+    number_of_threads = 8
+    threads_ = ThreadPool(number_of_threads, 'inst_th')
     for instance_uid in instance_uids:
         src_blob_address = 'dicom/{}/{}/{}.dcm'.format(
                 study_uid,
@@ -793,31 +820,51 @@ def ProcessOneSeries(src_collection_id: str,
             )
         in_file = os.path.join(in_series_dir,'{}.dcm'.format(instance_uid))
         fx_file = os.path.join(fx_series_dir,'{}.dcm'.format(instance_uid))
-        (fx_report, pre_issues, post_issues) = fix_one_instance(
-            src_collection_id, src_blob, src_blob, in_file, fx_file,
-            in_table_name, fx_table_name, in_gc_info, fx_gc_info)
+        threads_.queue.put(
+            (
+                fix_one_instance,
+                (
+                    src_collection_id, 
+                    src_blob_address, src_blob_address,
+                    in_file, fx_file,
+                    in_table_name, fx_table_name, 
+                    in_gc_info, fx_gc_info,)
+            )
+        )
+        
+        # (fx_report, pre_issues, post_issues) = fix_one_instance(
+        #     src_collection_id, src_blob, src_blob, in_file, fx_file,
+        #     in_table_name, fx_table_name, in_gc_info, fx_gc_info)
         single_frames.append(fx_file)
+    
+    # wait for all fix threads to finish
+    threads_.queue.join()
+    threads_.kill_them_all()
+    issue_queries = []
+    fix_queries = []
+    origin_queries = []
+    for fix_q, iss_q, org_q in threads_.output:
+        fix_queries.extend(fix_q)
+        issue_queries.extend(iss_q)
+        origin_queries.extend(org_q)
+    return (fix_queries, issue_queries, origin_queries)
+
+
+
     # Now I want to convert the fix series:
     mf_log = []
     PrntChld = conv.ConvertByHighDicomNew(
             single_frames, mf_series_dir, mf_log)
-    logger.info(
-        '\tSeries {}/{} was successfully converted into {} multiframe files'.
-        format(i, len(folder_list), len(PrntChld))
-        )
-        # except(BaseException) as err:
-        #     mf_log.append(str(err))
-        #     PrntChld = []
     for pr_ch in PrntChld:
-        q_origin_string.extend(pr_ch.GetQuery(in_table_name, fx_table_name))
+        origin_queries.extend(pr_ch.GetQuery(in_table_name, fx_table_name))
         multiframe_log = []
 
         VER(pr_ch.child_dicom_file, multiframe_log)
-        mf_issues = IssueCollection(multiframe_log[1:], mf_table, 
+        mf_issues = IssueCollection(multiframe_log[1:], mf_table_name, 
             pr_ch.child_sop_instance_uid)
-        q_issue_string.extend(mf_issues.GetQuery())
+        issue_queries.extend(mf_issues.GetQuery())
         mf_blob_path = pr_ch.child_dicom_file.replace(
-            mfdcm_folder, 
+            mf_series_dir, 
             mf_gc_info.Bucket.DataObject)
         upload_blob(
             mf_gc_info.Bucket.ProjectID,
@@ -825,11 +872,11 @@ def ProcessOneSeries(src_collection_id: str,
             pr_ch.child_dicom_file,
             mf_blob_path
         )
-    
+        
     
 
     
-def ProcessOneStudy(in_folder: str, out_folder: str, uids: tuple,
+def ProcessOneStudy(in_folder: str, uids: tuple,
                     in_gc_info, fx_gc_info, mf_gc_info,
                     max_number:int = 2**63 - 1) -> int:
     max_number_of_instances = max_number
@@ -841,33 +888,43 @@ def ProcessOneStudy(in_folder: str, out_folder: str, uids: tuple,
     mf_sub_dir = 'MULTIFRAME'
     in_sub_dir = 'ORIGINAL'
     begin_dl = time.time()
+    series_threads = ThreadPool(1, 'sereis')
     for number_of_series, (series_uid, instances) in enumerate(uids[2].items(), 1):
         if number_of_series > max_number_of_series:
             break
         # Create all folders needed for series:
         in_series_folder = os.path.join(
                 in_folder, '{}/{}/{}'.format(study_uid, in_sub_dir, series_uid))
-        if not os.path.exists(in_series_folder):
-            os.makedirs(in_series_folder)
         fx_series_folder = os.path.join(
                 in_folder, '{}/{}/{}'.format(study_uid, fx_sub_dir, series_uid))
-        if not os.path.exists(fx_series_folder):
-            os.makedirs(fx_series_folder)
         mf_series_folder = os.path.join(
                 in_folder, '{}/{}/{}'.format(study_uid, mf_sub_dir, series_uid))
-        if not os.path.exists(mf_series_folder):
-            os.makedirs(mf_series_folder)
-        
-        
-        for number_of_instances, instance_uid in enumerate(instances, 1):
-            destination_file = os.path.join(
-                series_folder, '{}.dcm'.format(instance_uid)
+
+        series_threads.queue.put(
+            (ProcessOneSeries,
+                (
+                    collection_id,
+                    study_uid,
+                    series_uid,
+                    instances,
+                    in_series_folder,
+                    fx_series_folder,
+                    mf_series_folder,
+                    in_gc_info, fx_gc_info, mf_gc_info
+                ),
             )
-            src_blob_address = 'dicom/{}/{}/{}.dcm'.format(
-                study_uid,
-                series_uid,
-                instance_uid
-            )
+        )
+
+        
+        # for number_of_instances, instance_uid in enumerate(instances, 1):
+        #     destination_file = os.path.join(
+        #         series_folder, '{}.dcm'.format(instance_uid)
+        #     )
+        #     src_blob_address = 'dicom/{}/{}/{}.dcm'.format(
+        #         study_uid,
+        #         series_uid,
+        #         instance_uid
+        #     )
 
             # download_blob(
             #     in_gc_info.Bucket.ProjectID,
@@ -875,18 +932,51 @@ def ProcessOneStudy(in_folder: str, out_folder: str, uids: tuple,
             #     src_blob_address, 
             #     destination_file
             #     )
-            if number_of_instances > max_number_of_instances:
-                break
-            number_of_inst_in_study += 1
+            # if number_of_instances > max_number_of_instances:
+            #     break
+            # number_of_inst_in_study += 1
+    # Wait for series to be processd:
+    series_threads.queue.join()
+    series_threads.kill_them_all()
+    issue_queries = []
+    fix_queries = []
+    origin_queries = []
+    for fix_q, iss_q, org_q in series_threads.output:
+        fix_queries.extend(fix_q)
+        issue_queries.extend(iss_q)
+        origin_queries.extend(org_q)
     
-    input_study_folder = os.path.join( in_folder, '{}'.format(study_uid))
-    output_study_folder = os.path.join( out_folder, '{}'.format(study_uid))
-    thread_pool.dn_queue.join()
-    FIX_AND_CONVERT(input_study_folder, output_study_folder,
-        in_gc_info, fx_gc_info, mf_gc_info, True,
-        fx_sub_dir, mf_sub_dir)
-    # remove the study folder
-    rm((input_study_folder, output_study_folder,))
+    dataset_id = '{}.{}'.format(
+        fx_gc_info.BigQuery.ProjectID,
+        fx_gc_info.BigQuery.Dataset)
+    #populate tables:
+    big_q_threads.queue.put(
+        BuildQueries,
+        (
+            FixCollection.GetQueryHeader(),
+            fix_queries,
+            dataset_id, False
+        )
+        
+    )
+    big_q_threads.queue.put(
+        BuildQueries,
+        (
+            IssueCollection.GetQueryHeader(),
+            issue_queries,
+            dataset_id, False
+        )
+        
+    )
+    big_q_threads.queue.put(
+        BuildQueries,
+        (
+            FixCollection.GetQueryHeader(),
+            fix_queries,
+            dataset_id, False
+        )
+        
+    )
     return number_of_inst_in_study
 
 def rm(folders):
@@ -977,7 +1067,7 @@ create_bucket(
     mf_dicoms.Bucket.Dataset,
     False)
 max_number = 2**63 - 1
-# max_number = 10
+max_number = 10
 if max_number < 2**63 - 1:
     limit_q = 'LIMIT 1000'
 else:
@@ -994,7 +1084,7 @@ study_query = """
                 SELECT DICOMS.STUDYINSTANCEUID, 
                     DICOMS.SERIESINSTANCEUID, 
                     DICOMS.SOPINSTANCEUID, 
-                    COLLECTION_TABLE.IDC_GCS_CollectionID, 
+                    COLLECTION_TABLE.GCS_Bucket, 
                 FROM DICOMS JOIN 
                     {} AS 
                     COLLECTION_TABLE ON 
@@ -1016,8 +1106,8 @@ analysis_started = False
 studies = query_string_with_result(study_query.format(q_dataset_uid))
 number_of_all_inst = studies.total_rows
 number_of_inst_processed = 1
-max_number_of_threads = os.cpu_count() + 1
-big_q_threads = ThreadPool(max_number_of_threads)
+max_number_of_threads = 1#os.cpu_count() + 1
+big_q_threads = ThreadPool(max_number_of_threads, 'bq_th')
 
 logger.info('Starting {} active threads'.format(max_number_of_threads))
 q = Queue()
@@ -1030,7 +1120,7 @@ if studies is not None:
         stuid = row.STUDYINSTANCEUID
         seuid = row.SERIESINSTANCEUID
         sopuid = row.SOPINSTANCEUID
-        cln_id = 'idc-tcia-'+row.IDC_GCS_CollectionID
+        cln_id = row.GCS_Bucket
         if stuid in uids:
             if seuid in uids[stuid][1]:
                 uids[stuid][1][seuid].append(sopuid)
@@ -1046,7 +1136,7 @@ if studies is not None:
             (
                 ProcessOneStudy,
                 (
-                    in_folder, out_folder,
+                    in_folder,
                     (study_uid, sub_study[0], sub_study[1]),
                     in_dicoms, fx_dicoms, mf_dicoms,
                     max_number
@@ -1090,3 +1180,6 @@ export_dicom_instance_bigquery(
     mf_dicoms.BigQuery.ProjectID,
     mf_dicoms.BigQuery.Dataset,
     mf_dicoms.BigQuery.DataObject)
+# Wait unitl populating bigquery stops
+big_q_threads.queue.join()
+

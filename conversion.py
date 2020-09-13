@@ -35,7 +35,8 @@ class ParentChildDicoms:
         self.child_sop_instance_uid = child_sop_instance_uid
         self.child_dicom_file = child_dicom_file_path
 
-    def GetQueryHeader(self) -> str:
+    @staticmethod
+    def GetQueryHeader(cls) -> str:
         header = '''
             INSERT INTO `{0}`.ORIGINATED_FROM
                 VALUES {1};
