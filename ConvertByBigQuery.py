@@ -756,20 +756,43 @@ def CreateDicomStore(project_id: str,
         create_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id)
 
 def fix_one_instance(collection_id: str,
-                     downloading_blob: str,
-                     uploading_blob: str,
+                     study_uid: str,
+                     series_uid: str, 
+                     instance_uid: str,
                      in_file: str,
                      fx_file: str,
                      input_table_name: str,
                      fixed_table_name: str,
-                     in_gc_info, fx_gc_info):
+                     in_gc_info, fx_gc_info) -> bool:
     logger = logging.getLogger(__name__)
-    download_blob(
+    success = False
+    flaw_format = '''(
+        "{}",-- COLLECTION_NAME
+        "{}",-- STUDY_INSTANCE_UID
+        "{}",-- SERIES_INSTANCE_UID
+        "{}",-- SOP_INSTANCE_UID
+        "{{}}"-- FLAW
+            )
+            '''.format(
+                collection_id,
+                study_uid,
+                series_uid,
+                instance_uid
+                )
+    blob_address = 'dicom/{}/{}/{}.dcm'.format(
+                study_uid,
+                series_uid,
+                instance_uid
+            )
+    dl_success = download_blob(
                 in_gc_info.Bucket.ProjectID,
                 collection_id,
-                downloading_blob, 
+                blob_address, 
                 in_file
                 )
+    if not dl_success:
+        flaw_format.format('download')
+        return ([], [], [], flaw_format.format('download'))
     fix_log = []
     pre_fix_issues = []
     post_fix_issues = []
@@ -778,14 +801,20 @@ def fix_one_instance(collection_id: str,
                     in_file, fx_file, fix_log, 
                     pre_fix_issues, 
                     post_fix_issues)
+        fx_success = True
     except BaseException as err:
         logger.error(err, exc_info=True)
-    upload_blob(
+        fx_success = False
+    if not fx_success:
+        return ([], [], [], flaw_format.format('fix'))
+    ul_success = upload_blob(
         fx_gc_info.Bucket.ProjectID,
         fx_gc_info.Bucket.Dataset,
         fx_file,
-        uploading_blob
+        blob_address
     )
+    if not ul_success:
+        return ([], [], [], flaw_format.format('upload'))
     fixes_all = FixCollection(fix_log, sop_uid)
     fix_queries = fixes_all.GetQuery()
     pre_issues = IssueCollection(
@@ -805,10 +834,8 @@ def fix_one_instance(collection_id: str,
         input_table_name,
         fixed_table_name
     )
-    # logger.info('returning fix_queries({}), issue_queries({}), origin_queries({})'.format(
-    #     len(fix_queries), len(issue_queries), len(origin_queries)
-    # ) )
-    return (fix_queries, issue_queries, origin_queries)
+    success = True
+    return (fix_queries, issue_queries, origin_queries, '')
 
 
 def process_one_series(src_collection_id: str,
@@ -838,11 +865,6 @@ def process_one_series(src_collection_id: str,
     single_frames = []
     threads_ = ThreadPool(max_number_of_threads, 'inst_th')
     for instance_uid in instance_uids:
-        src_blob_address = 'dicom/{}/{}/{}.dcm'.format(
-                study_uid,
-                series_uid,
-                instance_uid
-            )
         in_file = os.path.join(in_series_dir,'{}.dcm'.format(instance_uid))
         fx_file = os.path.join(fx_series_dir,'{}.dcm'.format(instance_uid))
         threads_.queue.put(
@@ -850,7 +872,7 @@ def process_one_series(src_collection_id: str,
                 fix_one_instance,
                 (
                     src_collection_id, 
-                    src_blob_address, src_blob_address,
+                    study_uid, series_uid, instance_uid,
                     in_file, fx_file,
                     in_table_name, fx_table_name, 
                     in_gc_info, fx_gc_info,)
@@ -885,11 +907,17 @@ def process_one_series(src_collection_id: str,
     issue_queries = []
     fix_queries = []
     origin_queries = []
-    for fix_q, iss_q, org_q in threads_.output:
+    flaw_queries = []
+    success = True
+    for fix_q, iss_q, org_q, flaw in threads_.output:
+        success = success and (flaw == '')
+        flaw_queries.append(flaw)
         fix_queries.extend(fix_q)
         issue_queries.extend(iss_q)
         origin_queries.extend(org_q)
-
+    if not success:
+        logger.info('series \n{}\nencountered a problem while fixing so the conversion is going to be aborted')
+        return ([], [], [], flaw_queries)
     # Now I want to convert the fix series:
     tic = time.time()
     mf_log = []
@@ -928,7 +956,7 @@ def process_one_series(src_collection_id: str,
     logger.info('returning fix_queries({}), issue_queries({}), origin_queries({})'.format(
         len(fix_queries), len(issue_queries), len(origin_queries)
     ) )
-    return (fix_queries, issue_queries, origin_queries)
+    return (fix_queries, issue_queries, origin_queries, [])
         
     
 
@@ -999,11 +1027,13 @@ def process_one_study(in_folder: str, uids: tuple,
     issue_queries = []
     fix_queries = []
     origin_queries = []
+    flaw_queries = []
     logger.info('---> {}'.format(series_threads.output))
-    for fix_q, iss_q, org_q in series_threads.output:
+    for fix_q, iss_q, org_q, flaw_q in series_threads.output:
         fix_queries.extend(fix_q)
         issue_queries.extend(iss_q)
         origin_queries.extend(org_q)
+        flaw_queries.extend(flaw_q)
     
     dataset_id = '{}.{}'.format(
         fx_gc_info.BigQuery.ProjectID,
@@ -1034,6 +1064,15 @@ def process_one_study(in_folder: str, uids: tuple,
             (
                 conv.ParentChildDicoms.GetQueryHeader(),
                 origin_queries,
+                dataset_id, False
+            ))      
+        )
+    if len(flaw_queries) != 0:
+        big_q_threads.queue.put(
+            (BuildQueries,
+            (
+                "INSERT INTO `{0}`.DEFECTED VALUES {1};",
+                flaw_queries,
                 dataset_id, False
             ))      
         )

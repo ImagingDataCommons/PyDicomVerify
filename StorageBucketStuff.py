@@ -187,7 +187,8 @@ def delete_blob(project_id: str, bucket_name: str, blob_name):
     logger.debug("Blob {} deleted.".format(blob_name))
 
 
-def download_blob(project_id: str, bucket_name: str, source_blob_name, destination_file_name):
+def download_blob(project_id: str, bucket_name: str,
+                  source_blob_name, destination_file_name) -> bool:
     logger = ct.IndentAdapter(logging.getLogger(), {})
     """Downloads a blob from the bucket."""
     # bucket_name = "your-bucket-name"
@@ -201,15 +202,32 @@ def download_blob(project_id: str, bucket_name: str, source_blob_name, destinati
     parent_folder = os.path.dirname(destination_file_name)
     if not os.path.exists(parent_folder) and parent_folder != '':
         os.makedirs(parent_folder)
+    maximum_retry = 15
+    retries = 0
+    success = False
+    while retries < maximum_retry:
+        try:
+            blob.download_to_filename(destination_file_name)
+            logger.debug("Blob {} downloaded to {}.".format(
+                source_blob_name, destination_file_name))
+            success = True
+            break
+        except ConnectionError:
+            retries += 1
+            if retries >= maximum_retry:
+                logger.info(
+                    "after {} retries couldn't download the file".format(
+                        destination_file_name))
+                break
+            else:
+                logger.info(
+                    'retrying connection for file {}'.format(
+                        destination_file_name))
+    return success
 
-    blob.download_to_filename(destination_file_name)
-    logger.debug("Blob {} downloaded to {}.".format(
-            source_blob_name, destination_file_name
-        )
-    )
 
-
-def upload_blob(project_id: str, bucket_name: str, source_file_name, destination_blob_name):
+def upload_blob(project_id: str, bucket_name: str,
+                source_file_name, destination_blob_name):
     """Uploads a file to the bucket."""
     # bucket_name = "your-bucket-name"
     # source_file_name = "local/path/to/file"
@@ -218,13 +236,31 @@ def upload_blob(project_id: str, bucket_name: str, source_file_name, destination
     storage_client = storage.Client(project_id)
     bucket = storage_client.bucket(bucket_name, project_id)
     blob = bucket.blob(destination_blob_name)
-
-    blob.upload_from_filename(source_file_name)
-    logger = ct.IndentAdapter(logging.getLogger(), {})
-    logger.debug("File {} uploaded to {}.".format(
-            source_file_name, destination_blob_name
-        )
-    )
+    maximum_retry = 15
+    retries = 0
+    success = False
+    while retries < maximum_retry:
+        try:
+            blob.upload_from_filename(source_file_name)
+            logger = ct.IndentAdapter(logging.getLogger(), {})
+            logger.debug("File {} uploaded to {}.".format(
+                    source_file_name, destination_blob_name
+                )
+            )
+            success = True
+            break
+        except ConnectionError:
+            retries += 1
+            if retries >= maximum_retry:
+                logger.info(
+                    "after {} retries couldn't upload the file".format(
+                        source_file_name))
+                break
+            else:
+                logger.info(
+                    'retrying connection for file {}'.format(
+                        source_file_name))
+    return success
 
 
 def exists_bucket(project_id: str, bucket_name: str) -> bool:

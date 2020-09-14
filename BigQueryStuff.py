@@ -91,10 +91,18 @@ def create_all_tables(
         bigquery.SchemaField("MESSAGE", "STRING", mode="REQUIRED"),
     ]
 
+    schema_defected = [
+        bigquery.SchemaField("COLLECTION_NAME", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("STUDY_INSTANCE_UID", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("SERIES_INSTANCE_UID", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("SOP_INSTANCE_UID", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("FLAW", "STRING", mode="REQUIRED"),
+    ]
     tables: dict = {
         'ORIGINATED_FROM': schema_originated_from,
         'FIX_REPORT': schema_fix,
         'ISSUE': schema_issue,
+        'DEFECTED': schema_defected,
     }
     client = bigquery.Client()
     clear_tables = """
