@@ -145,3 +145,21 @@ class IndentAdapter(logging.LoggerAdapter):
     def process(self, msg, kwargs):
         ind_str = '{{: <{}}}'.format(self.indent()*4)
         return '{i} {m}'.format(i=ind_str.format(self.indent()), m=msg), kwargs
+
+
+def get_human_readable_string(input_: int, binary: bool=True) -> str:
+    input_suffix = ['', 'K', 'M', 'G', 'T']
+    if not isinstance(input_, int):
+        int(input_)
+    if binary:
+        divisor = 1024
+    else:
+        divisor = 1000
+    bin_ = []
+    while input_ % divisor > 0:
+        bin_.append(input_ % divisor)
+        input_ = (input_ // divisor)
+    # bin_.append(input)
+    suff = input_suffix[len(bin_)-1]
+    input_str = '{:03.2f} {}'.format(bin_[-1]+float(bin_[-2]) / divisor, suff)
+    return input_str

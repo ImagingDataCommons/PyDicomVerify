@@ -2,7 +2,7 @@
     "version": 1,
     "formatters": {
         "date_time": {
-            "format": "%(asctime)s-<%(levelname)-3.3s> %(processName)s[%(process)05d][%(threadName)s] %(module)-16.16s...py[%(lineno)03d] -> %(funcName)-16.16s- %(message)s"
+            "format": "%(asctime)s-<%(levelname)-3.3s> %(processName)s[%(process)05d][%(threadName)-10.10s] %(module)-16.16s...py[%(lineno)03d] -> %(funcName)-16.16s- %(message)s"
         }
     },
     "handlers": {
@@ -16,7 +16,7 @@
             "class": "logging.FileHandler",
             "formatter": "date_time",
             "mode": "w",
-            "filename": "./Logs/log[13-09-2020][01-03-16].log"
+            "filename": "./Logs/log[14-09-2020][01-17-06].log"
         }
     },
     "loggers": {
