@@ -161,5 +161,10 @@ def get_human_readable_string(input_: int, binary: bool=True) -> str:
         input_ = (input_ // divisor)
     # bin_.append(input)
     suff = input_suffix[len(bin_)-1]
-    input_str = '{:03.2f} {}'.format(bin_[-1]+float(bin_[-2]) / divisor, suff)
+    if len(bin_) > 1:
+        input_str = '{:03.2f} {}'.format(
+            bin_[-1]+float(bin_[-2]) / divisor, suff)
+    else:
+        input_str = '{:03.2f} {}'.format(
+            bin_[-1]/ divisor, suff)
     return input_str

@@ -27,12 +27,16 @@ floating_point_tolerance = 0.001
 
 class ParentChildDicoms:
     def __init__(self, parent_sop_instanc_uid: list,
+                 child_study_instance_uid: str,
+                 child_series_instance_uid: str,
                  child_sop_instance_uid: str,
-                 child_dicom_file_path) -> None:
+                 child_dicom_file_path: str) -> None:
         if isinstance(parent_sop_instanc_uid, str):
             parent_sop_instanc_uid = [parent_sop_instanc_uid]
         self.parent_sop_instanc_uid = parent_sop_instanc_uid
         self.child_sop_instance_uid = child_sop_instance_uid
+        self.child_study_instance_uid = child_study_instance_uid
+        self.child_series_instance_uid = child_series_instance_uid
         self.child_dicom_file = child_dicom_file_path
 
     @staticmethod
@@ -259,6 +263,7 @@ def ConvertByHighDicomNew(SingleFrame, OutputPrefix, log=[]) -> list:
         all_ds.append(ds)
         # if ds.Modality in Mo
     framesets = sop.FrameSetCollection(all_ds).FrameSets
+    multi_frame_study_instance_uid = all_ds[0].StudyInstanceUID
     parent_child_uids = []
     for frameset in framesets:
         ref_ds = frameset.Frames[0]
@@ -266,10 +271,11 @@ def ConvertByHighDicomNew(SingleFrame, OutputPrefix, log=[]) -> list:
         if sop_class_uid not in supported_sop_class_uids:
             continue
         # try:
+        multi_frame_series_instance_uid = generate_uid()
         multi_frame_sop_instance_uid = generate_uid()
         x = sop.LegacyConvertedEnhanceImage(
             frame_set=frameset,
-            series_instance_uid=generate_uid(),
+            series_instance_uid=multi_frame_series_instance_uid,
             series_number=ref_ds.SeriesNumber,
             sop_instance_uid=multi_frame_sop_instance_uid,
             instance_number=1,
@@ -286,7 +292,9 @@ def ConvertByHighDicomNew(SingleFrame, OutputPrefix, log=[]) -> list:
         log.append("File " + FileName + " was successfully written ...")
         parent_child_uids.append(ParentChildDicoms(
             frameset.GetSOPInstanceUIDList(),
-            multi_frame_sop_instance_uid, 
+            multi_frame_study_instance_uid,
+            multi_frame_series_instance_uid,
+            multi_frame_sop_instance_uid,
             FileName)
             )
         n += 1

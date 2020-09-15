@@ -3,6 +3,7 @@ import inspect
 import sys, os
 import logging
 import common_tools as ct
+from requests.exceptions import ConnectionError, ChunkedEncodingError
 
 def create_bucket(project_id: str, bucket_name: str, replace: bool = False):
     """Creates a new bucket."""
@@ -13,7 +14,7 @@ def create_bucket(project_id: str, bucket_name: str, replace: bool = False):
         return        
     storage_client = storage.Client(project_id)
     bucket = storage_client.create_bucket(bucket_name)
-    logger = ct.IndentAdapter(logging.getLogger(), {})
+    logger = logging.getLogger(__name__)
     logger.debug("Bucket {} created".format(bucket.name))
 
 
@@ -37,13 +38,13 @@ def list_buckets(project_id: str):
 
     storage_client = storage.Client(project_id)
     buckets = storage_client.list_buckets()
-    logger = ct.IndentAdapter(logging.getLogger(), {})
+    logger = logging.getLogger(__name__)
     for bucket in buckets:
         logger.debug('{}{}'.format(bucket.name))
 
 
 def bucket_metadata(project_id: str, bucket_name: str):
-    logger = ct.IndentAdapter(logging.getLogger(), {})
+    logger = logging.getLogger(__name__)
     """Prints out a bucket's metadata."""
     # bucket_name = 'your-bucket-name'
 
@@ -78,7 +79,7 @@ def bucket_metadata(project_id: str, bucket_name: str):
 
 
 def add_bucket_label(project_id: str, bucket_name: str):
-    logger = ct.IndentAdapter(logging.getLogger(), {})
+    logger = logging.getLogger(__name__)
     """Add a label to a bucket."""
     # bucket_name = "your-bucket-name"
 
@@ -96,7 +97,7 @@ def add_bucket_label(project_id: str, bucket_name: str):
 
 
 def get_bucket_labels(project_id: str, bucket_name: str):
-    logger = ct.IndentAdapter(logging.getLogger(), {})
+    logger = logging.getLogger(__name__)
     """Prints out a bucket's labels."""
     # bucket_name = 'your-bucket-name'
     storage_client = storage.Client(project_id)
@@ -109,7 +110,7 @@ def get_bucket_labels(project_id: str, bucket_name: str):
 
 
 def remove_bucket_label(project_id: str, bucket_name: str):
-    logger = ct.IndentAdapter(logging.getLogger(), {})
+    logger = logging.getLogger(__name__)
     """Remove a label from a bucket."""
     # bucket_name = "your-bucket-name"
 
@@ -130,7 +131,7 @@ def remove_bucket_label(project_id: str, bucket_name: str):
 
 
 def delete_bucket(project_id: str, bucket_name: str):
-    logger = ct.IndentAdapter(logging.getLogger(), {})
+    logger = logging.getLogger(__name__)
     """Deletes a bucket. The bucket must be empty."""
     # bucket_name = "your-bucket-name"
 
@@ -146,7 +147,7 @@ def delete_bucket(project_id: str, bucket_name: str):
 def copy_blob(
     bucket_name, blob_name, destination_bucket_name, destination_blob_name
 ):
-    logger = ct.IndentAdapter(logging.getLogger(), {})
+    logger = logging.getLogger(__name__)
     """Copies a blob from one bucket to another with a new name."""
     # bucket_name = "your-bucket-name"
     # blob_name = "your-object-name"
@@ -173,7 +174,7 @@ def copy_blob(
 
 
 def delete_blob(project_id: str, bucket_name: str, blob_name):
-    logger = ct.IndentAdapter(logging.getLogger(), {})
+    logger = logging.getLogger(__name__)
     """Deletes a blob from the bucket."""
     # bucket_name = "your-bucket-name"
     # blob_name = "your-object-name"
@@ -189,7 +190,7 @@ def delete_blob(project_id: str, bucket_name: str, blob_name):
 
 def download_blob(project_id: str, bucket_name: str,
                   source_blob_name, destination_file_name) -> bool:
-    logger = ct.IndentAdapter(logging.getLogger(), {})
+    logger = logging.getLogger(__name__)
     """Downloads a blob from the bucket."""
     # bucket_name = "your-bucket-name"
     # source_blob_name = "storage-object-name"
@@ -212,17 +213,19 @@ def download_blob(project_id: str, bucket_name: str,
                 source_blob_name, destination_file_name))
             success = True
             break
-        except ConnectionError:
+        except (ConnectionError, ConnectionResetError,
+            ChunkedEncodingError) as err:
             retries += 1
             if retries >= maximum_retry:
-                logger.info(
-                    "after {} retries couldn't download the file".format(
-                        destination_file_name))
+                logger.error(
+                    "after {} retries couldn't "
+                    "download the file\n{}\n{} ".format(
+                        retries, destination_file_name, err), exc_info=True)
                 break
             else:
                 logger.info(
-                    'retrying connection for file {}'.format(
-                        destination_file_name))
+                    '({})retrying connection for file \n{}'.format(
+                        retries, destination_file_name))
     return success
 
 
@@ -232,7 +235,7 @@ def upload_blob(project_id: str, bucket_name: str,
     # bucket_name = "your-bucket-name"
     # source_file_name = "local/path/to/file"
     # destination_blob_name = "storage-object-name"
-
+    logger = logging.getLogger(__name__)
     storage_client = storage.Client(project_id)
     bucket = storage_client.bucket(bucket_name, project_id)
     blob = bucket.blob(destination_blob_name)
@@ -242,24 +245,24 @@ def upload_blob(project_id: str, bucket_name: str,
     while retries < maximum_retry:
         try:
             blob.upload_from_filename(source_file_name)
-            logger = ct.IndentAdapter(logging.getLogger(), {})
             logger.debug("File {} uploaded to {}.".format(
                     source_file_name, destination_blob_name
                 )
             )
             success = True
             break
-        except ConnectionError:
+        except (ConnectionError, ConnectionResetError,
+            ChunkedEncodingError) as err:
             retries += 1
             if retries >= maximum_retry:
-                logger.info(
-                    "after {} retries couldn't upload the file".format(
-                        source_file_name))
+                logger.error(
+                    "after {} retries couldn't upload the file\n{}\n{}".format(
+                        retries, source_file_name, err), exc_info=True)
                 break
             else:
                 logger.info(
-                    'retrying connection for file {}'.format(
-                        source_file_name))
+                    '({})retrying connection for file \n{}'.format(
+                        retries, source_file_name))
     return success
 
 
