@@ -155,3 +155,10 @@ def create_all_tables(
     query_job.result()
 
 
+def list_datasets(project_id: str):
+
+    client = bigquery.Client(project_id)
+
+    datasets = list(client.list_datasets())  # Make an API request.
+    return datasets
+

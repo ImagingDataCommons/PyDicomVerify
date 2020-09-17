@@ -147,24 +147,29 @@ class IndentAdapter(logging.LoggerAdapter):
         return '{i} {m}'.format(i=ind_str.format(self.indent()), m=msg), kwargs
 
 
-def get_human_readable_string(input_: int, binary: bool=True) -> str:
-    input_suffix = ['', 'K', 'M', 'G', 'T']
+def get_human_readable_string(input_: float, binary: bool=True) -> str:
+    input_suffix = ['f', 'p', 'n', 'µ', 'm', '', 'K', 'M', 'G', 'T', 'P', 'E']
+    input_ *= 1e15
+    if input_ < 1:
+        return '{:3.2e} {}'.format(input_, input_suffix[0])
+
     if not isinstance(input_, int):
-        int(input_)
+        input_ = int(input_)
     if binary:
         divisor = 1024
     else:
         divisor = 1000
     bin_ = []
-    while input_ % divisor > 0:
-        bin_.append(input_ % divisor)
-        input_ = (input_ // divisor)
-    # bin_.append(input)
+    value = input_
+    while value // divisor > 0:
+        bin_.append(value % divisor)
+        value = (value // divisor)
+    bin_.append(value)
     suff = input_suffix[len(bin_)-1]
     if len(bin_) > 1:
         input_str = '{:03.2f} {}'.format(
             bin_[-1]+float(bin_[-2]) / divisor, suff)
     else:
         input_str = '{:03.2f} {}'.format(
-            bin_[-1]/ divisor, suff)
+            bin_[-1], suff)
     return input_str

@@ -3,7 +3,8 @@ import inspect
 import sys, os
 import logging
 import common_tools as ct
-from requests.exceptions import ConnectionError, ChunkedEncodingError
+import parallelization as parallel
+from requests.exceptions import RequestException
 
 def create_bucket(project_id: str, bucket_name: str, replace: bool = False):
     """Creates a new bucket."""
@@ -16,6 +17,31 @@ def create_bucket(project_id: str, bucket_name: str, replace: bool = False):
     bucket = storage_client.create_bucket(bucket_name)
     logger = logging.getLogger(__name__)
     logger.debug("Bucket {} created".format(bucket.name))
+
+
+def empty_bukcet(project_id: str, bucket_name: str,
+                 number_of_threads: int = parallel.MAX_NUMBER_OF_THREADS):
+    blobs = list_blobs(project_id, bucket_name)
+    blob_name_list = []
+    delete_threads = parallel.ThreadPool(
+        number_of_threads, 'delete_thread')
+    if number_of_threads > 1:
+        for i in blobs:
+            delete_threads.queue.put(
+                (
+                    delete_blob,
+                    (
+                        project_id,
+                        bucket_name,
+                        i.name
+                    )
+                )
+            )
+        delete_threads.queue.join()
+        delete_threads.kill_them_all()
+    else:
+        for i in blobs:
+            delete_blob(project_id, bucket_name, i.name)
 
 
 def list_blobs(project_id: str, bucket_name: str, prefix: str = None):
@@ -173,7 +199,7 @@ def copy_blob(
     )
 
 
-def delete_blob(project_id: str, bucket_name: str, blob_name):
+def delete_blob(project_id: str, bucket_name: str, blob_name) -> bool:
     logger = logging.getLogger(__name__)
     """Deletes a blob from the bucket."""
     # bucket_name = "your-bucket-name"
@@ -183,9 +209,28 @@ def delete_blob(project_id: str, bucket_name: str, blob_name):
 
     bucket = storage_client.bucket(bucket_name, project_id)
     blob = bucket.blob(blob_name)
-    blob.delete()
+    max_retries = 30
+    retries = 0
+    success = False
+    while True:
+        try:
+            blob.delete()
+            logger.debug("Blob {} deleted.".format(blob_name))
+            success = True
+            break
+        except BaseException as err:
+            if retries >= max_retries:
+                logger.error(
+                    "after {} retries couldn't "
+                    "delete the file\n{}\n{} ".format(
+                        retries, blob_name, err), exc_info=True)
+                break
+            else:
+                logger.info(
+                    '({})retrying connection for file \n{}'.format(
+                        retries, blob_name))
+    return success
 
-    logger.debug("Blob {} deleted.".format(blob_name))
 
 
 def download_blob(project_id: str, bucket_name: str,
@@ -213,8 +258,7 @@ def download_blob(project_id: str, bucket_name: str,
                 source_blob_name, destination_file_name))
             success = True
             break
-        except (ConnectionError, ConnectionResetError,
-            ChunkedEncodingError) as err:
+        except RequestException as err:
             retries += 1
             if retries >= maximum_retry:
                 logger.error(
@@ -251,8 +295,7 @@ def upload_blob(project_id: str, bucket_name: str,
             )
             success = True
             break
-        except (ConnectionError, ConnectionResetError,
-            ChunkedEncodingError) as err:
+        except RequestException as err:
             retries += 1
             if retries >= maximum_retry:
                 logger.error(
