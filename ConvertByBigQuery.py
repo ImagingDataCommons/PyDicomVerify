@@ -1193,7 +1193,7 @@ create_bucket(
     mf_dicoms.Bucket.Dataset,
     False)
 max_number = 2**63 - 1
-max_number = 10
+# max_number = 10
 if max_number < 2**63 - 1:
     limit_q = 'LIMIT 1000'
 else:
