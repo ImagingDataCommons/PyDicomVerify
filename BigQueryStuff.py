@@ -1,5 +1,4 @@
 from google.cloud import bigquery
-from google.oauth2 import service_account
 import logging
 
 
@@ -7,8 +6,8 @@ def delete_dataset(dataset_id):
     client = bigquery.Client()
     client.delete_dataset(
         dataset_id, delete_contents=True, not_found_ok=True
-    )  
-                    
+    )
+
 
 def create_dataset(dataset_id, region: str):
     client = bigquery.Client()
@@ -28,12 +27,11 @@ def dataset_exists(dataset_id) -> bool:
         print("Dataset {} is not found".format(dataset_id))
         return False
 
-def query_string (q: str):
+
+def query_string(q: str):
     # print(q)
-    
     client = bigquery.Client()
     job_config = bigquery.QueryJobConfig(priority=bigquery.QueryPriority.BATCH)
-    
     try:
         query_job = client.query(q, job_config=job_config)
         # query_job.result()
@@ -42,31 +40,33 @@ def query_string (q: str):
         logging.error(err)
         print('sth went wrong')
 
+
 def query_string_with_result(q: str):
-     # print(q)    
+     # print(q)
     client = bigquery.Client()
     try:
         query_job = client.query(q)
         return query_job.result()
     except BaseException as err:
         print(err)
-        # print('sth went wrong')  
-        return None 
+        # print('sth went wrong')
+        return None
 
-def create_all_tables(
-    dataset_id: str, dataset_region: str, rmove_if_exists: bool=False):
-    if not dataset_exists(dataset_id):
-        create_dataset(dataset_id, dataset_region)
+
+def create_all_tables(dataset_id: str, dataset_region: str,
+                      rmove_if_exists: bool = False):
+    if dataset_exists(dataset_id):
+        delete_dataset(dataset_id)
+    create_dataset(dataset_id, dataset_region)
     schema_originated_from = [
         bigquery.SchemaField("PARENT_TABLE", "STRING", mode="REQUIRED"),
-        bigquery.SchemaField("PARENT_SOP_INSTANCE_UID", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("PARENT_SOPInstanceUID", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("CHILD_TABLE", "STRING", mode="REQUIRED"),
-        bigquery.SchemaField("CHILD_SOP_INSTANCE_UID", "STRING", mode="REQUIRED"),
-
+        bigquery.SchemaField("CHILD_SOPInstanceUID", "STRING", mode="REQUIRED"),
     ]
     schema_issue = [
         bigquery.SchemaField("DCM_TABLE_NAME", "STRING", mode="REQUIRED"),
-        bigquery.SchemaField("DCM_SOP_INSTANCE_UID", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("DCM_SOPInstanceUID", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("ISSUE_MSG", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("MESSAGE", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("TYPE", "STRING", mode="REQUIRED"),
@@ -74,9 +74,8 @@ def create_all_tables(
         bigquery.SchemaField("KEYWORD", "STRING", mode="NULLABLE"),
         bigquery.SchemaField("TAG", "INT64", mode="NULLABLE"),
     ]
-
     schema_fix = [
-        bigquery.SchemaField("DCM_SOP_INSTANCE_UID", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("DCM_SOPInstanceUID", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("SHORT_ISSUE", "STRING", mode="NULLABLE"),
         bigquery.SchemaField("ISSUE", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("FIX", "STRING", mode="REQUIRED"),
@@ -90,12 +89,11 @@ def create_all_tables(
         bigquery.SchemaField("FIX_FUNCTION2_LINK", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("MESSAGE", "STRING", mode="REQUIRED"),
     ]
-
     schema_defected = [
-        bigquery.SchemaField("COLLECTION_NAME", "STRING", mode="REQUIRED"),
-        bigquery.SchemaField("STUDY_INSTANCE_UID", "STRING", mode="REQUIRED"),
-        bigquery.SchemaField("SERIES_INSTANCE_UID", "STRING", mode="REQUIRED"),
-        bigquery.SchemaField("SOP_INSTANCE_UID", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("GCS_Bucket", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("StudyInstanceUID", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("SeriesInstanceUID", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("SOPInstanceUID", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("FLAW", "STRING", mode="REQUIRED"),
     ]
     tables: dict = {
@@ -114,7 +112,6 @@ def create_all_tables(
     """
     query_job = client.query(clear_tables.format(dataset_id))
     query_job.result()
-    
     for t_id, sch in tables.items():
         t_id = '{}.{}'.format(dataset_id, t_id)
         t = bigquery.Table(t_id, sch)
@@ -122,9 +119,7 @@ def create_all_tables(
             client.get_table(t)
         except BaseException:
             client.create_table(t)
-
     all_queies = []
-
     clear_all =\
         """
         CREATE OR REPLACE PROCEDURE `{0}`.CLEAR_TABLES_ROUTINES ()
@@ -133,10 +128,10 @@ def create_all_tables(
             DECLARE N, i INT64 DEFAULT 0;
             CREATE TEMP TABLE SQL_COMMANDS AS (SELECT CONCAT(' DROP TABLE `' ,TABLE_CATALOG, '`.', TABLE_SCHEMA , '.', TABLE_NAME , '; ') AS SQL_COMMAND
             FROM   `{0}`.INFORMATION_SCHEMA.TABLES
-            WHERE  TABLE_TYPE = 'BASE TABLE' 
+            WHERE  TABLE_TYPE = 'BASE TABLE'
             UNION ALL
             SELECT CONCAT(' DROP PROCEDURE `' ,ROUTINE_CATALOG, '`.', ROUTINE_SCHEMA , '.', ROUTINE_NAME , '; ') AS SQL_COMMAND
-            FROM   `{0}`.INFORMATION_SCHEMA.ROUTINES 
+            FROM   `{0}`.INFORMATION_SCHEMA.ROUTINES
             WHERE  ROUTINE_TYPE = 'PROCEDURE' );
             SET N = (SELECT COUNT(*) FROM SQL_COMMANDS);
             WHILE i < N DO
@@ -156,9 +151,6 @@ def create_all_tables(
 
 
 def list_datasets(project_id: str):
-
     client = bigquery.Client(project_id)
-
     datasets = list(client.list_datasets())  # Make an API request.
     return datasets
-

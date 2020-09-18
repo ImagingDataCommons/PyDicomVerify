@@ -1,55 +1,39 @@
 import shutil
 import pydicom
 import re
-from condn_cc import *
-from dicom_prechecks import *
 import os
-import curses.ascii
 import fix_frequent_errors
 import pydicom.charset
-import subprocess
-import PrivateDicFromDavid
-import xlsxwriter
 import time
-from threading import Thread, Lock
 from queue import Queue
 from datetime import timedelta
 import common_tools as ctools
 import conversion as conv
 import json
 from datetime import datetime
-from parallelization import (StudyThread, WorkerThread,
+from typing import List
+import logging
+import logging.config
+from DicomStoreStuff import (
+    create_dataset, exists_dataset, exists_dicom_store, create_dicom_store,
+    import_dicom_bucket, export_dicom_instance_bigquery)
+from parallelization import (StudyThread,
                              ThreadPool, MAX_NUMBER_OF_THREADS)
 from BigQueryStuff import (
     create_all_tables,
-    query_string, 
+    query_string,
     query_string_with_result)
-from DicomStoreStuff import (
-    list_dicom_stores,
-    create_dicom_store,
-    create_dataset,
-    import_dicom_bucket,
-    export_dicom_instance_bigquery,
-    exists_dicom_store, exists_dataset)
-from DicomWebStuff import (
-    dicomweb_retrieve_instance,
-    dicomweb_store_instance,
-    _BASE_URL
-    )
 from StorageBucketStuff import (
-    list_buckets,
     download_blob,
     upload_blob,
     create_bucket,
-    bucket_metadata
     )
 from dicom_fix_issue_info import (
-    DicomFix,
-    DicomIssue,
     FixCollection,
     IssueCollection,
     Datalet,
-    DataInfo
+    DataInfo,
+    DicomFileInfo
     )
 # ---------------- Global Vars --------------------------:
 max_number_of_threads = os.cpu_count() + 1
@@ -66,8 +50,6 @@ flaw_query_form = '''(
             )
             '''
 # Logger setup --------------------------------------------------------
-import logging
-import logging.config
 with open('log_config.json') as json_file:
     d = json.load(json_file)
 dt_string = datetime.now().strftime("[%d-%m-%Y][%H-%M-%S]")
@@ -337,12 +319,8 @@ def CreateDicomStore(project_id: str,
             project_id, cloud_region, dataset_id, dicom_store_id)
 
 
-def fix_one_instance_v01(collection_id: str,
-                         study_uid: str,
-                         series_uid: str,
-                         instance_uid: str,
-                         in_file: str,
-                         fx_file: str,
+def fix_one_instance_v01(inst_info: DicomFileInfo,
+                         fx_inst_info: DicomFileInfo,
                          input_table_name: str,
                          fixed_table_name: str) -> tuple:
     logger = logging.getLogger(__name__)
@@ -350,8 +328,9 @@ def fix_one_instance_v01(collection_id: str,
     pre_fix_issues = []
     post_fix_issues = []
     try:
-        study_uid, sereies_uid, sop_uid = FixFile(
-            in_file, fx_file, fix_log,
+        (fx_inst_info.study_uid, fx_inst_info.sereies_uid,
+            fx_inst_info.instance_uid) = FixFile(
+            inst_info.file_path, fx_inst_info.file_path, fix_log,
             pre_fix_issues,
             post_fix_issues)
         fx_success = True
@@ -359,29 +338,32 @@ def fix_one_instance_v01(collection_id: str,
         logger.error(err, exc_info=True)
     if not fx_success:
         return ([], [], [], flaw_query_form.format(
-            collection_id, study_uid, series_uid, instance_uid, 'FIX'))
-    fixes_all = FixCollection(fix_log, study_uid, series_uid, sop_uid)
+            inst_info.bucket_name, inst_info.study_uid,
+            inst_info.series_uid, inst_info.instance_uid, 'FIX'))
+    fixes_all = FixCollection(
+        fix_log, fx_inst_info.study_uid,
+        fx_inst_info.series_uid, fx_inst_info.instance_uid)
     fix_queries = fixes_all.GetQuery()
     pre_issues = IssueCollection(
         pre_fix_issues[1:],
         input_table_name,
-        study_uid,
-        series_uid,
-        sop_uid)
+        inst_info.study_uid,
+        inst_info.series_uid,
+        inst_info.instance_uid)
     issue_queries = pre_issues.GetQuery()
     post_issues = IssueCollection(
         post_fix_issues[1:],
         fixed_table_name,
-        study_uid,
-        series_uid,
-        sop_uid)
+        fx_inst_info.study_uid,
+        fx_inst_info.series_uid,
+        fx_inst_info.instance_uid)
     issue_queries.extend(post_issues.GetQuery())
     fixed_input_relation = conv.ParentChildDicoms(
         [pre_issues.SOPInstanceUID],
         post_issues.StudyInstanceUID,
         post_issues.SeriesInstanceUID,
         post_issues.SOPInstanceUID,
-        fx_file)
+        fx_inst_info.file_path)
     origin_queries = fixed_input_relation.GetQuery(
         input_table_name,
         fixed_table_name
@@ -389,21 +371,18 @@ def fix_one_instance_v01(collection_id: str,
     return (fix_queries, issue_queries, origin_queries, '')
 
 
-def process_one_series_v01(src_collection_id: str,
-                           study_uid: str,
-                           series_uid: str,
-                           inst_uid_and_file: list,
+def process_one_series_v01(inst_infos: List[DicomFileInfo],
                            fx_series_dir: str,
                            mf_series_dir: str,
                            in_gc_info, fx_gc_info, mf_gc_info) -> tuple:
     logger = logging.getLogger(__name__)
     logger.info('\tStart fixing series({}) containing {} instances'.format(
-            series_uid, len(inst_uid_and_file)))
+            inst_infos[0].series_uid, len(inst_infos)))
     tic = time.time()
     # Create necessarry folders:
-    if os.path.exists(fx_series_dir):
+    if not os.path.exists(fx_series_dir):
         os.makedirs(fx_series_dir)
-    if os.path.exists(mf_series_dir):
+    if not os.path.exists(mf_series_dir):
         os.makedirs(mf_series_dir)
     # Get table neames for populating bigquery tables:
     in_table_name = in_gc_info.BigQuery.GetBigQueryStyleAddress(False)
@@ -411,16 +390,19 @@ def process_one_series_v01(src_collection_id: str,
     mf_table_name = mf_gc_info.BigQuery.GetBigQueryStyleAddress(False)
     # Fix process
     single_frames = []
-    fix_threads = ThreadPool(max_number_of_instance_threads, 'instance')
-    for instance_uid, file in inst_uid_and_file:
-        fx_file = os.path.join(fx_series_dir, '{}.dcm'.format(instance_uid))
+    fix_threads = ThreadPool(min(len(inst_infos), MAX_NUMBER_OF_THREADS), 'instance')
+    for obj in inst_infos:
+        fx_file = os.path.join(
+            fx_series_dir, '{}.dcm'.format(obj.instance_uid))
+        fx_obj = DicomFileInfo(
+            fx_gc_info.Bucket.ProjectID, fx_gc_info.Bucket.Dataset,
+            '', fx_file, '', '', '')
         fix_threads.queue.put(
             (
                 fix_one_instance_v01,
                 (
-                    src_collection_id,
-                    study_uid, series_uid, instance_uid,
-                    file, fx_file,
+                    obj,
+                    fx_obj,
                     in_table_name, fx_table_name
                 )
             )
@@ -432,12 +414,12 @@ def process_one_series_v01(src_collection_id: str,
     t_e = '{}'.format(str(timedelta(seconds=toc - tic)))
     # Log some information
     speed_str = ctools.get_human_readable_string(
-        len(inst_uid_and_file) / (toc - tic)
+        len(inst_infos) / (toc - tic)
         )
     logger.info(
-        '\tfinished fixing series({}): {} '
+        'finished fixing series<{}>: {} '
         'instances in {} sec ({}inst/sec)'.format(
-            series_uid, len(inst_uid_and_file), t_e, speed_str))
+            inst_infos[0].series_uid, len(inst_infos), t_e, speed_str))
     # collect outputs
     issue_queries = []
     fix_queries = []
@@ -453,14 +435,16 @@ def process_one_series_v01(src_collection_id: str,
         fix_queries.extend(fix_q)
         issue_queries.extend(iss_q)
         origin_queries.extend(org_q)
-        inst_uid = args[3]
-        fx_file = args[5]
-        fx_blob = fx_blob_form.format(study_uid, series_uid, inst_uid)
-        blob_file_pair.append((fx_blob, fx_file))
+        fx_file_info = args[1]
+        fx_file_info.blob_address = fx_blob_form.format(
+            fx_file_info.study_uid, fx_file_info.series_uid,
+            fx_file_info.instance_uid)
+        blob_file_pair.append(fx_file_info)
+        single_frames.append(fx_file_info.file_path)
     if not success:
         logger.info(
-            'series \n{}\nencountered a problem while fi'
-            'xing so the conversion is going to be aborted')
+            'series <{}> encountered a problem while fi'
+            'xing so the conversion is going to be aborted',)
         return ([], [], [], [], flaw_queries)
     # Now I want to convert the fix series:
     tic = time.time()
@@ -483,38 +467,47 @@ def process_one_series_v01(src_collection_id: str,
                 pr_ch.child_series_instance_uid,
                 pr_ch.child_series_instance_uid
             )
-        blob_file_pair.append((mf_blob_path, pr_ch.child_dicom_file))
+        blob_file_pair.append(DicomFileInfo(
+            mf_gc_info.Bucket.ProjectID,
+            mf_gc_info.Bucket.Dataset,
+            mf_blob_path, pr_ch.child_dicom_file,
+            pr_ch.child_study_instance_uid,
+            pr_ch.child_series_instance_uid,
+            pr_ch.child_sop_instance_uid
+        ))
     toc = time.time()
     # Now I'm logging the conversion process:
     speed_str = ctools.get_human_readable_string(
-        len(inst_uid_and_file) / (toc - tic)
-        )
+        len(inst_infos) / (toc - tic))
+    t_e = '{}'.format(str(timedelta(seconds=toc - tic)))
     logger.info(
-        '\tfinished conversion to MF series({}): {} '
+        '\tfinished conversion to MF series<{}>: {} '
         'instances in {} sec ({}inst/sec)'.format(
-            series_uid, len(PrntChld),  t_e, speed_str))
+            inst_infos[0].series_uid, len(PrntChld),  t_e, speed_str))
     return (fix_queries, issue_queries, origin_queries, blob_file_pair, [])
 
 
-def down_up_load_files_form_google_cloud(project_id: str, bucket_name: str,
-                                         blob_file_pairs: list,
+def down_up_load_files_form_google_cloud(blob_file_pairs: List[DicomFileInfo],
                                          download: bool = True):
     if download:
-        prifix = '⬇'
+        prifix = 'dn-load'
         function = download_blob
     else:
-        prifix = '⬆'
+        prifix = 'up-load'
         function = upload_blob
-    load_threads = ThreadPool(MAX_NUMBER_OF_THREADS, prifix)
-    for blob, file in blob_file_pairs:
+    load_threads = ThreadPool(
+        min(MAX_NUMBER_OF_THREADS, len(blob_file_pairs)), prifix)
+    blob_dict = {}
+    for obj in blob_file_pairs:
+        blob_dict[obj.blob_address] = obj
         load_threads.queue.put(
             (
                 function,
                 (
-                    project_id,
-                    bucket_name,
-                    blob,
-                    file
+                    obj.project_id,
+                    obj.bucket_name,
+                    obj.blob_address,
+                    obj.file_path
                 )
             )
         )
@@ -522,23 +515,20 @@ def down_up_load_files_form_google_cloud(project_id: str, bucket_name: str,
     load_threads.kill_them_all()
     results = []
     for (poj, buck, b, f), (success) in load_threads.output:
-        results.append((b, f, success,))
+        results.append((blob_dict[b], success,))
     return results
 
 
 def download_one_study(local_folder: str, uids: tuple,
                        in_gc_info,
-                       max_number: int = 2**63 - 1) -> int:
+                       max_number: int = 2**63 - 1) -> tuple:
     logger = logging.getLogger(__name__)
     max_number_of_instances = max_number
     max_number_of_series = max_number
-    number_of_inst_in_study = 0
     study_uid = uids[0]
     collection_id = uids[1]
-    begin_dl = time.time()
     blob_address_pattern = 'dicom/{}/{}/{}.dcm'
     blob_file_pairs = []
-    blob_dict = {}
     for number_of_series, (series_uid, instances) in\
             enumerate(uids[2].items(), 1):
         if number_of_series > max_number_of_series:
@@ -556,33 +546,110 @@ def download_one_study(local_folder: str, uids: tuple,
             file_path = os.path.join(
                 series_local_folder, '{}.dcm'.format(instance_uid))
             blob_file_pairs.append(
-                (blob_address, file_path))
-            blob_dict[blob_address] = (series_uid, instance_uid, file_path)
-    results = down_up_load_files_form_google_cloud(
-        in_gc_info.Bucket.ProjectID,
-        in_gc_info.Bucket.Dataset,
-        blob_file_pairs
-    )
+                DicomFileInfo(
+                    in_gc_info.Bucket.ProjectID,
+                    collection_id,
+                    blob_address,
+                    file_path,
+                    study_uid,
+                    series_uid,
+                    instance_uid
+                ))
+    tic = time.time()
+    results = down_up_load_files_form_google_cloud(blob_file_pairs)
+    toc = time.time()
+    # Measrure the download_size:
+    # ----------------------------------
+    download_elapsed_time = toc - tic
+    th_count = min(MAX_NUMBER_OF_THREADS, len(results))
+    size_measure = ThreadPool(th_count, "size")
+    for bl, success in results:
+        if success:
+            size_measure.queue.put(
+                (
+                    lambda x: os.path.getsize(x),
+                    (bl.file_path,)
+                )
+            )
+    size_measure.queue.join()
+    size_measure.kill_them_all()
+    downloaded_size = 0
+    for arg, sz in size_measure.output:
+        downloaded_size += sz
+    logger.info(
+        'Study <{}>, {}B in size was downlaoded in {} ({}B\sec)'.format(
+            study_uid, ctools.get_human_readable_string(downloaded_size),
+            timedelta(seconds=download_elapsed_time),
+            ctools.get_human_readable_string(
+                downloaded_size / download_elapsed_time)
+            )
+        )
+    # Prepare the output
+    # ----------------------------------
     defected_series = []
     flaw_queries = []
     series_dict = {}
-    for bl, f, success in results:
-        series_uid, instance_uid, file_path = blob_dict[bl]
+    for bl, success in results:
         if not success:
             flaw_queries.append(flaw_query_form.format(
-                collection_id, study_uid, series_uid, instance_uid, 'DOWNLOAD')
+                bl.bucket_name, bl.study_uid, bl.series_uid,
+                bl.instance_uid, 'DOWNLOAD')
             )
-            defected_series.append(series_uid)
+            defected_series.append(bl.series_uid)
         else:
             if series_uid in series_dict:
-                series_dict[series_uid].append((instance_uid, file_path))
+                series_dict[series_uid].append(bl)
             else:
-                series_dict[series_uid] = [(instance_uid, file_path)]
+                series_dict[series_uid] = [bl]
     # I'm going to remove all incomplete series that couldn't download:
     for uid in defected_series:
         del series_dict[series_uid]
     return (series_dict, flaw_queries)
 
+
+def upload_one_study(blob_file_pairs: List[DicomFileInfo]) -> list:
+    logger = logging.getLogger(__name__)
+    tic = time.time()
+    results = down_up_load_files_form_google_cloud(
+        blob_file_pairs, False)
+    toc = time.time()
+    # Measrure the upload_size:
+    # ----------------------------------
+    upload_elapsed_time = toc - tic
+    th_count = min(MAX_NUMBER_OF_THREADS, len(results))
+    size_measure = ThreadPool(th_count, "size")
+    for blob_info, success in results:
+        if success:
+            size_measure.queue.put(
+                (
+                    lambda x: os.path.getsize(x),
+                    (blob_info.file_path,)
+                )
+            )
+    size_measure.queue.join()
+    size_measure.kill_them_all()
+    uploaded_size = 0
+    for arg, sz in size_measure.output:
+        uploaded_size += sz 
+    logger.info(
+        'Study <{}>, {}B in size was uplaoded in {} ({}B\sec)'.format(
+            study_uid, ctools.get_human_readable_string(uploaded_size),
+            timedelta(seconds=upload_elapsed_time),
+            ctools.get_human_readable_string(
+                uploaded_size / upload_elapsed_time)
+            )
+        )
+    # Prepare the output
+    # ----------------------------------
+    flaw_queries = []
+    for blob_file_info, success in results:
+        if not success:
+            flaw_queries.append(flaw_query_form.format(
+                blob_file_info.bucket_name, blob_file_info.study_uid,
+                blob_file_info.series_uid, blob_file_info.instance_uid,
+                'UPLOAD')
+            )
+    return flaw_queries
 
 
 def process_one_study_v01(in_folder: str, uids: tuple,
@@ -598,14 +665,17 @@ def process_one_study_v01(in_folder: str, uids: tuple,
     begin_dl = time.time()
     
     # --> Starting download
+    # -------------------------------
     study_local_folder = os.path.join(
                 in_folder,
                 '{}/{}'.format(study_uid, in_sub_dir))
     downloaded_files, defected_queries = download_one_study(
         study_local_folder, uids, in_gc_info, max_number)
     # --> Fix and convert all  downloaded files
-    series_threads = ThreadPool(MAX_NUMBER_OF_THREADS, '\u1F527')
-    for series_uid, instances in downloaded_files.items():
+    # -------------------------------
+    series_threads = ThreadPool(
+        min(MAX_NUMBER_OF_THREADS, len(downloaded_files)), 'fix')
+    for series_uid, instance_info in downloaded_files.items():
         fx_series_folder = os.path.join(
                 in_folder,
                 '{}/{}/{}'.format(study_uid, fx_sub_dir, series_uid))
@@ -616,17 +686,14 @@ def process_one_study_v01(in_folder: str, uids: tuple,
             (
                 process_one_series_v01,
                 (
-                    collection_id,
-                    study_uid,
-                    series_uid,
-                    instances,
+                    instance_info,
                     fx_series_folder,
                     mf_series_folder,
                     in_gc_info, fx_gc_info, mf_gc_info
                 )
             )
         )
-        number_of_inst_in_study += len(instances)
+        number_of_inst_in_study += len(instance_info)
     series_threads.queue.join()
     series_threads.kill_them_all()
     issue_queries = []
@@ -642,14 +709,16 @@ def process_one_study_v01(in_folder: str, uids: tuple,
         flaw_queries.extend(flaw_q)
         blob_file_pairs.extend(bl_f_pairs)
     # --> Multithread uploading the data
-    down_up_load_files_form_google_cloud(
-        fx_gc_info.Bucket.ProjectID,
-        fx_gc_info.Bucket.Dataset,
-        blob_file_pairs, False)
+    # -------------------------------
+    upload_flawed_queries = upload_one_study(blob_file_pairs)
+    flaw_queries.extend(upload_flawed_queries)
     # --> Populate big query tables:
+    # -------------------------------
     dataset_id = '{}.{}'.format(
         fx_gc_info.BigQuery.ProjectID,
         fx_gc_info.BigQuery.Dataset)
+    # big_q_threads = ThreadPool(MAX_NUMBER_OF_THREADS, 'BQ')
+    tic = time.time()
     if len(fix_queries) != 0:
         big_q_threads.queue.put(
             (
@@ -694,6 +763,12 @@ def process_one_study_v01(in_folder: str, uids: tuple,
                 )
             )
         )
+    big_q_threads.queue.join()
+    toc = time.time()
+    elapsed_time = timedelta(seconds=toc - tic)
+    logger.info(
+        'Big query tables were populated'
+        ' successfully. Time elapse: {}'.format(elapsed_time))
     study_folder = os.path.join(
                 in_folder, '{}'.format(study_uid))
     rm((study_folder,))
@@ -1118,7 +1193,7 @@ create_bucket(
     mf_dicoms.Bucket.Dataset,
     False)
 max_number = 2**63 - 1
-# max_number = 10
+max_number = 10
 if max_number < 2**63 - 1:
     limit_q = 'LIMIT 1000'
 else:
@@ -1157,9 +1232,10 @@ analysis_started = False
 studies = query_string_with_result(study_query)
 number_of_all_inst = studies.total_rows
 number_of_inst_processed = 1
-big_q_threads = ThreadPool(max_number_of_bq_threads, 'bq_th')
+big_q_threads = ThreadPool(max_number_of_bq_threads, 'BQ')
 logger.info('Starting {} active threads'.format(max_number_of_threads))
 q = Queue()
+max_number_of_study_threads = 1
 for ii in range(max_number_of_study_threads):
     t = StudyThread(q, name='afn_th{:02d}'.format(ii))
     t.daemon = True
@@ -1178,12 +1254,13 @@ if studies is not None:
         else:
             uids[stuid] = (cln_id, {seuid: [sopuid]})
     StudyThread.number_of_all_studies = min(len(uids), max_number_of_studies)
+    StudyThread.number_of_all_instances = number_of_all_inst
     for number_of_studies, (study_uid, sub_study) in enumerate(uids.items(), 1):
         if number_of_studies > max_number_of_studies:
             break
         q.put(
             (
-                process_one_study,
+                process_one_study_v01,
                 (
                     in_folder,
                     (study_uid, sub_study[0], sub_study[1]),

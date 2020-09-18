@@ -7,6 +7,7 @@ import common_tools as ctools
 from queue import Queue
 
 MAX_NUMBER_OF_THREADS = os.cpu_count() + 1
+MAX_EXEPTION_MESSAGE_LENGTH = 1024
 
 
 class StudyThread(Thread):
@@ -36,9 +37,8 @@ class StudyThread(Thread):
                     StudyThread.number_of_st_processed += 1
             except BaseException as err:
                 logger.error(err, exc_info=True)
-
             progress = float(StudyThread.number_of_inst_processed) /\
-                float(StudyThread.number_of_all_inst)
+                float(StudyThread.number_of_all_instances)
             time_point = time.time()
             time_elapsed = round(time_point - StudyThread.start_time)
             time_left = round(
@@ -82,12 +82,20 @@ class WorkerThread(Thread):
                 with self._lock:
                     self.output.append((args, out,))
             except BaseException as err:
-                logger.error(err, exc_info=True)
+                msg = str(err)
+                if len(msg) > MAX_EXEPTION_MESSAGE_LENGTH:
+                    msg = self.chop_message(MAX_EXEPTION_MESSAGE_LENGTH, msg)
+                logger.error(msg, exc_info=True)
 
             self._queue.task_done()
 
     def kill(self):
         self._kill = True
+
+    def chop_message(self, lnegth_in_chars: int, msg: str) -> str:
+        h_l = lnegth_in_chars/2
+        choped_msg = msg[:h_l] + '[.....]' + msg[-h_l:]
+        return choped_msg
 
 
 class ThreadPool:
@@ -114,7 +122,7 @@ class ThreadPool:
 
     def kill_them_all(self):
         logger = logging.getLogger(__name__)
-        logger.info('killing all threads')
+        logger.debug('killing all threads')
         for t in self._thread_pool:
             t.kill()
         for t in self._thread_pool:
@@ -122,7 +130,7 @@ class ThreadPool:
             self._queue.put((None, None))
         for t in self._thread_pool:
             t.join()
-        logger.info('collecting all output data from threads')
+        logger.debug('collecting all output data from threads')
         for t in self._thread_pool:
             self.output.extend(t.output)  
-        logger.info('threads all finished')
+        logger.debug('threads all finished')

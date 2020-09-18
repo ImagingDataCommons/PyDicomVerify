@@ -337,23 +337,21 @@ class FixCollection:
         for i, f in enumerate(self.fixes):
             q.append(f.GetQuery(self.SOPInstanceUID))
         return q
-# class FileUIDS:
-#     def __init__(self, file, vfile, mfile):
-#         try:
-#             ds = pydicom.read_file(file, specific_tags = [
-#                 'SOPInstanceUID','SOPClassUID', 'StudyInstanceUID',
-#                 'SeriesInstanceUID'
-#             ])
-#             self.SOPInstanceUID = ds['SOPInstanceUID'].value
-#             self.StudyUID = ds['StudyInstanceUID'].value
-#             self.SeriesUID = ds['SeriesInstanceUID'].value
-#             self.SOPClassUID = ds['SOPClassUID'].value
-#             self.SOPClassTxt =\
-#                 single2multi_frame.SopClassUID2Txt(self.SOPClassUID)
-#             self.VerificationFilePath = vfile
-#             self.MetaFilePath = mfile
-#         except BaseException as err:
-#             print(err)
-#             self.SOPInstanceUID = ''
-#             self.StudyUID = ''
-#             self.SeriesUID = ''
+
+
+class DicomFileInfo:
+    def __init__(self,
+                 project_id: str,
+                 bucket_name: str,
+                 blob_address: str,
+                 file_path: str,
+                 study_uid: str,
+                 series_uid: str,
+                 instance_uid):
+        self.project_id = project_id
+        self.bucket_name = bucket_name
+        self.blob_address = blob_address
+        self.file_path = file_path
+        self.study_uid = study_uid
+        self.series_uid = series_uid
+        self.instance_uid = instance_uid
