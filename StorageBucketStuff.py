@@ -274,7 +274,7 @@ def download_blob(project_id: str, bucket_name: str,
 
 
 def upload_blob(project_id: str, bucket_name: str,
-                source_file_name, destination_blob_name):
+                destination_blob_name, source_file_name):
     """Uploads a file to the bucket."""
     # bucket_name = "your-bucket-name"
     # source_file_name = "local/path/to/file"

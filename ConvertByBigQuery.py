@@ -1,15 +1,9 @@
-import git
 import shutil
 import pydicom
-import pydicom.datadict as Dic
-import pydicom.dataelem as Elm
-import pydicom.sequence as Seq
-from pydicom import uid
 import re
 from condn_cc import *
 from dicom_prechecks import *
 import os
-from fix_frequent_errors import *
 import curses.ascii
 import fix_frequent_errors
 import pydicom.charset
@@ -24,34 +18,53 @@ import common_tools as ctools
 import conversion as conv
 import json
 from datetime import datetime
-from parallelization import StudyThread, WorkerThread, ThreadPool
-from BigQueryStuff import create_all_tables,\
-                          query_string,\
-                          query_string_with_result
-from DicomStoreStuff import list_dicom_stores,\
-                            create_dicom_store,\
-                            create_dataset,\
-                            import_dicom_bucket,\
-                            export_dicom_instance_bigquery,\
-                            exists_dicom_store,\
-                            exists_dataset
-from DicomWebStuff import dicomweb_retrieve_instance,\
-                          dicomweb_store_instance,\
-                          _BASE_URL
-from StorageBucketStuff import\
-    list_buckets,\
-    download_blob,\
-    upload_blob,\
-    create_bucket,\
+from parallelization import (StudyThread, WorkerThread,
+                             ThreadPool, MAX_NUMBER_OF_THREADS)
+from BigQueryStuff import (
+    create_all_tables,
+    query_string, 
+    query_string_with_result)
+from DicomStoreStuff import (
+    list_dicom_stores,
+    create_dicom_store,
+    create_dataset,
+    import_dicom_bucket,
+    export_dicom_instance_bigquery,
+    exists_dicom_store, exists_dataset)
+from DicomWebStuff import (
+    dicomweb_retrieve_instance,
+    dicomweb_store_instance,
+    _BASE_URL
+    )
+from StorageBucketStuff import (
+    list_buckets,
+    download_blob,
+    upload_blob,
+    create_bucket,
     bucket_metadata
-from dicom_fix_issue_info import DicomFix, DicomIssue, FixCollection,\
-    IssueCollection, Datalet, DataInfo
+    )
+from dicom_fix_issue_info import (
+    DicomFix,
+    DicomIssue,
+    FixCollection,
+    IssueCollection,
+    Datalet,
+    DataInfo
+    )
 # ---------------- Global Vars --------------------------:
 max_number_of_threads = os.cpu_count() + 1
 max_number_of_study_threads = 2
 max_number_of_series_threads = 2
 max_number_of_instance_threads = 8
 max_number_of_bq_threads = 8
+flaw_query_form = '''(
+        "{}",-- COLLECTION_NAME
+        "{}",-- STUDY_INSTANCE_UID
+        "{}",-- SERIES_INSTANCE_UID
+        "{}",-- SOP_INSTANCE_UID
+        "{}"-- FLAW
+            )
+            '''
 # Logger setup --------------------------------------------------------
 import logging
 import logging.config
@@ -219,8 +232,8 @@ def FIX_AND_CONVERT(in_folder, out_folder,
             upload_blob(
                 fx_gcloud_info.Bucket.ProjectID,
                 fx_gcloud_info.Bucket.Dataset,
+                fixed_blob_path,
                 fixed_file_path,
-                fixed_blob_path
             )
             fixes_all = FixCollection(
                 log_fixed, study_uid, series_uid, sop_uid)
@@ -285,8 +298,8 @@ def FIX_AND_CONVERT(in_folder, out_folder,
             upload_blob(
                 mf_gcloud_info.Bucket.ProjectID,
                 mf_gcloud_info.Bucket.Dataset,
+                mf_blob_path,
                 pr_ch.child_dicom_file,
-                mf_blob_path
             )
     fix_header = fixes_all.GetQueryHeader()
     issue_header = mf_issues.GetQueryHeader()
@@ -322,6 +335,369 @@ def CreateDicomStore(project_id: str,
                               dicom_store_id):
         create_dicom_store(
             project_id, cloud_region, dataset_id, dicom_store_id)
+
+
+def fix_one_instance_v01(collection_id: str,
+                         study_uid: str,
+                         series_uid: str,
+                         instance_uid: str,
+                         in_file: str,
+                         fx_file: str,
+                         input_table_name: str,
+                         fixed_table_name: str) -> tuple:
+    logger = logging.getLogger(__name__)
+    fix_log = []
+    pre_fix_issues = []
+    post_fix_issues = []
+    try:
+        study_uid, sereies_uid, sop_uid = FixFile(
+            in_file, fx_file, fix_log,
+            pre_fix_issues,
+            post_fix_issues)
+        fx_success = True
+    except BaseException as err:
+        logger.error(err, exc_info=True)
+    if not fx_success:
+        return ([], [], [], flaw_query_form.format(
+            collection_id, study_uid, series_uid, instance_uid, 'FIX'))
+    fixes_all = FixCollection(fix_log, study_uid, series_uid, sop_uid)
+    fix_queries = fixes_all.GetQuery()
+    pre_issues = IssueCollection(
+        pre_fix_issues[1:],
+        input_table_name,
+        study_uid,
+        series_uid,
+        sop_uid)
+    issue_queries = pre_issues.GetQuery()
+    post_issues = IssueCollection(
+        post_fix_issues[1:],
+        fixed_table_name,
+        study_uid,
+        series_uid,
+        sop_uid)
+    issue_queries.extend(post_issues.GetQuery())
+    fixed_input_relation = conv.ParentChildDicoms(
+        [pre_issues.SOPInstanceUID],
+        post_issues.StudyInstanceUID,
+        post_issues.SeriesInstanceUID,
+        post_issues.SOPInstanceUID,
+        fx_file)
+    origin_queries = fixed_input_relation.GetQuery(
+        input_table_name,
+        fixed_table_name
+    )
+    return (fix_queries, issue_queries, origin_queries, '')
+
+
+def process_one_series_v01(src_collection_id: str,
+                           study_uid: str,
+                           series_uid: str,
+                           inst_uid_and_file: list,
+                           fx_series_dir: str,
+                           mf_series_dir: str,
+                           in_gc_info, fx_gc_info, mf_gc_info) -> tuple:
+    logger = logging.getLogger(__name__)
+    logger.info('\tStart fixing series({}) containing {} instances'.format(
+            series_uid, len(inst_uid_and_file)))
+    tic = time.time()
+    # Create necessarry folders:
+    if os.path.exists(fx_series_dir):
+        os.makedirs(fx_series_dir)
+    if os.path.exists(mf_series_dir):
+        os.makedirs(mf_series_dir)
+    # Get table neames for populating bigquery tables:
+    in_table_name = in_gc_info.BigQuery.GetBigQueryStyleAddress(False)
+    fx_table_name = fx_gc_info.BigQuery.GetBigQueryStyleAddress(False)
+    mf_table_name = mf_gc_info.BigQuery.GetBigQueryStyleAddress(False)
+    # Fix process
+    single_frames = []
+    fix_threads = ThreadPool(max_number_of_instance_threads, 'instance')
+    for instance_uid, file in inst_uid_and_file:
+        fx_file = os.path.join(fx_series_dir, '{}.dcm'.format(instance_uid))
+        fix_threads.queue.put(
+            (
+                fix_one_instance_v01,
+                (
+                    src_collection_id,
+                    study_uid, series_uid, instance_uid,
+                    file, fx_file,
+                    in_table_name, fx_table_name
+                )
+            )
+        )
+    # wait for all fix threads to finish
+    fix_threads.queue.join()
+    fix_threads.kill_them_all()
+    toc = time.time()
+    t_e = '{}'.format(str(timedelta(seconds=toc - tic)))
+    # Log some information
+    speed_str = ctools.get_human_readable_string(
+        len(inst_uid_and_file) / (toc - tic)
+        )
+    logger.info(
+        '\tfinished fixing series({}): {} '
+        'instances in {} sec ({}inst/sec)'.format(
+            series_uid, len(inst_uid_and_file), t_e, speed_str))
+    # collect outputs
+    issue_queries = []
+    fix_queries = []
+    origin_queries = []
+    flaw_queries = []
+    blob_file_pair = []
+    fx_blob_form = '{}/dicom/{{}}/{{}}/{{}}.dcm'.format(
+        fx_gc_info.Bucket.DataObject)
+    success = True
+    for args, (fix_q, iss_q, org_q, flaw) in fix_threads.output:
+        success = success and (flaw == '')
+        flaw_queries.append(flaw)
+        fix_queries.extend(fix_q)
+        issue_queries.extend(iss_q)
+        origin_queries.extend(org_q)
+        inst_uid = args[3]
+        fx_file = args[5]
+        fx_blob = fx_blob_form.format(study_uid, series_uid, inst_uid)
+        blob_file_pair.append((fx_blob, fx_file))
+    if not success:
+        logger.info(
+            'series \n{}\nencountered a problem while fi'
+            'xing so the conversion is going to be aborted')
+        return ([], [], [], [], flaw_queries)
+    # Now I want to convert the fix series:
+    tic = time.time()
+    mf_log = []
+    PrntChld = conv.ConvertByHighDicomNew(
+            single_frames, mf_series_dir, mf_log)
+    for pr_ch in PrntChld:
+        origin_queries.extend(pr_ch.GetQuery(in_table_name, fx_table_name))
+        multiframe_log = []
+        VER(pr_ch.child_dicom_file, multiframe_log)
+        mf_issues = IssueCollection(
+            multiframe_log[1:], mf_table_name,
+            pr_ch.child_study_instance_uid,
+            pr_ch.child_series_instance_uid,
+            pr_ch.child_sop_instance_uid,)
+        issue_queries.extend(mf_issues.GetQuery())
+        mf_blob_path = '{}/dicom/{}/{}/{}.dcm'.format(
+                mf_gc_info.Bucket.DataObject,
+                pr_ch.child_study_instance_uid,
+                pr_ch.child_series_instance_uid,
+                pr_ch.child_series_instance_uid
+            )
+        blob_file_pair.append((mf_blob_path, pr_ch.child_dicom_file))
+    toc = time.time()
+    # Now I'm logging the conversion process:
+    speed_str = ctools.get_human_readable_string(
+        len(inst_uid_and_file) / (toc - tic)
+        )
+    logger.info(
+        '\tfinished conversion to MF series({}): {} '
+        'instances in {} sec ({}inst/sec)'.format(
+            series_uid, len(PrntChld),  t_e, speed_str))
+    return (fix_queries, issue_queries, origin_queries, blob_file_pair, [])
+
+
+def down_up_load_files_form_google_cloud(project_id: str, bucket_name: str,
+                                         blob_file_pairs: list,
+                                         download: bool = True):
+    if download:
+        prifix = '⬇'
+        function = download_blob
+    else:
+        prifix = '⬆'
+        function = upload_blob
+    load_threads = ThreadPool(MAX_NUMBER_OF_THREADS, prifix)
+    for blob, file in blob_file_pairs:
+        load_threads.queue.put(
+            (
+                function,
+                (
+                    project_id,
+                    bucket_name,
+                    blob,
+                    file
+                )
+            )
+        )
+    load_threads.queue.join()
+    load_threads.kill_them_all()
+    results = []
+    for (poj, buck, b, f), (success) in load_threads.output:
+        results.append((b, f, success,))
+    return results
+
+
+def download_one_study(local_folder: str, uids: tuple,
+                       in_gc_info,
+                       max_number: int = 2**63 - 1) -> int:
+    logger = logging.getLogger(__name__)
+    max_number_of_instances = max_number
+    max_number_of_series = max_number
+    number_of_inst_in_study = 0
+    study_uid = uids[0]
+    collection_id = uids[1]
+    begin_dl = time.time()
+    blob_address_pattern = 'dicom/{}/{}/{}.dcm'
+    blob_file_pairs = []
+    blob_dict = {}
+    for number_of_series, (series_uid, instances) in\
+            enumerate(uids[2].items(), 1):
+        if number_of_series > max_number_of_series:
+            break
+        series_local_folder = os.path.join(
+            local_folder, '{}/{}'.format(study_uid, series_uid))
+        if not os.path.exists(series_local_folder):
+            os.makedirs(series_local_folder)
+        for number_of_inst, instance_uid in enumerate(instances, 1):
+            if number_of_inst > max_number_of_instances:
+                break
+            blob_address = blob_address_pattern.format(
+                study_uid, series_uid, instance_uid
+            )
+            file_path = os.path.join(
+                series_local_folder, '{}.dcm'.format(instance_uid))
+            blob_file_pairs.append(
+                (blob_address, file_path))
+            blob_dict[blob_address] = (series_uid, instance_uid, file_path)
+    results = down_up_load_files_form_google_cloud(
+        in_gc_info.Bucket.ProjectID,
+        in_gc_info.Bucket.Dataset,
+        blob_file_pairs
+    )
+    defected_series = []
+    flaw_queries = []
+    series_dict = {}
+    for bl, f, success in results:
+        series_uid, instance_uid, file_path = blob_dict[bl]
+        if not success:
+            flaw_queries.append(flaw_query_form.format(
+                collection_id, study_uid, series_uid, instance_uid, 'DOWNLOAD')
+            )
+            defected_series.append(series_uid)
+        else:
+            if series_uid in series_dict:
+                series_dict[series_uid].append((instance_uid, file_path))
+            else:
+                series_dict[series_uid] = [(instance_uid, file_path)]
+    # I'm going to remove all incomplete series that couldn't download:
+    for uid in defected_series:
+        del series_dict[series_uid]
+    return (series_dict, flaw_queries)
+
+
+
+def process_one_study_v01(in_folder: str, uids: tuple,
+                          in_gc_info, fx_gc_info, mf_gc_info,
+                          max_number: int = 2**63 - 1) -> int:
+    logger = logging.getLogger(__name__)
+    number_of_inst_in_study = 0
+    study_uid = uids[0]
+    collection_id = uids[1]
+    fx_sub_dir = 'FIXED'
+    mf_sub_dir = 'MULTIFRAME'
+    in_sub_dir = 'ORIGINAL'
+    begin_dl = time.time()
+    
+    # --> Starting download
+    study_local_folder = os.path.join(
+                in_folder,
+                '{}/{}'.format(study_uid, in_sub_dir))
+    downloaded_files, defected_queries = download_one_study(
+        study_local_folder, uids, in_gc_info, max_number)
+    # --> Fix and convert all  downloaded files
+    series_threads = ThreadPool(MAX_NUMBER_OF_THREADS, '\u1F527')
+    for series_uid, instances in downloaded_files.items():
+        fx_series_folder = os.path.join(
+                in_folder,
+                '{}/{}/{}'.format(study_uid, fx_sub_dir, series_uid))
+        mf_series_folder = os.path.join(
+                in_folder,
+                '{}/{}/{}'.format(study_uid, mf_sub_dir, series_uid))
+        series_threads.queue.put(
+            (
+                process_one_series_v01,
+                (
+                    collection_id,
+                    study_uid,
+                    series_uid,
+                    instances,
+                    fx_series_folder,
+                    mf_series_folder,
+                    in_gc_info, fx_gc_info, mf_gc_info
+                )
+            )
+        )
+        number_of_inst_in_study += len(instances)
+    series_threads.queue.join()
+    series_threads.kill_them_all()
+    issue_queries = []
+    fix_queries = []
+    origin_queries = []
+    flaw_queries = []
+    blob_file_pairs = []
+    for args, (fix_q, iss_q, org_q, bl_f_pairs, flaw_q) in\
+            series_threads.output:
+        fix_queries.extend(fix_q)
+        issue_queries.extend(iss_q)
+        origin_queries.extend(org_q)
+        flaw_queries.extend(flaw_q)
+        blob_file_pairs.extend(bl_f_pairs)
+    # --> Multithread uploading the data
+    down_up_load_files_form_google_cloud(
+        fx_gc_info.Bucket.ProjectID,
+        fx_gc_info.Bucket.Dataset,
+        blob_file_pairs, False)
+    # --> Populate big query tables:
+    dataset_id = '{}.{}'.format(
+        fx_gc_info.BigQuery.ProjectID,
+        fx_gc_info.BigQuery.Dataset)
+    if len(fix_queries) != 0:
+        big_q_threads.queue.put(
+            (
+                BuildQueries,
+                (
+                    FixCollection.GetQueryHeader(),
+                    fix_queries,
+                    dataset_id, False
+                )
+            )
+        )
+    if len(issue_queries) != 0:
+        big_q_threads.queue.put(
+            (
+                BuildQueries,
+                (
+                    IssueCollection.GetQueryHeader(),
+                    issue_queries,
+                    dataset_id, False
+                )
+            )
+        )
+    if len(origin_queries) != 0:
+        big_q_threads.queue.put(
+            (
+                BuildQueries,
+                (
+                    conv.ParentChildDicoms.GetQueryHeader(),
+                    origin_queries,
+                    dataset_id, False
+                )
+            )
+        )
+    if len(flaw_queries) != 0:
+        big_q_threads.queue.put(
+            (
+                BuildQueries,
+                (
+                    "INSERT INTO `{0}`.DEFECTED VALUES {1};",
+                    flaw_queries,
+                    dataset_id, False
+                )
+            )
+        )
+    study_folder = os.path.join(
+                in_folder, '{}'.format(study_uid))
+    rm((study_folder,))
+    return number_of_inst_in_study
 
 
 def fix_one_instance(collection_id: str,
@@ -385,8 +761,8 @@ def fix_one_instance(collection_id: str,
     ul_success = upload_blob(
         fx_gc_info.Bucket.ProjectID,
         fx_gc_info.Bucket.Dataset,
-        fx_file,
-        u_blob_address
+        u_blob_address,
+        fx_file
     )
     if not ul_success:
         return ([], [], [], flaw_format.format('upload'))
@@ -525,8 +901,8 @@ def process_one_series(src_collection_id: str,
         upload_blob(
             mf_gc_info.Bucket.ProjectID,
             mf_gc_info.Bucket.Dataset,
-            pr_ch.child_dicom_file,
-            mf_blob_path
+            mf_blob_path,
+            pr_ch.child_dicom_file
         )
         mf_files_size += os.path.getsize(pr_ch.child_dicom_file)
     toc = time.time()
@@ -597,7 +973,7 @@ def process_one_study(in_folder: str, uids: tuple,
     fix_queries = []
     origin_queries = []
     flaw_queries = []
-    for fix_q, iss_q, org_q, flaw_q in series_threads.output:
+    for args, (fix_q, iss_q, org_q, flaw_q) in series_threads.output:
         fix_queries.extend(fix_q)
         issue_queries.extend(iss_q)
         origin_queries.extend(org_q)

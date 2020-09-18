@@ -53,7 +53,7 @@ def serial_1(project_id: str, bucket_name: str,
                     d_file)
         d_files.append((d_file, bl.name,))
     for i, f in enumerate(d_files, 1):
-        upload_blob(project_id, u_bucket_name, f[0], f[1])
+        upload_blob(project_id, u_bucket_name, f[1], f[0])
 
 
 # def serial_2(project_id: str, bucket_name: str,
@@ -103,7 +103,7 @@ def parallel_u(number_of_threads: int, project_id: str, bucket_name: str,
         threads.queue.put(
             (
                 upload_blob,
-                (project_id, u_bucket_name, local_file, bl),
+                (project_id, u_bucket_name, bl, local_file),
             )
         )
     threads.queue.join()

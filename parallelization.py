@@ -8,6 +8,7 @@ from queue import Queue
 
 MAX_NUMBER_OF_THREADS = os.cpu_count() + 1
 
+
 class StudyThread(Thread):
     number_of_inst_processed: int = 1
     number_of_st_processed: int = 1
@@ -25,7 +26,7 @@ class StudyThread(Thread):
         while True:
             (study_processor, args) = self._queue.get()
             logger.info('Start fixing study({}) out of {}'.format(
-                StudyThread.number_of_st_processed, 
+                StudyThread.number_of_st_processed,
                 StudyThread.number_of_all_studies,))
             study_uid = args[1][0]
             try:
@@ -45,7 +46,7 @@ class StudyThread(Thread):
                 StudyThread.number_of_inst_processed
                 ) * time_elapsed / float(StudyThread.number_of_inst_processed)
             header = '{}/{})Study {} was fix/convert-ed successfully'.format(
-                StudyThread.number_of_st_processed, 
+                StudyThread.number_of_st_processed,
                 StudyThread.number_of_all_studies, study_uid)
             progress_string = ctools.ShowProgress(
                 progress, time_elapsed, time_left, 60, header, False)
@@ -71,20 +72,15 @@ class WorkerThread(Thread):
             if (toc - tic) > time_interval_for_log:
                 tic = toc
                 logger.info(
-                    "new task out of {} in queue".format(self._queue.qsize()+1))
+                    "new task out of {} in queue".format(
+                        self._queue.qsize()+1))
             (work_fun, args) = self._queue.get()
             if work_fun is None or args is None:
                 continue
             try:
                 out = work_fun(*args)
                 with self._lock:
-                    self.output.append(out)
-                # logger.info('this is the out ({}, {}, {}, {}) all outputs: ({})'.format(
-                #     len(out[0]),
-                #     len(out[1]),
-                #     len(out[2]),
-                #     len(out[3]),
-                #     len(self.output)))
+                    self.output.append((args, out,))
             except BaseException as err:
                 logger.error(err, exc_info=True)
 
