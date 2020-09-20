@@ -5,6 +5,7 @@ import os
 from random import randrange
 import common_tools as ctools
 from queue import Queue
+from dicom_fix_issue_info import ProcessPerformance
 
 MAX_NUMBER_OF_THREADS = os.cpu_count() + 1
 MAX_EXEPTION_MESSAGE_LENGTH = 1024
@@ -17,6 +18,8 @@ class StudyThread(Thread):
     number_of_all_instances: int = 1
     instance_counter_lock = Lock()
     start_time = time.time()
+    performance_history: list = []
+    whole_performace = ProcessPerformance()
 
     def __init__(self, queue: Queue, **kwarg):
         Thread.__init__(self, **kwarg)
@@ -29,13 +32,19 @@ class StudyThread(Thread):
             logger.info('Start fixing study({}) out of {}'.format(
                 StudyThread.number_of_st_processed,
                 StudyThread.number_of_all_studies,))
-            study_uid = args[1][0]
+            study_uids = []
+            for elem in args[1]:
+                study_uids.append(elem[0])
             try:
-                instances = study_processor(*args)
+                perf = study_processor(*args)
                 with StudyThread.instance_counter_lock:
-                    StudyThread.number_of_inst_processed += instances
-                    StudyThread.number_of_st_processed += 1
+                    StudyThread.performance_history.append(perf)
+                    StudyThread.number_of_inst_processed +=\
+                        perf.fix_convert.size
+                    StudyThread.whole_performace += perf
+                    StudyThread.number_of_st_processed += len(args[1])
             except BaseException as err:
+                perf = ProcessPerformance()
                 logger.error(err, exc_info=True)
             progress = float(StudyThread.number_of_inst_processed) /\
                 float(StudyThread.number_of_all_instances)
@@ -47,10 +56,13 @@ class StudyThread(Thread):
                 ) * time_elapsed / float(StudyThread.number_of_inst_processed)
             header = '{}/{})Study {} was fix/convert-ed successfully'.format(
                 StudyThread.number_of_st_processed,
-                StudyThread.number_of_all_studies, study_uid)
+                StudyThread.number_of_all_studies, study_uids)
             progress_string = ctools.ShowProgress(
                 progress, time_elapsed, time_left, 60, header, False)
             logger.info(progress_string)
+            logger.info('For this chunk of studies {}'.format(str(perf)))
+            logger.info('For for all studies {}'.format(str(
+                StudyThread.whole_performace)))
             self._queue.task_done()
 
 

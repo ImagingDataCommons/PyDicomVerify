@@ -11,7 +11,7 @@ import common_tools as ctools
 import conversion as conv
 import json
 from datetime import datetime
-from typing import List
+from typing import List, Tuple
 import logging
 import logging.config
 from DicomStoreStuff import (
@@ -33,7 +33,8 @@ from dicom_fix_issue_info import (
     IssueCollection,
     Datalet,
     DataInfo,
-    DicomFileInfo
+    DicomFileInfo,
+    PerformanceMeasure, ProcessPerformance
     )
 # ---------------- Global Vars --------------------------:
 max_number_of_threads = os.cpu_count() + 1
@@ -519,42 +520,8 @@ def down_up_load_files_form_google_cloud(blob_file_pairs: List[DicomFileInfo],
     return results
 
 
-def download_one_study(local_folder: str, uids: tuple,
-                       in_gc_info,
-                       max_number: int = 2**63 - 1) -> tuple:
+def download_one_study(blob_file_pairs: List[DicomFileInfo]) -> tuple:
     logger = logging.getLogger(__name__)
-    max_number_of_instances = max_number
-    max_number_of_series = max_number
-    study_uid = uids[0]
-    collection_id = uids[1]
-    blob_address_pattern = 'dicom/{}/{}/{}.dcm'
-    blob_file_pairs = []
-    for number_of_series, (series_uid, instances) in\
-            enumerate(uids[2].items(), 1):
-        if number_of_series > max_number_of_series:
-            break
-        series_local_folder = os.path.join(
-            local_folder, '{}/{}'.format(study_uid, series_uid))
-        if not os.path.exists(series_local_folder):
-            os.makedirs(series_local_folder)
-        for number_of_inst, instance_uid in enumerate(instances, 1):
-            if number_of_inst > max_number_of_instances:
-                break
-            blob_address = blob_address_pattern.format(
-                study_uid, series_uid, instance_uid
-            )
-            file_path = os.path.join(
-                series_local_folder, '{}.dcm'.format(instance_uid))
-            blob_file_pairs.append(
-                DicomFileInfo(
-                    in_gc_info.Bucket.ProjectID,
-                    collection_id,
-                    blob_address,
-                    file_path,
-                    study_uid,
-                    series_uid,
-                    instance_uid
-                ))
     tic = time.time()
     results = down_up_load_files_form_google_cloud(blob_file_pairs)
     toc = time.time()
@@ -588,23 +555,30 @@ def download_one_study(local_folder: str, uids: tuple,
     # ----------------------------------
     defected_series = []
     flaw_queries = []
-    series_dict = {}
+    study_series_dict = {}
     for bl, success in results:
         if not success:
             flaw_queries.append(flaw_query_form.format(
                 bl.bucket_name, bl.study_uid, bl.series_uid,
                 bl.instance_uid, 'DOWNLOAD')
             )
-            defected_series.append(bl.series_uid)
+            defected_series.append((bl.study_uid, bl.series_uid,))
         else:
-            if series_uid in series_dict:
-                series_dict[series_uid].append(bl)
+            if bl.study_uid in study_series_dict:
+                if bl.series_uid in study_series_dict[bl.study_uid]:
+                    study_series_dict[bl.study_uid][bl.series_uid].append(
+                        bl)
+                else:
+                    study_series_dict[
+                        bl.study_uid][bl.series_uid] = [bl]
             else:
-                series_dict[series_uid] = [bl]
+                study_series_dict[
+                    bl.study_uid] = {bl.series_uid: [bl]}
     # I'm going to remove all incomplete series that couldn't download:
-    for uid in defected_series:
-        del series_dict[series_uid]
-    return (series_dict, flaw_queries)
+    for st_uid, se_uid in defected_series:
+        del study_series_dict[st_uid][se_uid]
+    return (study_series_dict, flaw_queries,
+            PerformanceMeasure(downloaded_size, download_elapsed_time,))
 
 
 def upload_one_study(blob_file_pairs: List[DicomFileInfo]) -> list:
@@ -649,53 +623,92 @@ def upload_one_study(blob_file_pairs: List[DicomFileInfo]) -> list:
                 blob_file_info.series_uid, blob_file_info.instance_uid,
                 'UPLOAD')
             )
-    return flaw_queries
+    return (flaw_queries,
+            PerformanceMeasure(uploaded_size, upload_elapsed_time))
 
 
-def process_one_study_v01(in_folder: str, uids: tuple,
+def process_one_study_v01(in_folder: str, studies_chunk: List[Tuple],
                           in_gc_info, fx_gc_info, mf_gc_info,
                           max_number: int = 2**63 - 1) -> int:
     logger = logging.getLogger(__name__)
     number_of_inst_in_study = 0
-    study_uid = uids[0]
-    collection_id = uids[1]
     fx_sub_dir = 'FIXED'
     mf_sub_dir = 'MULTIFRAME'
     in_sub_dir = 'ORIGINAL'
     begin_dl = time.time()
-    
-    # --> Starting download
-    # -------------------------------
-    study_local_folder = os.path.join(
+    logger.info('Start to process a chunk of {} stud{}'.format(
+        len(studies_chunk), 'y' if len(studies_chunk) == 1 else 'ies'
+            ))
+    max_number_of_instances = max_number
+    max_number_of_series = max_number
+    blob_address_pattern = 'dicom/{}/{}/{}.dcm'
+    input_blob_file_pairs = []
+    study_local_folders = []
+    for number_of_studies, (study_uid, collection_id, series_dictinary) in\
+            enumerate(studies_chunk, 1):
+        study_local_folder = os.path.join(
                 in_folder,
                 '{}/{}'.format(study_uid, in_sub_dir))
-    downloaded_files, defected_queries = download_one_study(
-        study_local_folder, uids, in_gc_info, max_number)
+        study_local_folders.append(study_local_folder)
+        for number_of_series, (series_uid, instances) in\
+                enumerate(series_dictinary.items(), 1):
+            if number_of_series > max_number_of_series:
+                break
+            series_local_folder = os.path.join(
+                study_local_folder, '{}/{}'.format(study_uid, series_uid))
+            if not os.path.exists(series_local_folder):
+                os.makedirs(series_local_folder)
+            for number_of_inst, instance_uid in enumerate(instances, 1):
+                if number_of_inst > max_number_of_instances:
+                    break
+                blob_address = blob_address_pattern.format(
+                    study_uid, series_uid, instance_uid
+                )
+                file_path = os.path.join(
+                    series_local_folder, '{}.dcm'.format(instance_uid))
+                input_blob_file_pairs.append(
+                    DicomFileInfo(
+                        in_gc_info.Bucket.ProjectID,
+                        collection_id,
+                        blob_address,
+                        file_path,
+                        study_uid,
+                        series_uid,
+                        instance_uid
+                    ))
+    # --> Starting download
+    # -------------------------------
+    downloaded_files, defected_queries, download_measure = download_one_study(
+        input_blob_file_pairs)
     # --> Fix and convert all  downloaded files
     # -------------------------------
+    tic = time.time()
     series_threads = ThreadPool(
         min(MAX_NUMBER_OF_THREADS, len(downloaded_files)), 'fix')
-    for series_uid, instance_info in downloaded_files.items():
-        fx_series_folder = os.path.join(
-                in_folder,
-                '{}/{}/{}'.format(study_uid, fx_sub_dir, series_uid))
-        mf_series_folder = os.path.join(
-                in_folder,
-                '{}/{}/{}'.format(study_uid, mf_sub_dir, series_uid))
-        series_threads.queue.put(
-            (
-                process_one_series_v01,
+    for study_uid, downloaded_series in downloaded_files.items():    
+        for series_uid, instance_info in downloaded_series.items():
+            fx_series_folder = os.path.join(
+                    in_folder,
+                    '{}/{}/{}'.format(study_uid, fx_sub_dir, series_uid))
+            mf_series_folder = os.path.join(
+                    in_folder,
+                    '{}/{}/{}'.format(study_uid, mf_sub_dir, series_uid))
+            series_threads.queue.put(
                 (
-                    instance_info,
-                    fx_series_folder,
-                    mf_series_folder,
-                    in_gc_info, fx_gc_info, mf_gc_info
+                    process_one_series_v01,
+                    (
+                        instance_info,
+                        fx_series_folder,
+                        mf_series_folder,
+                        in_gc_info, fx_gc_info, mf_gc_info
+                    )
                 )
             )
-        )
-        number_of_inst_in_study += len(instance_info)
+            number_of_inst_in_study += len(instance_info)
     series_threads.queue.join()
     series_threads.kill_them_all()
+    toc = time.time()
+    process_measure = PerformanceMeasure(number_of_inst_in_study, toc - tic)
     issue_queries = []
     fix_queries = []
     origin_queries = []
@@ -710,7 +723,7 @@ def process_one_study_v01(in_folder: str, uids: tuple,
         blob_file_pairs.extend(bl_f_pairs)
     # --> Multithread uploading the data
     # -------------------------------
-    upload_flawed_queries = upload_one_study(blob_file_pairs)
+    upload_flawed_queries, upload_measure = upload_one_study(blob_file_pairs)
     flaw_queries.extend(upload_flawed_queries)
     # --> Populate big query tables:
     # -------------------------------
@@ -719,6 +732,8 @@ def process_one_study_v01(in_folder: str, uids: tuple,
         fx_gc_info.BigQuery.Dataset)
     # big_q_threads = ThreadPool(MAX_NUMBER_OF_THREADS, 'BQ')
     tic = time.time()
+    all_rows = (len(fix_queries) + len(issue_queries) + len(origin_queries) +
+                len(flaw_queries))
     if len(fix_queries) != 0:
         big_q_threads.queue.put(
             (
@@ -766,13 +781,14 @@ def process_one_study_v01(in_folder: str, uids: tuple,
     big_q_threads.queue.join()
     toc = time.time()
     elapsed_time = timedelta(seconds=toc - tic)
+    big_query_measure = PerformanceMeasure(all_rows, toc - tic)
     logger.info(
         'Big query tables were populated'
         ' successfully. Time elapse: {}'.format(elapsed_time))
-    study_folder = os.path.join(
-                in_folder, '{}'.format(study_uid))
-    rm((study_folder,))
-    return number_of_inst_in_study
+    rm(study_local_folders)
+    return ProcessPerformance(
+                download_measure, upload_measure,
+                process_measure, big_query_measure)
 
 
 def fix_one_instance(collection_id: str,
@@ -1193,7 +1209,7 @@ create_bucket(
     mf_dicoms.Bucket.Dataset,
     False)
 max_number = 2**63 - 1
-# max_number = 10
+# max_number = 3
 if max_number < 2**63 - 1:
     limit_q = 'LIMIT 1000'
 else:
@@ -1255,20 +1271,27 @@ if studies is not None:
             uids[stuid] = (cln_id, {seuid: [sopuid]})
     StudyThread.number_of_all_studies = min(len(uids), max_number_of_studies)
     StudyThread.number_of_all_instances = number_of_all_inst
+    study_chunk_count = 5
+    study_chunk = []
     for number_of_studies, (study_uid, sub_study) in enumerate(uids.items(), 1):
         if number_of_studies > max_number_of_studies:
             break
-        q.put(
-            (
-                process_one_study_v01,
+        study_chunk.append((study_uid, sub_study[0], sub_study[1]))
+        if number_of_studies % study_chunk_count == 0 or\
+                number_of_studies == len(uids) or \
+                number_of_studies == max_number_of_studies:
+            q.put(
                 (
-                    in_folder,
-                    (study_uid, sub_study[0], sub_study[1]),
-                    in_dicoms, fx_dicoms, mf_dicoms,
-                    max_number
+                    process_one_study_v01,
+                    (
+                        in_folder,
+                        study_chunk,
+                        in_dicoms, fx_dicoms, mf_dicoms,
+                        max_number
+                    )
                 )
             )
-        )
+            study_chunk = []
 q.join()  # waiting for all tasks to be done
 rm(local_tmp_folder)
 import_dicom_bucket(

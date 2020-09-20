@@ -3,6 +3,9 @@ import pydicom.datadict as Dic
 from pydicom import uid
 import re
 import os
+from typing import List
+import common_tools as ct
+from datetime import timedelta
 
 git_url = 'https://github.com/afshinmessiah/PyDicomVerify/{}'
 repo = git.Repo(search_parent_directories=True)
@@ -355,3 +358,83 @@ class DicomFileInfo:
         self.study_uid = study_uid
         self.series_uid = series_uid
         self.instance_uid = instance_uid
+
+
+class PerformanceMeasure:
+
+    def __init__(self, size_: int, time_in_sec: int, suffix: str=''):
+        self.size = size_
+        self.time_in_sec = time_in_sec
+        self.suffix = suffix
+
+    def __add__(self, other):
+        sz = self.size + other.size
+        tm = self.time_in_sec + other.time_in_sec
+        return PerformanceMeasure(sz, tm)
+    
+    def __iadd__(self, other):
+        self.size += other.size
+        self.time_in_sec += other.time_in_sec
+        return self
+
+    def __str__(self):
+        e_t = timedelta(seconds=self.time_in_sec)
+        sz = ct.get_human_readable_string(self.size)
+        speed = 0 if self.time_in_sec == 0 else (self.size / self.time_in_sec)
+        rate = ct.get_human_readable_string(speed)
+        output = '{1}{0} in {2} ({3}{0}/sec)'.format(
+            self.suffix, sz, e_t, rate)
+        return output
+
+
+class ProcessPerformance:
+
+    def __init__(self, down: PerformanceMeasure = PerformanceMeasure(0, 0),
+                 up: PerformanceMeasure = PerformanceMeasure(0, 0),
+                 f_c: PerformanceMeasure = PerformanceMeasure(0, 0),
+                 bq: PerformanceMeasure = PerformanceMeasure(0, 0)
+                 ):
+        self.download: PerformanceMeasure = down
+        self.upload: PerformanceMeasure = up
+        self.fix_convert: PerformanceMeasure = f_c
+        self.bigquery: PerformanceMeasure = bq
+        self.download.suffix = 'B'
+        self.upload.suffix = 'B'
+        self.bigquery.suffix = 'row'
+        self.fix_convert.suffix = 'inst'
+
+    def __add__(self, other):
+        download = self.download + other.download
+        upload = self.upload + other.upload
+        fix_convert = self.fix_convert + other.fix_convert
+        bigquery = self.bigquery + other.bigquery
+        return ProcessPerformance(download, upload, fix_convert, bigquery)
+
+    def __iadd__(self, other):
+        self.download += other.download
+        self.upload += other.upload
+        self.fix_convert += other.fix_convert
+        self.bigquery += other.bigquery
+        return self
+    
+    @property
+    def entire_time(self):
+        return (self.download.time_in_sec +
+                self.upload.time_in_sec +
+                self.fix_convert.time_in_sec +
+                self.bigquery.time_in_sec)
+
+    def __str__(self):
+        t_time = self.entire_time
+        if t_time == 0:
+            t_time = 1
+        form = 'download{} [{:.1%}]\tupload{} [{:.1%}]\tfix+conversion{} [{:.1%}]\tbig query{} [{:.1%}]'
+        return form.format(str(self.download),
+                           self.download.time_in_sec / t_time,
+                           str(self.upload),
+                           self.upload.time_in_sec / t_time,
+                           str(self.fix_convert),
+                           self.fix_convert.time_in_sec / t_time,
+                           str(self.bigquery),
+                           self.bigquery.time_in_sec / t_time,
+                           )
