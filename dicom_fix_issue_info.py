@@ -364,7 +364,7 @@ class PerformanceMeasure:
 
     def __init__(self, size_: int, time_in_sec: int, suffix: str=''):
         self.size = size_
-        self.time_in_sec = time_in_sec
+        self.time_in_sec = int(time_in_sec)
         self.suffix = suffix
 
     def __add__(self, other):
@@ -428,7 +428,7 @@ class ProcessPerformance:
         t_time = self.entire_time
         if t_time == 0:
             t_time = 1
-        form = 'download{} [{:.1%}]\tupload{} [{:.1%}]\tfix+conversion{} [{:.1%}]\tbig query{} [{:.1%}]'
+        form = 'download{} ->  [{:.1%}]\tupload -> {} [{:.1%}]\tfix+conversion -> {} [{:.1%}]\tbig query -> {} [{:.1%}]'
         return form.format(str(self.download),
                            self.download.time_in_sec / t_time,
                            str(self.upload),

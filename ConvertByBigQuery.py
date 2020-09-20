@@ -38,10 +38,12 @@ from dicom_fix_issue_info import (
     )
 # ---------------- Global Vars --------------------------:
 max_number_of_threads = os.cpu_count() + 1
-max_number_of_study_threads = 2
+max_number_of_study_threads = 1
 max_number_of_series_threads = 2
-max_number_of_instance_threads = 8
-max_number_of_bq_threads = 8
+max_number_of_instance_threads = (
+    MAX_NUMBER_OF_THREADS // max_number_of_series_threads) + 1
+max_number_of_up_down_load_threads = MAX_NUMBER_OF_THREADS
+max_number_of_bq_threads = MAX_NUMBER_OF_THREADS
 flaw_query_form = '''(
         "{}",-- COLLECTION_NAME
         "{}",-- STUDY_INSTANCE_UID
@@ -231,7 +233,8 @@ def process_one_series(inst_infos: List[DicomFileInfo],
     mf_table_name = mf_gc_info.BigQuery.GetBigQueryStyleAddress(False)
     # Fix process
     single_frames = []
-    fix_threads = ThreadPool(min(len(inst_infos), MAX_NUMBER_OF_THREADS), 'instance')
+    fix_threads = ThreadPool(
+        min(len(inst_infos), max_number_of_instance_threads), 'instance')
     for obj in inst_infos:
         fx_file = os.path.join(
             fx_series_dir, '{}.dcm'.format(obj.instance_uid))
@@ -337,7 +340,7 @@ def down_up_load_files_form_google_cloud(blob_file_pairs: List[DicomFileInfo],
         prifix = 'up-load'
         function = upload_blob
     load_threads = ThreadPool(
-        min(MAX_NUMBER_OF_THREADS, len(blob_file_pairs)), prifix)
+        min(max_number_of_up_down_load_threads, len(blob_file_pairs)), prifix)
     blob_dict = {}
     for obj in blob_file_pairs:
         blob_dict[obj.blob_address] = obj
@@ -527,7 +530,7 @@ def process_bunche_of_studies(in_folder: str, studies_chunk: List[Tuple],
     # -------------------------------
     tic = time.time()
     series_threads = ThreadPool(
-        min(MAX_NUMBER_OF_THREADS, len(downloaded_files)), 'fix')
+        min(max_number_of_series_threads, len(downloaded_files)), 'fix')
     for study_uid, downloaded_series in downloaded_files.items():    
         for series_uid, instance_info in downloaded_series.items():
             fx_series_folder = os.path.join(
@@ -761,7 +764,6 @@ number_of_inst_processed = 1
 big_q_threads = ThreadPool(max_number_of_bq_threads, 'BQ')
 logger.info('Starting {} active threads'.format(max_number_of_threads))
 q = Queue()
-max_number_of_study_threads = 1
 for ii in range(max_number_of_study_threads):
     t = StudyThread(q, name='afn_th{:02d}'.format(ii))
     t.daemon = True
@@ -781,7 +783,7 @@ if studies is not None:
             uids[stuid] = (cln_id, {seuid: [sopuid]})
     StudyThread.number_of_all_studies = min(len(uids), max_number_of_studies)
     StudyThread.number_of_all_instances = number_of_all_inst
-    study_chunk_count = 5
+    study_chunk_count = 10
     study_chunk = []
     for number_of_studies, (study_uid, sub_study) in enumerate(uids.items(), 1):
         if number_of_studies > max_number_of_studies:
