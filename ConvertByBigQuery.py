@@ -40,8 +40,7 @@ from dicom_fix_issue_info import (
 max_number_of_threads = os.cpu_count() + 1
 max_number_of_study_threads = 1
 max_number_of_series_threads = 4
-max_number_of_instance_threads = (
-    MAX_NUMBER_OF_THREADS // max_number_of_series_threads) + 1
+max_number_of_instance_threads = MAX_NUMBER_OF_THREADS
 max_number_of_up_down_load_threads = MAX_NUMBER_OF_THREADS 
 max_number_of_bq_threads = MAX_NUMBER_OF_THREADS 
 flaw_query_form = '''(
@@ -144,6 +143,54 @@ def BuildQueries(header: str, qs: list, dataset_id: str,
     out_q.append(header.format(dataset_id, elem_q))
     logger.info("running query for '{}".format(table_name))
     query_string(out_q[-1])
+    if return_:
+        return out_q
+    else:
+        return []
+
+
+def BuildQueries_parallel(header: str, qs: list, dataset_id: str,
+                 return_: bool = True, threads: ThreadPool = None) -> list:
+    logger = logging.getLogger(__name__)
+    m = re.search("\.'(.*)\n", header)
+    if m is not None:
+        table_name = m.group(1)
+    else:
+        table_name = ''
+    out_q = []
+    ch_limit = 1024*1000
+    row_limit = 1000
+    elem_q = ''
+    n = 0
+    rn = 0
+    for q in qs:
+        rn += 1
+        if len(elem_q) + len(q) + len(header) < ch_limit and rn < row_limit:
+            elem_q = q if elem_q == '' else '{},{}'.format(q, elem_q)
+        else:
+            n += 1
+            out_q.append(header.format(dataset_id, elem_q))
+            elem_q = ''
+            rn = 0
+            if threads is None:
+                query_string(out_q[-1], table_name)
+            else:
+                threads.queue.put(
+                    (
+                        query_string,
+                        (out_q[-1], table_name)
+                    )
+                )
+    out_q.append(header.format(dataset_id, elem_q))
+    if threads is None:
+        query_string(out_q[-1], table_name)
+    else:
+        threads.queue.put(
+                    (
+                        query_string,
+                        (out_q[-1], table_name)
+                    )
+                )
     if return_:
         return out_q
     else:
@@ -568,62 +615,48 @@ def process_bunche_of_studies(in_folder: str, studies_chunk: List[Tuple],
         blob_file_pairs.extend(bl_f_pairs)
     # --> Multithread uploading the data
     # -------------------------------
-    upload_flawed_queries, upload_measure = upload_bunch_of_studies(blob_file_pairs)
+    upload_flawed_queries, upload_measure = upload_bunch_of_studies(
+        blob_file_pairs)
     flaw_queries.extend(upload_flawed_queries)
     # --> Populate big query tables:
     # -------------------------------
     dataset_id = '{}.{}'.format(
         fx_gc_info.BigQuery.ProjectID,
         fx_gc_info.BigQuery.Dataset)
-    # big_q_threads = ThreadPool(MAX_NUMBER_OF_THREADS, 'BQ')
+    big_q_threads = ThreadPool(max_number_of_bq_threads, 'BQ')
     tic = time.time()
     all_rows = (len(fix_queries) + len(issue_queries) + len(origin_queries) +
                 len(flaw_queries))
     if len(fix_queries) != 0:
-        big_q_threads.queue.put(
-            (
-                BuildQueries,
-                (
-                    FixCollection.GetQueryHeader(),
-                    fix_queries,
-                    dataset_id, False
-                )
+        BuildQueries_parallel(
+            FixCollection.GetQueryHeader(),
+            fix_queries,
+            dataset_id, False,
+            big_q_threads
             )
-        )
     if len(issue_queries) != 0:
-        big_q_threads.queue.put(
-            (
-                BuildQueries,
-                (
-                    IssueCollection.GetQueryHeader(),
-                    issue_queries,
-                    dataset_id, False
-                )
+        BuildQueries_parallel(
+            IssueCollection.GetQueryHeader(),
+            issue_queries,
+            dataset_id, False,
+            big_q_threads
             )
-        )
     if len(origin_queries) != 0:
-        big_q_threads.queue.put(
-            (
-                BuildQueries,
-                (
-                    conv.ParentChildDicoms.GetQueryHeader(),
-                    origin_queries,
-                    dataset_id, False
-                )
+        BuildQueries_parallel(
+            conv.ParentChildDicoms.GetQueryHeader(),
+            origin_queries,
+            dataset_id, False,
+            big_q_threads
             )
-        )
     if len(flaw_queries) != 0:
-        big_q_threads.queue.put(
-            (
-                BuildQueries,
-                (
-                    "INSERT INTO `{0}`.DEFECTED VALUES {1};",
-                    flaw_queries,
-                    dataset_id, False
-                )
+        BuildQueries_parallel(
+            "INSERT INTO `{0}`.DEFECTED VALUES {1};",
+            flaw_queries,
+            dataset_id, False,
+            big_q_threads
             )
-        )
     big_q_threads.queue.join()
+    big_q_threads.kill_them_all()
     toc = time.time()
     elapsed_time = timedelta(seconds=toc - tic)
     big_query_measure = PerformanceMeasure(all_rows, toc - tic)
@@ -760,7 +793,6 @@ analysis_started = False
 studies = query_string_with_result(study_query)
 number_of_all_inst = studies.total_rows
 number_of_inst_processed = 1
-big_q_threads = ThreadPool(max_number_of_bq_threads, 'BQ')
 logger.info('Starting {} active threads'.format(max_number_of_threads))
 q = Queue()
 for ii in range(max_number_of_study_threads):
@@ -782,7 +814,7 @@ if studies is not None:
             uids[stuid] = (cln_id, {seuid: [sopuid]})
     StudyThread.number_of_all_studies = min(len(uids), max_number_of_studies)
     StudyThread.number_of_all_instances = number_of_all_inst
-    study_chunk_count = 10
+    study_chunk_count = 20
     study_chunk = []
     for number_of_studies, (study_uid, sub_study) in enumerate(uids.items(), 1):
         if number_of_studies > max_number_of_studies:
