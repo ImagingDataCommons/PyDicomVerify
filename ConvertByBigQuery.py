@@ -39,11 +39,11 @@ from dicom_fix_issue_info import (
 # ---------------- Global Vars --------------------------:
 max_number_of_threads = os.cpu_count() + 1
 max_number_of_study_threads = 1
-max_number_of_series_threads = 2
+max_number_of_series_threads = 4
 max_number_of_instance_threads = (
     MAX_NUMBER_OF_THREADS // max_number_of_series_threads) + 1
-max_number_of_up_down_load_threads = MAX_NUMBER_OF_THREADS
-max_number_of_bq_threads = MAX_NUMBER_OF_THREADS
+max_number_of_up_down_load_threads = MAX_NUMBER_OF_THREADS 
+max_number_of_bq_threads = MAX_NUMBER_OF_THREADS 
 flaw_query_form = '''(
         "{}",-- COLLECTION_NAME
         "{}",-- STUDY_INSTANCE_UID
@@ -478,7 +478,6 @@ def process_bunche_of_studies(in_folder: str, studies_chunk: List[Tuple],
     fx_sub_dir = 'FIXED'
     mf_sub_dir = 'MULTIFRAME'
     in_sub_dir = 'ORIGINAL'
-    begin_dl = time.time()
     logger.info('Start to process a chunk of {} stud{}'.format(
         len(studies_chunk), 'y' if len(studies_chunk) == 1 else 'ies'
             ))
@@ -499,8 +498,8 @@ def process_bunche_of_studies(in_folder: str, studies_chunk: List[Tuple],
             # ------------------------------------
             # create the folder for downloading series:
             series_local_folder = os.path.join(
-                study_local_folder, '{}/{}/{}'.format(
-                    study_uid, in_sub_dir, series_uid))
+                study_local_folder, '{}/{}'.format(
+                    in_sub_dir, series_uid))
             if not os.path.exists(series_local_folder):
                 os.makedirs(series_local_folder)
             for number_of_inst, instance_uid in enumerate(instances, 1):
@@ -534,11 +533,11 @@ def process_bunche_of_studies(in_folder: str, studies_chunk: List[Tuple],
     for study_uid, downloaded_series in downloaded_files.items():    
         for series_uid, instance_info in downloaded_series.items():
             fx_series_folder = os.path.join(
-                    in_folder,
-                    '{}/{}/{}'.format(study_uid, fx_sub_dir, series_uid))
+                    study_local_folder,
+                    '{}/{}'.format(fx_sub_dir, series_uid))
             mf_series_folder = os.path.join(
-                    in_folder,
-                    '{}/{}/{}'.format(study_uid, mf_sub_dir, series_uid))
+                    study_local_folder,
+                    '{}/{}'.format(mf_sub_dir, series_uid))
             series_threads.queue.put(
                 (
                     process_one_series,
@@ -722,9 +721,9 @@ create_bucket(
     mf_dicoms.Bucket.Dataset,
     False)
 max_number = 2**63 - 1
-# max_number = 3
+# max_number = 10
 if max_number < 2**63 - 1:
-    limit_q = 'LIMIT 1000'
+    limit_q = 'LIMIT 50000'
 else:
     limit_q = ''
 study_query = """
