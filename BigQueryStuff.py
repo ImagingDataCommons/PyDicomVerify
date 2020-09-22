@@ -33,8 +33,8 @@ def query_string(q: str, table_name: str = ''):
     client = bigquery.Client()
     job_config = bigquery.QueryJobConfig(priority=bigquery.QueryPriority.BATCH)
     try:
-        if table_name != '':
-            logger.info("running query for '{}".format(table_name))
+        # if table_name != '':
+        logger.info("running query for '{}".format(table_name))
         client.query(q, job_config=job_config)
         # query_job.result()
     except BaseException as err:

@@ -151,8 +151,8 @@ def BuildQueries(header: str, qs: list, dataset_id: str,
 
 def BuildQueries_parallel(header: str, qs: list, dataset_id: str,
                  return_: bool = True, threads: ThreadPool = None) -> list:
-    logger = logging.getLogger(__name__)
-    m = re.search("\.'(.*)\n", header)
+    # logger = logging.getLogger(__name__)
+    m = re.search("\.(.*)\n", header)
     if m is not None:
         table_name = m.group(1)
     else:
@@ -175,6 +175,7 @@ def BuildQueries_parallel(header: str, qs: list, dataset_id: str,
             if threads is None:
                 query_string(out_q[-1], table_name)
             else:
+                logger.info('putting in queue')
                 threads.queue.put(
                     (
                         query_string,
@@ -185,6 +186,7 @@ def BuildQueries_parallel(header: str, qs: list, dataset_id: str,
     if threads is None:
         query_string(out_q[-1], table_name)
     else:
+        logger.info('putting in queue')
         threads.queue.put(
                     (
                         query_string,
@@ -754,7 +756,7 @@ create_bucket(
     mf_dicoms.Bucket.Dataset,
     False)
 max_number = 2**63 - 1
-# max_number = 10
+# max_number = 3
 if max_number < 2**63 - 1:
     limit_q = 'LIMIT 50000'
 else:
@@ -814,7 +816,7 @@ if studies is not None:
             uids[stuid] = (cln_id, {seuid: [sopuid]})
     StudyThread.number_of_all_studies = min(len(uids), max_number_of_studies)
     StudyThread.number_of_all_instances = number_of_all_inst
-    study_chunk_count = 20
+    study_chunk_count = 10
     study_chunk = []
     for number_of_studies, (study_uid, sub_study) in enumerate(uids.items(), 1):
         if number_of_studies > max_number_of_studies:
@@ -872,4 +874,3 @@ export_dicom_instance_bigquery(
     mf_dicoms.BigQuery.Dataset,
     mf_dicoms.BigQuery.DataObject)
 # Wait unitl populating bigquery stops
-big_q_threads.queue.join()
