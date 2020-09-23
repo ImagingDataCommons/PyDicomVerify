@@ -5,14 +5,23 @@ from pydicom.uid import generate_uid
 from pydicom.filereader import dcmread
 from pydicom.filewriter import dcmwrite
 from highdicom.legacy import sop
+from highdicom.legacy.sop import FrameSet, FrameSetCollection
 import sopclc_h as sop_class_uids
 import os
 import re
+from sopclc_h import (MRImageStorageSOPClassUID,
+                      CTImageStorageSOPClassUID,
+                      PETImageStorageSOPClassUID)
+floating_point_tolerance = 0.001
+supported_sop_class_uids = [
+    MRImageStorageSOPClassUID,
+    CTImageStorageSOPClassUID,
+    PETImageStorageSOPClassUID
+    ]
+import logging
+logger = logging.getLogger(__name__)
 
-from sopclc_h import MRImageStorageSOPClassUID,\
-                     CTImageStorageSOPClassUID,\
-                     PETImageStorageSOPClassUID
-def ConvertByPixelMed(pixel_med_jars: str, input_dcm_folder: str, 
+def ConvertByPixelMed(pixel_med_jars: str, input_dcm_folder: str,
                       output_dcm_folder: str,
                       conversin_output_file: str,
                       conversion_error_file: str, log=[]):
@@ -23,9 +32,8 @@ def ConvertByPixelMed(pixel_med_jars: str, input_dcm_folder: str,
                   conversin_output_file, log=log)
 
 
-floating_point_tolerance = 0.001
-
 class ParentChildDicoms:
+
     def __init__(self, parent_sop_instanc_uid: list,
                  child_study_instance_uid: str,
                  child_series_instance_uid: str,
@@ -50,7 +58,7 @@ class ParentChildDicoms:
     def GetQuery(self, parent_table_name,
                  child_table_name) -> list:
         whole_query = []
-        q = """( 
+        q = """(
                 {}, --PARENT_TABLE
                 {}, --PARENT_SOP_INSATANCE_UID
                 {}, --CHILD_TABLE
@@ -94,7 +102,6 @@ class ParentChildDicoms:
             else:
                 return v
 
-        
 
 class PositionBaseCategoryElement:
     StepSize = 0
@@ -236,18 +243,14 @@ def ClassifySeriesByPosition(ds_list):
     return category
 
 
-def ConvertByHighDicomNew(SingleFrame, OutputPrefix, log=[]) -> list:
-    if isinstance(SingleFrame, str):
-        if os.path.exists(SingleFrame):
-            Files = ctools.Find(SingleFrame, 1, ctools.is_dicom)
-    elif isinstance(SingleFrame, list):
-        Files = SingleFrame
+def GetFrameSetsFromFiles(single_frame_folder_or_list):
+    if isinstance(single_frame_folder_or_list, str):
+        if os.path.exists(single_frame_folder_or_list):
+            Files = ctools.Find(single_frame_folder_or_list, 1, ctools.is_dicom)
+    elif isinstance(single_frame_folder_or_list, list):
+        Files = single_frame_folder_or_list
     else:
         return []
-    supported_sop_class_uids = [
-        MRImageStorageSOPClassUID,
-        CTImageStorageSOPClassUID,
-        PETImageStorageSOPClassUID]
     Output = []
     err_counter = 1
     all_ds = []
@@ -262,17 +265,22 @@ def ConvertByHighDicomNew(SingleFrame, OutputPrefix, log=[]) -> list:
             continue
         all_ds.append(ds)
         # if ds.Modality in Mo
-    framesets = sop.FrameSetCollection(all_ds).FrameSets
-    multi_frame_study_instance_uid = all_ds[0].StudyInstanceUID
-    parent_child_uids = []
-    for frameset in framesets:
-        ref_ds = frameset.Frames[0]
-        sop_class_uid = frameset.GetSOPClassUID()
-        if sop_class_uid not in supported_sop_class_uids:
-            continue
-        # try:
-        multi_frame_series_instance_uid = generate_uid()
+    return all_ds
+
+
+def ConvertFrameset(frameset: FrameSet, OutputFileName: str,
+                    multi_frame_study_instance_uid: str = None,
+                    multi_frame_series_instance_uid: str = None,
+                    multi_frame_sop_instance_uid: str = None):
+    
+    ref_ds = frameset.Frames[0]
+    if multi_frame_sop_instance_uid is None:
         multi_frame_sop_instance_uid = generate_uid()
+    if multi_frame_series_instance_uid is None:
+        multi_frame_series_instance_uid = generate_uid()
+    if multi_frame_study_instance_uid is None:
+        multi_frame_study_instance_uid = generate_uid()
+    try:
         x = sop.LegacyConvertedEnhanceImage(
             frame_set=frameset,
             series_instance_uid=multi_frame_series_instance_uid,
@@ -281,32 +289,43 @@ def ConvertByHighDicomNew(SingleFrame, OutputPrefix, log=[]) -> list:
             instance_number=1,
             transfer_syntax_uid=pydicom.uid.ExplicitVRLittleEndian)
         x.BuildMultiFrame()
-        id = "_%02d_.dcm" % n
-        FileName = os.path.join(OutputPrefix, ref_ds.Modality + id)
-        folder = os.path.dirname(FileName)
-        if not os.path.exists(folder):
-            os.makedirs(folder)
-        # x.file_meta['']
-        dcmwrite(filename=FileName,
-                dataset=x, write_like_original=False)
-        log.append("File " + FileName + " was successfully written ...")
-        parent_child_uids.append(ParentChildDicoms(
+        dcmwrite(
+            filename=OutputFileName, dataset=x, write_like_original=False)
+        pr_ch = ParentChildDicoms(
             frameset.GetSOPInstanceUIDList(),
-            multi_frame_study_instance_uid,
+            frameset.StudyInstanceUID,
             multi_frame_series_instance_uid,
             multi_frame_sop_instance_uid,
-            FileName)
-            )
-        n += 1
-        # except BaseException as err:
-        #     err_message = "Conversion error for input folder"\
-        #         " \n\t\t{} \n \t\tNumber of files = {} \
-        #         n\tError type {}: --> {}".format(
-        #             SingleFrameDir, len(frameset.Frames), 
-        #             type(err), err)
-        #     print(err_message)
-        #     log.append(err_message)
+            OutputFileName)
+    except BaseException as err:
+        logger.error(err, exc_info=True)
+        pr_ch = None
+    return pr_ch
+
+
+def ConvertByHighDicomNew(single_frame_folder_or_list,
+                          OutputPrefix, log=[]) -> list:
+    all_datasets = GetFrameSetsFromFiles(single_frame_folder_or_list)
+    framesets = sop.FrameSetCollection(all_datasets).FrameSets
+    multi_frame_study_instance_uid = all_datasets[0].StudyInstanceUID
+    parent_child_uids = []
+    for n, frameset in enumerate(framesets, 1):
+        ref_ds = frameset.Frames[0]
+        sop_class_uid = frameset.GetSOPClassUID()
+        if sop_class_uid not in supported_sop_class_uids:
+            continue
+        # try:
+        multi_frame_series_instance_uid = generate_uid()
+        multi_frame_sop_instance_uid = generate_uid()
+        mf_prifix = os.path.join(OutputPrefix, '{}/{}.dcm'.format(
+            multi_frame_series_instance_uid,
+            multi_frame_sop_instance_uid))
+        pr_ch = ConvertFrameset(
+            frameset, mf_prifix, multi_frame_study_instance_uid,
+            multi_frame_series_instance_uid)
+        parent_child_uids.append(pr_ch)
     return parent_child_uids
+
 
 def ConvertByHighDicom(SingleFrameDir, OutputPrefix, log=[]):
     Files = ctools.Find(SingleFrameDir, 1, ctools.is_dicom)
@@ -354,7 +373,7 @@ def ConvertByHighDicom(SingleFrameDir, OutputPrefix, log=[]):
                             # success = True
                             err_message = "Input folder {} \n \t\tNumber"\
                                 " of files = {}". \
-                                format(SingleFrameDir, 
+                                format(SingleFrameDir,
                                        len(uniform_class.DicomDataset))
                             Modality = supported_sop_classes[SOPClassUID]
                             ModalityConvertorClass = getattr(
@@ -406,10 +425,10 @@ def ConvertByHighDicom(SingleFrameDir, OutputPrefix, log=[]):
                                        " was successfully written ...")
                             n += 1
                             # except BaseException as err:
-                            #     err_message = "Conversion error for input 
+                            #     err_message = "Conversion error for input
                             # folder \n\t\t{} \n \t\tNumber of files = {} \
                             # n\tError type {}: --> {}".\
-                            #         format(SingleFrameDir, len(final_ds), 
+                            #         format(SingleFrameDir, len(final_ds),
                             # type(err), err)
                             #     print(err_message)
                             #     log.append(err_message)

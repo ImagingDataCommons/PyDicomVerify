@@ -6,6 +6,7 @@ import os
 from typing import List
 import common_tools as ct
 from datetime import timedelta
+from pydicom import Dataset
 
 git_url = 'https://github.com/afshinmessiah/PyDicomVerify/{}'
 repo = git.Repo(search_parent_directories=True)
@@ -350,7 +351,8 @@ class DicomFileInfo:
                  file_path: str,
                  study_uid: str,
                  series_uid: str,
-                 instance_uid):
+                 instance_uid: str,
+                 dicom_dataset: Dataset = None):
         self.project_id = project_id
         self.bucket_name = bucket_name
         self.blob_address = blob_address
@@ -358,6 +360,7 @@ class DicomFileInfo:
         self.study_uid = study_uid
         self.series_uid = series_uid
         self.instance_uid = instance_uid
+        self.dicom_ds = dicom_dataset
 
 
 class PerformanceMeasure:
@@ -391,29 +394,39 @@ class ProcessPerformance:
 
     def __init__(self, down: PerformanceMeasure = PerformanceMeasure(0, 0),
                  up: PerformanceMeasure = PerformanceMeasure(0, 0),
-                 f_c: PerformanceMeasure = PerformanceMeasure(0, 0),
+                 fx_: PerformanceMeasure = PerformanceMeasure(0, 0),
+                 fr_: PerformanceMeasure = PerformanceMeasure(0, 0),
+                 cn_: PerformanceMeasure = PerformanceMeasure(0, 0),
                  bq: PerformanceMeasure = PerformanceMeasure(0, 0)
                  ):
         self.download: PerformanceMeasure = down
         self.upload: PerformanceMeasure = up
-        self.fix_convert: PerformanceMeasure = f_c
+        self.fix: PerformanceMeasure = fx_
+        self.frameset: PerformanceMeasure = fr_
+        self.convert: PerformanceMeasure = cn_
         self.bigquery: PerformanceMeasure = bq
         self.download.suffix = 'B'
         self.upload.suffix = 'B'
-        self.bigquery.suffix = 'row'
-        self.fix_convert.suffix = 'inst'
+        self.bigquery.suffix = '(row)'
+        self.fix.suffix = '(inst)'
+        # self.convert.suffix = '('
 
     def __add__(self, other):
         download = self.download + other.download
         upload = self.upload + other.upload
-        fix_convert = self.fix_convert + other.fix_convert
+        fix = self.fix + other.fix
+        convert = self.convert + other.convert
+        frameset = self.frameset + other.frameset
         bigquery = self.bigquery + other.bigquery
-        return ProcessPerformance(download, upload, fix_convert, bigquery)
+        return ProcessPerformance(
+            download, upload, fix, convert, frameset, bigquery)
 
     def __iadd__(self, other):
         self.download += other.download
         self.upload += other.upload
-        self.fix_convert += other.fix_convert
+        self.fix += other.fix
+        self.convert += other.convert
+        self.frameset += other.frameset
         self.bigquery += other.bigquery
         return self
     
@@ -421,20 +434,29 @@ class ProcessPerformance:
     def entire_time(self):
         return (self.download.time_in_sec +
                 self.upload.time_in_sec +
-                self.fix_convert.time_in_sec +
+                self.fix.time_in_sec +
+                self.convert.time_in_sec +
+                self.frameset.time_in_sec +
                 self.bigquery.time_in_sec)
 
     def __str__(self):
         t_time = self.entire_time
         if t_time == 0:
             t_time = 1
-        form = 'download{} ->  [{:.1%}]\tupload -> {} [{:.1%}]\tfix+conversion -> {} [{:.1%}]\tbig query -> {} [{:.1%}]'
+        form = 'download -> {} [{:.1%}]\tupload -> {} [{:.1%}]\t'\
+            'fix -> {} [{:.1%}]\t'\
+            'frameset extraction-> {} [{:.1%}]\t'\
+            'conversion -> {} [{:.1%}]\tbig query -> {} [{:.1%}]'
         return form.format(str(self.download),
                            self.download.time_in_sec / t_time,
                            str(self.upload),
                            self.upload.time_in_sec / t_time,
-                           str(self.fix_convert),
-                           self.fix_convert.time_in_sec / t_time,
+                           str(self.fix),
+                           self.fix.time_in_sec / t_time,
+                           str(self.frameset),
+                           self.frameset.time_in_sec / t_time,
+                           str(self.convert),
+                           self.convert.time_in_sec / t_time,
                            str(self.bigquery),
                            self.bigquery.time_in_sec / t_time,
                            )

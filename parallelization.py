@@ -40,7 +40,7 @@ class StudyThread(Thread):
                 with StudyThread.instance_counter_lock:
                     StudyThread.performance_history.append(perf)
                     StudyThread.number_of_inst_processed +=\
-                        perf.fix_convert.size
+                        perf.fix.size
                     StudyThread.whole_performace += perf
                     StudyThread.number_of_st_processed += len(args[1])
             except BaseException as err:
@@ -73,7 +73,6 @@ class WorkerThread(Thread):
         self.output = []
         self._queue = queue
         self._kill = False
-        self._lock = Lock()
 
     def run(self):
         logger = logging.getLogger(__name__)
@@ -91,8 +90,7 @@ class WorkerThread(Thread):
                 continue
             try:
                 out = work_fun(*args)
-                with self._lock:
-                    self.output.append((args, out,))
+                self.output.append((args, out,))
             except BaseException as err:
                 msg = str(err)
                 if len(msg) > MAX_EXEPTION_MESSAGE_LENGTH:
