@@ -16,10 +16,22 @@ class StudyThread(Thread):
     number_of_st_processed: int = 1
     number_of_all_studies: int = 1
     number_of_all_instances: int = 1
+    thread_number = 1
     instance_counter_lock = Lock()
     start_time = time.time()
     performance_history: list = []
     whole_performace = ProcessPerformance()
+    
+    @staticmethod
+    def initialize_statics():
+        StudyThread.number_of_inst_processed = 1
+        StudyThread.number_of_st_processed = 1
+        StudyThread.number_of_all_studies = 1
+        StudyThread.number_of_all_instances = 1
+        StudyThread.thread_number = 1
+        StudyThread.start_time = time.time()
+        StudyThread.performance_history = []
+        StudyThread.whole_performace = ProcessPerformance()
 
     def __init__(self, queue: Queue, **kwarg):
         Thread.__init__(self, **kwarg)
@@ -54,15 +66,24 @@ class StudyThread(Thread):
                 StudyThread.number_of_all_instances -
                 StudyThread.number_of_inst_processed
                 ) * time_elapsed / float(StudyThread.number_of_inst_processed)
-            header = '{}/{})Study {} was fix/convert-ed successfully'.format(
+            header = '{}/{})Study was fix/convert-ed successfully'.format(
                 StudyThread.number_of_st_processed,
-                StudyThread.number_of_all_studies, study_uids)
+                StudyThread.number_of_all_studies)
+            logger.info(header)
+            for st in study_uids:
+                logger.info('\t\t\t{}'.format(st))
             progress_string = ctools.ShowProgress(
-                progress, time_elapsed, time_left, 60, header, False)
+                progress, time_elapsed, time_left, 60,
+                '\t\tInstace progress', False)
             logger.info(progress_string)
-            logger.info('For this chunk of studies {}'.format(str(perf)))
-            logger.info('For for all studies {}'.format(str(
-                StudyThread.whole_performace)))
+            logger.info(
+                'For this chunk of studies with <{}> threads {}'.format(
+                    StudyThread.thread_number, str(perf))
+            )
+            logger.info(
+                'For for all studies so far with <{}> threads {}'.format(
+                    StudyThread.thread_number,
+                    str(StudyThread.whole_performace)))
             self._queue.task_done()
 
 

@@ -40,10 +40,12 @@ from dicom_fix_issue_info import (
     )
 # ---------------- Global Vars --------------------------:
 max_number_of_study_threads = 1
-max_number_of_series_threads = MAX_NUMBER_OF_THREADS
-max_number_of_instance_threads = MAX_NUMBER_OF_THREADS
+max_number_of_fix_threads = MAX_NUMBER_OF_THREADS
 max_number_of_up_down_load_threads = MAX_NUMBER_OF_THREADS
 max_number_of_bq_threads = MAX_NUMBER_OF_THREADS
+max_number_of_frameset_threads = MAX_NUMBER_OF_THREADS
+max_number_of_conversion_threads = MAX_NUMBER_OF_THREADS
+
 flaw_query_form = '''(
         "{}",-- COLLECTION_NAME
         "{}",-- STUDY_INSTANCE_UID
@@ -113,7 +115,7 @@ def FixFile(dicom_file: str, dicom_fixed_file: str,
 
 def BuildQueries(header: str, qs: list, dataset_id: str,
                  return_: bool = True, threads: ThreadPool = None) -> list:
-    # logger = logging.getLogger(__name__)
+    logger = logging.getLogger(__name__)
     m = re.search("\.(.*)\n", header)
     if m is not None:
         table_name = m.group(1)
@@ -225,8 +227,20 @@ def fix_one_instance(inst_info: DicomFileInfo,
     )
     return (fix_queries, issue_queries, origin_queries, '')
 
-def frameset_for_one_series(file_blob_pairs: List[DicomFileInfo]):
+
+def frameset_for_one_series(file_blob_pairs: List[DicomFileInfo],
+                            series_folder_prifix: str):
     logger = logging.getLogger(__name__)
+    # All frames set created out of one series must have the same series
+    #   instance uid. So I have to create on sereies instance uid and a
+    #   destination folder for future multiframe images
+    # ------------------------------------------------
+    multi_frame_series_uid = generate_uid()
+    multi_frame_series_folder = os.path.join(
+        series_folder_prifix,
+        multi_frame_series_uid)
+    if not os.path.exists(multi_frame_series_folder):
+        os.makedirs(multi_frame_series_folder)
     ds_list = []
     for f_bl in file_blob_pairs:
         ds_list.append(f_bl.dicom_ds)
@@ -236,38 +250,29 @@ def frameset_for_one_series(file_blob_pairs: List[DicomFileInfo]):
     except BaseException as err:
         logger.error(err, exc_info=True)
         fs = []
-    return fs
+    return (fs, multi_frame_series_uid, multi_frame_series_folder)
 
 
-def LogDict(st_se_dict):
-    for st_, se_dict in st_se_dict.items():
-        ind1 = '\t\t'
-        logger('{}{}'.format(ind1, st_))
-        for se_, ins in se_dict.items():
-            ind2 = ind1*2
-            logger('{}{}'.format(ind2, se_))
-            for f in ins:
-                ind3 = ind2*2
-                logger('{}{}'.format(ind3, f))
-
-
-def calculate_framesets(study_series_dict,
-                        mf_loacal_file_pattern: str,
-                        fx_gc_info, mf_gc_info) -> tuple:
-    
-    # Now I want to convert the fix series:
+def extract_convert_framesets_for_bunch_of_studies(
+        study_series_dict,
+        mf_loacal_study_path_pattern: str,
+        fx_gc_info, mf_gc_info) -> tuple:
+    # Now I want to extract framesets from fixed sereis:
+    logger = logging.getLogger(__name__)
     logger.info('Start finding the framesets')
     fx_table_name = fx_gc_info.BigQuery.GetBigQueryStyleAddress(False)
     mf_table_name = mf_gc_info.BigQuery.GetBigQueryStyleAddress(False)
     tic = time.time()
-    frameset_threads = ThreadPool(MAX_NUMBER_OF_THREADS, 'frset')
+    frameset_threads = ThreadPool(max_number_of_frameset_threads, 'frset')
     for study_uid, series_dict in study_series_dict.items():
+        study_folder = mf_loacal_study_path_pattern.format(study_uid)
         for series_uid, file_blob_pairs in series_dict.items():
             frameset_threads.queue.put(
                 (
                     frameset_for_one_series,
                     (
                         file_blob_pairs,
+                        study_folder
                     )
                 )
             )
@@ -280,12 +285,15 @@ def calculate_framesets(study_series_dict,
     issue_queries = []
     origin_queries = []
     upload_blobfile_pairs = []
-    tic = time.time()
     number_of_all_framesets = 0
     # -> Starting the conversion
-    logger.info('Start converting the framesets')
-    conversion_threads = ThreadPool(MAX_NUMBER_OF_THREADS, 'convert')
-    for (file_blob_pairs,), fsets in results:
+    tic = time.time()
+    logger.info('Frameset calculation finished. '
+                'Now starting converting the framesets')
+    conversion_threads = ThreadPool(
+        max_number_of_conversion_threads, 'convert')
+    for (file_blob_pairs, prefix),\
+            (fsets, mf_series_uid, mf_series_dir) in results:
         if len(fsets) == 0:
             for file_blob in file_blob_pairs:
                 f_query = flaw_query_form.format(
@@ -297,10 +305,9 @@ def calculate_framesets(study_series_dict,
             for fset in fsets:
                 number_of_all_framesets += 1
                 upload_blobfile_pairs.extend(file_blob_pairs)
-                mf_series_uid = generate_uid()
                 mf_instace_uid = generate_uid()
-                mf_file_path = mf_loacal_file_pattern.format(
-                    mf_study_uid, mf_series_uid, mf_instace_uid)
+                mf_file_path = os.path.join(
+                    mf_series_dir, '{}.dcm'.format(mf_instace_uid))
                 conversion_threads.queue.put(
                     (
                         conv.ConvertFrameset,
@@ -356,9 +363,10 @@ def calculate_framesets(study_series_dict,
                 pr_ch.child_sop_instance_uid
             ))
     frameset_perf = PerformanceMeasure(
-        number_of_all_framesets, frameset_elapsed_time, '(frset)')
+        number_of_all_framesets, frameset_elapsed_time, '(frameset)')
     mf_perf = PerformanceMeasure(
-        number_of_all_converted_mf, conversion_elapsed_time, '(mfinst)')
+        number_of_all_converted_mf, conversion_elapsed_time,
+        '(multiframe-inst)')
     logger.info(
         '\tfinished conversion to multi-frame '
         'instances first {} then {}'.format(str(frameset_perf), str(mf_perf)))
@@ -366,125 +374,8 @@ def calculate_framesets(study_series_dict,
             frameset_perf, mf_perf)
 
 
-def process_one_series(inst_infos: List[DicomFileInfo],
-                       fx_series_dir: str,
-                       mf_series_dir: str,
-                       in_gc_info, fx_gc_info, mf_gc_info) -> tuple:
-    logger = logging.getLogger(__name__)
-    logger.info('\tStart fixing series({}) containing {} instances'.format(
-            inst_infos[0].series_uid, len(inst_infos)))
-    tic = time.time()
-    # Create necessarry folders:
-    if not os.path.exists(fx_series_dir):
-        os.makedirs(fx_series_dir)
-    if not os.path.exists(mf_series_dir):
-        os.makedirs(mf_series_dir)
-    # Get table neames for populating bigquery tables:
-    in_table_name = in_gc_info.BigQuery.GetBigQueryStyleAddress(False)
-    fx_table_name = fx_gc_info.BigQuery.GetBigQueryStyleAddress(False)
-    mf_table_name = mf_gc_info.BigQuery.GetBigQueryStyleAddress(False)
-    # Fix process
-    single_frames = []
-    fix_threads = ThreadPool(
-        min(len(inst_infos), max_number_of_instance_threads), 'instance')
-    for obj in inst_infos:
-        fx_file = os.path.join(
-            fx_series_dir, '{}.dcm'.format(obj.instance_uid))
-        fx_obj = DicomFileInfo(
-            fx_gc_info.Bucket.ProjectID, fx_gc_info.Bucket.Dataset,
-            '', fx_file, '', '', '')
-        fix_threads.queue.put(
-            (
-                fix_one_instance,
-                (
-                    obj,
-                    fx_obj,
-                    in_table_name, fx_table_name
-                )
-            )
-        )
-    # wait for all fix threads to finish
-    fix_threads.queue.join()
-    fix_threads.kill_them_all()
-    toc = time.time()
-    t_e = '{}'.format(str(timedelta(seconds=toc - tic)))
-    # Log some information
-    speed_str = ctools.get_human_readable_string(
-        len(inst_infos) / (toc - tic)
-        )
-    logger.info(
-        'finished fixing series<{}>: {} '
-        'instances in {} sec ({}inst/sec)'.format(
-            inst_infos[0].series_uid, len(inst_infos), t_e, speed_str))
-    # collect outputs
-    issue_queries = []
-    fix_queries = []
-    origin_queries = []
-    flaw_queries = []
-    blob_file_pair = []
-    fx_blob_form = '{}/dicom/{{}}/{{}}/{{}}.dcm'.format(
-        fx_gc_info.Bucket.DataObject)
-    success = True
-    for args, (fix_q, iss_q, org_q, flaw) in fix_threads.output:
-        success = success and (flaw == '')
-        flaw_queries.append(flaw)
-        fix_queries.extend(fix_q)
-        issue_queries.extend(iss_q)
-        origin_queries.extend(org_q)
-        fx_file_info = args[1]
-        fx_file_info.blob_address = fx_blob_form.format(
-            fx_file_info.study_uid, fx_file_info.series_uid,
-            fx_file_info.instance_uid)
-        blob_file_pair.append(fx_file_info)
-        single_frames.append(fx_file_info.file_path)
-    if not success:
-        logger.info(
-            'series <{}> encountered a problem while fi'
-            'xing so the conversion is going to be aborted',)
-        return ([], [], [], [], flaw_queries)
-    # Now I want to convert the fix series:
-    tic = time.time()
-    mf_log = []
-    PrntChld = conv.ConvertByHighDicomNew(
-            single_frames, mf_series_dir, mf_log)
-    for pr_ch in PrntChld:
-        origin_queries.extend(pr_ch.GetQuery(fx_table_name, mf_table_name))
-        multiframe_log = []
-        VER(pr_ch.child_dicom_file, multiframe_log)
-        mf_issues = IssueCollection(
-            multiframe_log[1:], mf_table_name,
-            pr_ch.child_study_instance_uid,
-            pr_ch.child_series_instance_uid,
-            pr_ch.child_sop_instance_uid,)
-        issue_queries.extend(mf_issues.GetQuery())
-        mf_blob_path = '{}/dicom/{}/{}/{}.dcm'.format(
-                mf_gc_info.Bucket.DataObject,
-                pr_ch.child_study_instance_uid,
-                pr_ch.child_series_instance_uid,
-                pr_ch.child_series_instance_uid
-            )
-        blob_file_pair.append(DicomFileInfo(
-            mf_gc_info.Bucket.ProjectID,
-            mf_gc_info.Bucket.Dataset,
-            mf_blob_path, pr_ch.child_dicom_file,
-            pr_ch.child_study_instance_uid,
-            pr_ch.child_series_instance_uid,
-            pr_ch.child_sop_instance_uid
-        ))
-    toc = time.time()
-    # Now I'm logging the conversion process:
-    speed_str = ctools.get_human_readable_string(
-        len(inst_infos) / (toc - tic))
-    t_e = '{}'.format(str(timedelta(seconds=toc - tic)))
-    logger.info(
-        '\tfinished conversion to MF series<{}>: {} '
-        'instances in {} sec ({}inst/sec)'.format(
-            inst_infos[0].series_uid, len(PrntChld),  t_e, speed_str))
-    return (fix_queries, issue_queries, origin_queries, blob_file_pair, [])
-
-
 def fix_bunch_of_studies(inst_infos: List[DicomFileInfo],
-                         fx_file_path_pattern: str,
+                         fx_study_path_pattern: str,
                          in_gc_info, fx_gc_info) -> tuple:
     logger = logging.getLogger(__name__)
     logger.info(
@@ -499,11 +390,12 @@ def fix_bunch_of_studies(inst_infos: List[DicomFileInfo],
     # Fix process
     single_frames = []
     fix_threads = ThreadPool(
-        min(len(inst_infos), max_number_of_instance_threads), 'instance')
+        min(len(inst_infos), max_number_of_fix_threads), 'instance')
     for obj in inst_infos:
         # I'm using downloaded file uids for fix files
-        fx_file = fx_file_path_pattern.format(
-            obj.study_uid, obj.series_uid, obj.instance_uid)
+        stuyd_folder = fx_study_path_pattern.format(obj.study_uid)
+        fx_file = '{}/{}/{}.dcm'.format(
+            stuyd_folder, obj.series_uid, obj.instance_uid)
         fx_obj = DicomFileInfo(
             fx_gc_info.Bucket.ProjectID, fx_gc_info.Bucket.Dataset,
             '', fx_file, obj.study_uid, obj.series_uid, obj.study_uid)
@@ -619,7 +511,7 @@ def download_bunch_of_studies(blob_file_pairs: List[DicomFileInfo]) -> tuple:
     # Measrure the download_size:
     # ----------------------------------
     download_elapsed_time = toc - tic
-    th_count = min(MAX_NUMBER_OF_THREADS, len(results))
+    th_count = min(max_number_of_up_down_load_threads, len(results))
     size_measure = ThreadPool(th_count, "size")
     for bl, success in results:
         if success:
@@ -634,14 +526,6 @@ def download_bunch_of_studies(blob_file_pairs: List[DicomFileInfo]) -> tuple:
     downloaded_size = 0
     for arg, sz in size_measure.output:
         downloaded_size += sz
-    logger.debug(
-        'Study <{}>, {}B in size was downlaoded in {} ({}B\sec)'.format(
-            study_uid, ctools.get_human_readable_string(downloaded_size),
-            timedelta(seconds=download_elapsed_time),
-            ctools.get_human_readable_string(
-                downloaded_size / download_elapsed_time)
-            )
-        )
     # Prepare the output
     # ----------------------------------
     # defected_series = []
@@ -687,7 +571,6 @@ def download_bunch_of_studies(blob_file_pairs: List[DicomFileInfo]) -> tuple:
 
 
 def upload_bunch_of_studies(blob_file_pairs: List[DicomFileInfo]) -> list:
-    logger = logging.getLogger(__name__)
     tic = time.time()
     results = down_up_load_files_form_google_cloud(
         blob_file_pairs, False)
@@ -710,14 +593,6 @@ def upload_bunch_of_studies(blob_file_pairs: List[DicomFileInfo]) -> list:
     uploaded_size = 0
     for arg, sz in size_measure.output:
         uploaded_size += sz 
-    logger.info(
-        'Study <{}>, {}B in size was uplaoded in {} ({}B\sec)'.format(
-            study_uid, ctools.get_human_readable_string(uploaded_size),
-            timedelta(seconds=upload_elapsed_time),
-            ctools.get_human_readable_string(
-                uploaded_size / upload_elapsed_time)
-            )
-        )
     # Prepare the output
     # ----------------------------------
     flaw_queries = []
@@ -743,7 +618,6 @@ def process_bunche_of_studies(in_folder: str, studies_chunk: List[Tuple],
     logger.info('Start to process a chunk of {} stud{}'.format(
         len(studies_chunk), 'y' if len(studies_chunk) == 1 else 'ies'
             ))
-    local_path_pattern = '{}{}{}{}{}'
     max_number_of_instances = max_number
     max_number_of_series = max_number
     blob_address_pattern = 'dicom/{}/{}/{}.dcm'
@@ -795,26 +669,25 @@ def process_bunche_of_studies(in_folder: str, studies_chunk: List[Tuple],
             input_blob_file_pairs)
     # --> Fix and convert all  downloaded files
     # -------------------------------
-    logger.info(local_path_pattern.format(
-                in_folder, '/{}', '/{}'.format(fx_sub_dir), '/{}', '/{}.dcm'))
-    (
-        fix_queries, issue_queries, origin_queries,
-        study_series_dict, flaw_queries,
-        fix_performace) = fix_bunch_of_studies(
+    fx_result = fix_bunch_of_studies(
             downloaded_files,
-            local_path_pattern.format(
-                in_folder, '/{}', '/{}'.format(fx_sub_dir), '/{}', '/{}.dcm'),
+            '{}{}{}'.format(
+                in_folder, '/{}', '/{}'.format(fx_sub_dir)),
             in_gc_info, fx_gc_info
             )
     (
+        fix_queries, issue_queries, origin_queries,
+        study_series_dict, flaw_queries,
+        fix_performace) = fx_result
+    mf_result = extract_convert_framesets_for_bunch_of_studies(
+            study_series_dict,
+            '{}{}{}'.format(
+                in_folder, '/{}', '/{}'.format(mf_sub_dir)),
+            fx_gc_info, mf_gc_info) 
+    (
         issue_queries, origin_queries, upload_blobfile_pairs, flaw_queries,
         frameset_perf, mf_perf
-        ) = calculate_framesets(
-            study_series_dict,
-            local_path_pattern.format(
-                in_folder, '/{}', '/{}'.format(mf_sub_dir), '/{}', '/{}.dcm'),
-            fx_gc_info, mf_gc_info)
-    
+    ) = mf_result
     # --> Multithread uploading the data
     # -------------------------------
     upload_flawed_queries, upload_measure = upload_bunch_of_studies(
@@ -884,194 +757,215 @@ def rm(folders):
             logging.info("FOLDER {} DOESN'T EXIST TO BE ROMOVED".format(a))
 
 
-home = os.path.expanduser("~")
-pid = os.getpid()
-local_tmp_folder = os.path.join(home, "Tmp-{:05d}".format(pid))
+def main(number_of_threads: int = None):
+    if number_of_threads is None:
+        number_of_threads = MAX_NUMBER_OF_THREADS
 
-in_dicoms = DataInfo(
-    Datalet('idc-tcia',      # Bucket
-            'us',
-            '', ''),
-    Datalet('idc-dev-etl',      # Dicom Store
-            'us-central1',
-            'idc_tcia_mvp_wave0',
-            'idc_tcia'),
-    Datalet('idc-dev-etl',      # Bigquery
-            'us-central1',
-            'idc_tcia_mvp_wave0',
-            'idc_tcia_dicom_metadata'),
-    )
-general_dataset_name = 'afshin_results_02_' + in_dicoms.BigQuery.Dataset
-fx_dicoms = DataInfo(
-    Datalet('idc-tcia',      # Bucket
-            'us',
-            general_dataset_name,
-            'FIXED'),
-    Datalet('idc-tcia',      # Dicom Store
-            'us',
-            general_dataset_name,
-            'FIXED'),
-    Datalet('idc-tcia',      # Bigquery
-            'us',
-            general_dataset_name,
-            'FIXED')
-    )
-mf_dicoms = DataInfo(
-    Datalet('idc-tcia',      # Bucket
-            'us',
-            general_dataset_name,
-            'MULTIFRAME'),
-    Datalet('idc-tcia',      # Dicom Store
-            'us',
-            general_dataset_name,
-            'MULTIFRAME'),
-    Datalet('idc-tcia',      # Bigquery
-            'us',
-            general_dataset_name,
-            'MULTIFRAME')
-    )
-BigQueryInputCollectionInfo = Datalet(
-    'idc-dev-etl',      # Bigquery
-    'us',
-    'idc_tcia_mvp_wave0',
-    'idc_tcia_auxilliary_metadata')
-create_all_tables('{}.{}'.format(
-    fx_dicoms.BigQuery.ProjectID, fx_dicoms.BigQuery.Dataset),
-    fx_dicoms.BigQuery.CloudRegion, True)
-CreateDicomStore(
-    fx_dicoms.DicomStore.ProjectID,
-    fx_dicoms.DicomStore.CloudRegion,
-    fx_dicoms.DicomStore.Dataset,
-    fx_dicoms.DicomStore.DataObject)
-CreateDicomStore(
-    mf_dicoms.DicomStore.ProjectID,
-    mf_dicoms.DicomStore.CloudRegion,
-    mf_dicoms.DicomStore.Dataset,
-    mf_dicoms.DicomStore.DataObject)
-create_bucket(
-    fx_dicoms.Bucket.ProjectID,
-    fx_dicoms.Bucket.Dataset,
-    False)
-create_bucket(
-    mf_dicoms.Bucket.ProjectID,
-    mf_dicoms.Bucket.Dataset,
-    False)
-max_number = 2**63 - 1
-max_number = 15
-if max_number < 2**63 - 1:
-    limit_q = 'LIMIT 50000'
-else:
-    limit_q = ''
-study_query = """
-            WITH DICOMS AS (
-            SELECT STUDYINSTANCEUID, SERIESINSTANCEUID, SOPINSTANCEUID
-            FROM {}
-            WHERE
-                SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.2" OR
-                SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.4" OR
-                SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.128"
-                {} )
-                SELECT DICOMS.STUDYINSTANCEUID,
-                    DICOMS.SERIESINSTANCEUID,
-                    DICOMS.SOPINSTANCEUID,
-                    COLLECTION_TABLE.GCS_Bucket,
-                FROM DICOMS JOIN
-                    {} AS
-                    COLLECTION_TABLE ON
-                    COLLECTION_TABLE.SOPINSTANCEUID = DICOMS.SOPINSTANCEUID
-""".format(in_dicoms.BigQuery.GetBigQueryStyleAddress(), limit_q,
-           BigQueryInputCollectionInfo.GetBigQueryStyleAddress())
-uids: dict = {}
-q_dataset_uid = '{}.{}.{}'.format(
-    in_dicoms.BigQuery.ProjectID,
-    in_dicoms.BigQuery.Dataset,
-    in_dicoms.BigQuery.DataObject
-    )
-logger = logging.getLogger(__name__)
-max_number_of_studies = max_number
-time_interval_for_progress_update = 1
-last_time_point_for_progress_update = 0
-start = time.time()
-analysis_started = False
-studies = query_string_with_result(study_query)
-number_of_all_inst = studies.total_rows
-number_of_inst_processed = 1
-logger.info('Starting {} active threads'.format(MAX_NUMBER_OF_THREADS))
-q = Queue()
-for ii in range(max_number_of_study_threads):
-    t = StudyThread(q, name='afn_th{:02d}'.format(ii))
-    t.daemon = True
-    t.start()
-if studies is not None:
-    for row in studies:
-        stuid = row.STUDYINSTANCEUID
-        seuid = row.SERIESINSTANCEUID
-        sopuid = row.SOPINSTANCEUID
-        cln_id = row.GCS_Bucket
-        if stuid in uids:
-            if seuid in uids[stuid][1]:
-                uids[stuid][1][seuid].append(sopuid)
+    StudyThread.initialize_statics()
+    global max_number_of_fix_threads
+    global max_number_of_up_down_load_threads
+    global max_number_of_bq_threads
+    global max_number_of_frameset_threads
+    global max_number_of_conversion_threads
+    max_number_of_fix_threads = number_of_threads
+    max_number_of_up_down_load_threads = number_of_threads
+    max_number_of_bq_threads = number_of_threads
+    max_number_of_frameset_threads = number_of_threads
+    max_number_of_conversion_threads = number_of_threads
+    home = os.path.expanduser("~")
+    pid = os.getpid()
+    local_tmp_folder = os.path.join(home, "Tmp-{:05d}".format(pid))
+
+    in_dicoms = DataInfo(
+        Datalet('idc-tcia',      # Bucket
+                'us',
+                '', ''),
+        Datalet('idc-dev-etl',      # Dicom Store
+                'us-central1',
+                'idc_tcia_mvp_wave0',
+                'idc_tcia'),
+        Datalet('idc-dev-etl',      # Bigquery
+                'us-central1',
+                'idc_tcia_mvp_wave0',
+                'idc_tcia_dicom_metadata'),
+        )
+    general_dataset_name = 'afshin_results_02_' + in_dicoms.BigQuery.Dataset
+    fx_dicoms = DataInfo(
+        Datalet('idc-tcia',      # Bucket
+                'us',
+                general_dataset_name,
+                'FIXED'),
+        Datalet('idc-tcia',      # Dicom Store
+                'us',
+                general_dataset_name,
+                'FIXED'),
+        Datalet('idc-tcia',      # Bigquery
+                'us',
+                general_dataset_name,
+                'FIXED')
+        )
+    mf_dicoms = DataInfo(
+        Datalet('idc-tcia',      # Bucket
+                'us',
+                general_dataset_name,
+                'MULTIFRAME'),
+        Datalet('idc-tcia',      # Dicom Store
+                'us',
+                general_dataset_name,
+                'MULTIFRAME'),
+        Datalet('idc-tcia',      # Bigquery
+                'us',
+                general_dataset_name,
+                'MULTIFRAME')
+        )
+    BigQueryInputCollectionInfo = Datalet(
+        'idc-dev-etl',      # Bigquery
+        'us',
+        'idc_tcia_mvp_wave0',
+        'idc_tcia_auxilliary_metadata')
+    create_all_tables('{}.{}'.format(
+        fx_dicoms.BigQuery.ProjectID, fx_dicoms.BigQuery.Dataset),
+        fx_dicoms.BigQuery.CloudRegion, True)
+    CreateDicomStore(
+        fx_dicoms.DicomStore.ProjectID,
+        fx_dicoms.DicomStore.CloudRegion,
+        fx_dicoms.DicomStore.Dataset,
+        fx_dicoms.DicomStore.DataObject)
+    CreateDicomStore(
+        mf_dicoms.DicomStore.ProjectID,
+        mf_dicoms.DicomStore.CloudRegion,
+        mf_dicoms.DicomStore.Dataset,
+        mf_dicoms.DicomStore.DataObject)
+    create_bucket(
+        fx_dicoms.Bucket.ProjectID,
+        fx_dicoms.Bucket.Dataset,
+        False)
+    create_bucket(
+        mf_dicoms.Bucket.ProjectID,
+        mf_dicoms.Bucket.Dataset,
+        False)
+    max_number = 2**63 - 1
+    max_number = 15
+    if max_number < 2**63 - 1:
+        limit_q = 'LIMIT 50000'
+    else:
+        limit_q = ''
+    study_query = """
+                WITH DICOMS AS (
+                SELECT STUDYINSTANCEUID, SERIESINSTANCEUID, SOPINSTANCEUID
+                FROM {}
+                WHERE
+                    SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.2" OR
+                    SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.4" OR
+                    SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.128"
+                    {} )
+                    SELECT DICOMS.STUDYINSTANCEUID,
+                        DICOMS.SERIESINSTANCEUID,
+                        DICOMS.SOPINSTANCEUID,
+                        COLLECTION_TABLE.GCS_Bucket,
+                    FROM DICOMS JOIN
+                        {} AS
+                        COLLECTION_TABLE ON
+                        COLLECTION_TABLE.SOPINSTANCEUID = DICOMS.SOPINSTANCEUID
+    """.format(in_dicoms.BigQuery.GetBigQueryStyleAddress(), limit_q,
+            BigQueryInputCollectionInfo.GetBigQueryStyleAddress())
+    uids: dict = {}
+    q_dataset_uid = '{}.{}.{}'.format(
+        in_dicoms.BigQuery.ProjectID,
+        in_dicoms.BigQuery.Dataset,
+        in_dicoms.BigQuery.DataObject
+        )
+    logger = logging.getLogger(__name__)
+    max_number_of_studies = max_number
+    time_interval_for_progress_update = 1
+    last_time_point_for_progress_update = 0
+    start = time.time()
+    analysis_started = False
+    studies = query_string_with_result(study_query)
+    number_of_all_inst = studies.total_rows
+    number_of_inst_processed = 1
+    logger.info('Starting {} active threads'.format(MAX_NUMBER_OF_THREADS))
+    q = Queue()
+    for ii in range(max_number_of_study_threads):
+        t = StudyThread(q, name='afn_th{:02d}'.format(ii))
+        t.daemon = True
+        t.start()
+    StudyThread.thread_number = number_of_threads
+    if studies is not None:
+        for row in studies:
+            stuid = row.STUDYINSTANCEUID
+            seuid = row.SERIESINSTANCEUID
+            sopuid = row.SOPINSTANCEUID
+            cln_id = row.GCS_Bucket
+            if stuid in uids:
+                if seuid in uids[stuid][1]:
+                    uids[stuid][1][seuid].append(sopuid)
+                else:
+                    uids[stuid][1][seuid] = [sopuid]
             else:
-                uids[stuid][1][seuid] = [sopuid]
-        else:
-            uids[stuid] = (cln_id, {seuid: [sopuid]})
-    StudyThread.number_of_all_studies = min(len(uids), max_number_of_studies)
-    StudyThread.number_of_all_instances = number_of_all_inst
-    study_chunk_count = 10
-    study_chunk = []
-    for number_of_studies, (study_uid, sub_study) in enumerate(uids.items(), 1):
-        if number_of_studies > max_number_of_studies:
-            break
-        study_chunk.append((study_uid, sub_study[0], sub_study[1]))
-        if number_of_studies % study_chunk_count == 0 or\
-                number_of_studies == len(uids) or \
-                number_of_studies == max_number_of_studies:
-            q.put(
-                (
-                    process_bunche_of_studies,
+                uids[stuid] = (cln_id, {seuid: [sopuid]})
+        StudyThread.number_of_all_studies = min(len(uids), max_number_of_studies)
+        StudyThread.number_of_all_instances = number_of_all_inst
+        study_chunk_count = 10
+        study_chunk = []
+        for number_of_studies, (study_uid, sub_study) in enumerate(uids.items(), 1):
+            if number_of_studies > max_number_of_studies:
+                break
+            study_chunk.append((study_uid, sub_study[0], sub_study[1]))
+            if number_of_studies % study_chunk_count == 0 or\
+                    number_of_studies == len(uids) or \
+                    number_of_studies == max_number_of_studies:
+                q.put(
                     (
-                        local_tmp_folder,
-                        study_chunk,
-                        in_dicoms, fx_dicoms, mf_dicoms,
-                        max_number
+                        process_bunche_of_studies,
+                        (
+                            local_tmp_folder,
+                            study_chunk,
+                            in_dicoms, fx_dicoms, mf_dicoms,
+                            max_number
+                        )
                     )
                 )
-            )
-            study_chunk = []
-q.join()  # waiting for all tasks to be done
-rm(local_tmp_folder)
-import_dicom_bucket(
-    fx_dicoms.DicomStore.ProjectID,
-    fx_dicoms.DicomStore.CloudRegion,
-    fx_dicoms.DicomStore.Dataset,
-    fx_dicoms.DicomStore.DataObject,
-    fx_dicoms.Bucket.ProjectID,
-    fx_dicoms.Bucket.Dataset,
-    fx_dicoms.Bucket.DataObject
-    )
-import_dicom_bucket(
-    mf_dicoms.DicomStore.ProjectID,
-    mf_dicoms.DicomStore.CloudRegion,
-    mf_dicoms.DicomStore.Dataset,
-    mf_dicoms.DicomStore.DataObject,
-    mf_dicoms.Bucket.ProjectID,
-    mf_dicoms.Bucket.Dataset,
-    mf_dicoms.Bucket.DataObject
-    )
-export_dicom_instance_bigquery(
-    fx_dicoms.DicomStore.ProjectID,
-    fx_dicoms.DicomStore.CloudRegion,
-    fx_dicoms.DicomStore.Dataset,
-    fx_dicoms.DicomStore.DataObject,
-    fx_dicoms.BigQuery.ProjectID,
-    fx_dicoms.BigQuery.Dataset,
-    fx_dicoms.BigQuery.DataObject)
-export_dicom_instance_bigquery(
-    mf_dicoms.DicomStore.ProjectID,
-    mf_dicoms.DicomStore.CloudRegion,
-    mf_dicoms.DicomStore.Dataset,
-    mf_dicoms.DicomStore.DataObject,
-    mf_dicoms.BigQuery.ProjectID,
-    mf_dicoms.BigQuery.Dataset,
-    mf_dicoms.BigQuery.DataObject)
-# Wait unitl populating bigquery stops
+                study_chunk = []
+    q.join()  # waiting for all tasks to be done
+    rm(local_tmp_folder)
+    import_dicom_bucket(
+        fx_dicoms.DicomStore.ProjectID,
+        fx_dicoms.DicomStore.CloudRegion,
+        fx_dicoms.DicomStore.Dataset,
+        fx_dicoms.DicomStore.DataObject,
+        fx_dicoms.Bucket.ProjectID,
+        fx_dicoms.Bucket.Dataset,
+        fx_dicoms.Bucket.DataObject
+        )
+    import_dicom_bucket(
+        mf_dicoms.DicomStore.ProjectID,
+        mf_dicoms.DicomStore.CloudRegion,
+        mf_dicoms.DicomStore.Dataset,
+        mf_dicoms.DicomStore.DataObject,
+        mf_dicoms.Bucket.ProjectID,
+        mf_dicoms.Bucket.Dataset,
+        mf_dicoms.Bucket.DataObject
+        )
+    export_dicom_instance_bigquery(
+        fx_dicoms.DicomStore.ProjectID,
+        fx_dicoms.DicomStore.CloudRegion,
+        fx_dicoms.DicomStore.Dataset,
+        fx_dicoms.DicomStore.DataObject,
+        fx_dicoms.BigQuery.ProjectID,
+        fx_dicoms.BigQuery.Dataset,
+        fx_dicoms.BigQuery.DataObject)
+    export_dicom_instance_bigquery(
+        mf_dicoms.DicomStore.ProjectID,
+        mf_dicoms.DicomStore.CloudRegion,
+        mf_dicoms.DicomStore.Dataset,
+        mf_dicoms.DicomStore.DataObject,
+        mf_dicoms.BigQuery.ProjectID,
+        mf_dicoms.BigQuery.Dataset,
+        mf_dicoms.BigQuery.DataObject)
+    # Wait unitl populating bigquery stops
+
+th = list(range(0, 64, 4))
+
+for nt in th:
+    main(nt + 1)

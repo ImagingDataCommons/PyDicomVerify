@@ -365,9 +365,9 @@ class DicomFileInfo:
 
 class PerformanceMeasure:
 
-    def __init__(self, size_: int, time_in_sec: int, suffix: str=''):
+    def __init__(self, size_: float, time_in_sec: int, suffix: str=''):
         self.size = size_
-        self.time_in_sec = int(time_in_sec)
+        self.time_in_sec = time_in_sec
         self.suffix = suffix
 
     def __add__(self, other):
@@ -381,7 +381,11 @@ class PerformanceMeasure:
         return self
 
     def __str__(self):
-        e_t = timedelta(seconds=self.time_in_sec)
+        if self.time_in_sec > 10:
+            time = int(self.time_in_sec)
+        else:
+            time = self.time_in_sec
+        e_t = timedelta(seconds=time)
         sz = ct.get_human_readable_string(self.size)
         speed = 0 if self.time_in_sec == 0 else (self.size / self.time_in_sec)
         rate = ct.get_human_readable_string(speed)
@@ -409,17 +413,18 @@ class ProcessPerformance:
         self.upload.suffix = 'B'
         self.bigquery.suffix = '(row)'
         self.fix.suffix = '(inst)'
-        # self.convert.suffix = '('
+        self.convert.suffix = '(multiframe-inst'
+        self.frameset.suffix = '(frameset-inst'
 
     def __add__(self, other):
         download = self.download + other.download
         upload = self.upload + other.upload
         fix = self.fix + other.fix
-        convert = self.convert + other.convert
         frameset = self.frameset + other.frameset
+        convert = self.convert + other.convert
         bigquery = self.bigquery + other.bigquery
         return ProcessPerformance(
-            download, upload, fix, convert, frameset, bigquery)
+            download, upload, fix, frameset, convert, bigquery)
 
     def __iadd__(self, other):
         self.download += other.download

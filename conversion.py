@@ -19,7 +19,7 @@ supported_sop_class_uids = [
     PETImageStorageSOPClassUID
     ]
 import logging
-logger = logging.getLogger(__name__)
+
 
 def ConvertByPixelMed(pixel_med_jars: str, input_dcm_folder: str,
                       output_dcm_folder: str,
@@ -272,7 +272,7 @@ def ConvertFrameset(frameset: FrameSet, OutputFileName: str,
                     multi_frame_study_instance_uid: str = None,
                     multi_frame_series_instance_uid: str = None,
                     multi_frame_sop_instance_uid: str = None):
-    
+    logger = logging.getLogger(__name__)
     ref_ds = frameset.Frames[0]
     if multi_frame_sop_instance_uid is None:
         multi_frame_sop_instance_uid = generate_uid()
