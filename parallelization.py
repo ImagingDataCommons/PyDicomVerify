@@ -257,6 +257,8 @@ class WorkerProcess(Process):
                 logger.error(msg, exc_info=True)
 
             self._queue.task_done()
+        logger.debug('returning from the run')
+        return
 
     def kill(self):
         self._kill = True
@@ -283,7 +285,7 @@ class ProcessPool:
     def _create_pr(self, th_name) -> WorkerProcess:
         t = WorkerProcess(
             self._queue, self._res_queue, name=th_name)
-        t.daemon = True
+        # t.daemon = True
         t.start()
         return t
 
@@ -293,19 +295,30 @@ class ProcessPool:
 
     def kill_them_all(self):
         logger = logging.getLogger(__name__)
-        logger.debug('killing all processs')
+        logger.debug('closing all processs')
         for t in self._process_pool:
             # I'm putting none to push queue out of block
             self._queue.put((None, None))
-        # for t in self._process_pool:
-        #     t.join()
         logger.debug('collecting all output data from processs')
         self._res_queue.put(None)
         result = self._res_queue.get()
         while result is not None:
             self.output.append(result)
-            result = self._res_queue.get() 
-        logger.debug('processs all finished')
+            result = self._res_queue.get()
+        logger.debug('data were collected waiting for processses to join')
+        for t in self._process_pool:
+            t.join()
+        logger.debug('Processses joined successfully -  now closing them all')
+        for t in self._process_pool:
+            try:
+                t.close()
+            except ValueError as err:
+                logger.error(err, exc_info=True)
+                logger.info(
+                    'Closing the process was not seuccessful.'
+                    ' I will terminate it')
+                t.terminate()
+        logger.debug('processs all closed')
 
 
 class MultiProcessingHandler(logging.Handler):
