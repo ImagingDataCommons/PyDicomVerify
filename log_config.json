@@ -8,7 +8,6 @@
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "level": "DEBUG",
             "formatter": "date_time",
             "stream": "ext://sys.stdout"
         },
@@ -16,11 +15,26 @@
             "class": "logging.FileHandler",
             "formatter": "date_time",
             "mode": "w",
-            "filename": "./Logs/log[24-09-2020][22-50-43].log"
+            "filename": "./Logs/log[30-09-2020][00-15-50].log"
         }
     },
     "loggers": {
-        "simple": {
+        "file": {
+            "level": "INFO",
+            "handlers": [
+                "file"
+            ],
+            "propagate": "no"
+        },
+        "console": {
+            "level": "INFO",
+            "handlers": [
+                "console"
+            ],
+            "qualname": "console",
+            "propagate": "no"
+        },
+        "console_and_file": {
             "level": "INFO",
             "handlers": [
                 "console",
