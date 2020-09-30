@@ -967,7 +967,7 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
     flaw_queries = []
     frameset_number = 0
     multiframe_number = 0
-    proc_num = min(number_of_series, max_number_of_up_down_load_processes)
+    proc_num = min(number_of_series, max_number_of_fix_processes)
     tic = time.time()
     processes = ProcessPool(proc_num, 'd+f+c+u')
     study_series_dict, st_count, se_count, inst_count =\
@@ -1342,7 +1342,7 @@ def main(number_of_processes: int = None):
         mf_dicoms.Bucket.Dataset,
         False)
     max_number = 2**63 - 1
-    max_number = 10
+    # max_number = 10
     if max_number < 2**63 - 1:
         limit_q = 'LIMIT 50000'
     else:
