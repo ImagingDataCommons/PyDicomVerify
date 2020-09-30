@@ -246,6 +246,7 @@ class WorkerProcess(Process):
             #             self._queue.qsize()+1))
             (work_fun, args) = self._queue.get()
             if work_fun is None or args is None:
+                self._queue.task_done()
                 break
             try:
                 out = work_fun(*args)
@@ -307,13 +308,13 @@ class ProcessPool:
             result = self._res_queue.get()
         logger.debug('data were collected waiting for processses to join')
         for t in self._process_pool:
-            t.join()
+            t.join(.01)
         logger.debug('Processses joined successfully -  now closing them all')
         for t in self._process_pool:
             try:
                 t.close()
             except ValueError as err:
-                logger.error(err, exc_info=True)
+                logger.debug(err, exc_info=True)
                 logger.info(
                     'Closing the process was not seuccessful.'
                     ' I will terminate it')

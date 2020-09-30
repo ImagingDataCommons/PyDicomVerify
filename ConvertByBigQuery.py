@@ -452,7 +452,8 @@ def fix_bunch_of_studies(inst_infos: List[DicomFileInfo],
             flaw_queries.append(flaw)
             defected_study_series.append(
                 (fx_file_info.study_uid, fx_file_info.series_uid))
-    study_series_dict = orgniase_file_blob_infos(single_frames)
+    study_series_dict, st_count, se_count, inst_count =\
+        organiase_file_blob_infos(single_frames)
     for study, series in defected_study_series:
         logger.info(
             'series \n-\t\t<{}>.<{}>\-\t\t encountered a problem while fi'
@@ -498,7 +499,7 @@ def down_up_load_files_form_google_cloud(blob_file_pairs: List[DicomFileInfo],
     return results
 
 
-def orgniase_file_blob_infos(file_blob_list: list):
+def organiase_file_blob_infos(file_blob_list: list):
     output = {}
     st_count = 0
     se_count = 0
@@ -710,7 +711,7 @@ def fix_convert_bunch_of_studies(inst_infos: List[DicomFileInfo],
          len(inst_infos))
          )
     study_series_dict, st_count, se_count, inst_count =\
-        orgniase_file_blob_infos(inst_infos)
+        organiase_file_blob_infos(inst_infos)
     tic = time.time()
     number_of_processes = min(max_number_of_fix_processes, se_count)
     processes = ProcessPool(number_of_processes, 'fx+conv')
@@ -762,6 +763,295 @@ def fix_convert_bunch_of_studies(inst_infos: List[DicomFileInfo],
             upload_blobfile_pairs, fx_perf, frameset_perf, mf_perf)
 
 
+def download_fix_convert_upload_bunch_of_studies(
+        inst_infos: list,
+        fx_study_path_pattern: str,
+        mf_local_study_path_pattern: str,
+        in_gc_info, fx_gc_info, mf_gc_info):
+
+    in_table_name = in_gc_info.BigQuery.GetBigQueryStyleAddress(False)
+    fx_table_name = fx_gc_info.BigQuery.GetBigQueryStyleAddress(False)
+    mf_table_name = mf_gc_info.BigQuery.GetBigQueryStyleAddress(False)
+    single_frames = []
+    issue_queries = []
+    fix_queries = []
+    origin_queries = []
+    flaw_queries = []
+    defected_study_series = []
+    fx_blob_form = '{}/dicom/{{}}/{{}}/{{}}.dcm'.format(
+        fx_gc_info.Bucket.DataObject)
+    for obj in inst_infos:
+        success = download_blob(
+            in_gc_info.Bucket.ProjectID,
+            obj.bucket_name,
+            obj.blob_address,
+            obj.file_path
+        )
+        if not success:
+            flaw_queries.append(flaw_query_form.format(
+                    obj.bucket_name, obj.study_uid,
+                    obj.series_uid, obj.instance_uid,
+                    'DOWNLOAD')
+                )
+            return ([], [], [], flaw_queries, 0, 0)
+        # I'm using downloaded file uids for fix files
+        stuyd_folder = fx_study_path_pattern.format(obj.study_uid)
+        fx_file = '{}/{}/{}.dcm'.format(
+            stuyd_folder, obj.series_uid, obj.instance_uid)
+        fx_obj = DicomFileInfo(
+            fx_gc_info.Bucket.ProjectID, fx_gc_info.Bucket.Dataset,
+            '', fx_file, obj.study_uid, obj.series_uid, obj.study_uid)
+        (fix_q, iss_q, org_q, flaw) = fix_one_instance(
+            obj,
+            fx_obj,
+            in_table_name, fx_table_name
+        )
+        if flaw == '':
+            fix_queries.extend(fix_q)
+            issue_queries.extend(iss_q)
+            origin_queries.extend(org_q)
+            single_frames.append(fx_obj)
+            fx_obj.blob_address = fx_blob_form.format(
+                fx_obj.study_uid, fx_obj.series_uid,
+                fx_obj.instance_uid)
+            success = upload_blob(
+                fx_gc_info.Bucket.ProjectID,
+                fx_gc_info.Bucket.Dataset,
+                fx_obj.blob_address,
+                fx_file
+            )
+            if not success:
+                flaw_queries.append(flaw_query_form.format(
+                    fx_obj.bucket_name, fx_obj.study_uid,
+                    fx_obj.series_uid, fx_obj.instance_uid,
+                    'UPLOAD')
+                )
+        else:
+            flaw_queries.append(flaw)
+            defected_study_series.append(
+                (fx_obj.study_uid, fx_obj.series_uid))
+    # The code is not gonna proceed to conversion if there is any fix issue
+    if len(flaw_queries) != 0:
+        return ([], [], [], flaw_queries, 0, 0)
+    # Now I want to extract framesets from fixed sereis:
+    study_uid = inst_infos[0].study_uid
+    study_folder = mf_local_study_path_pattern.format(study_uid)
+    (fsets, mf_series_uid, mf_series_dir) = frameset_for_one_series(
+        single_frames,
+        study_folder
+    )
+    number_of_all_converted_mf = 0
+    if len(fsets) == 0:
+        for file_blob in single_frames:
+            f_query = flaw_query_form.format(
+                file_blob.bucket_name, file_blob.study_uid,
+                file_blob.series_uid, file_blob.instance_uid, 'FRAMESET')
+            flaw_queries.append(f_query)
+    else:
+        mf_study_uid = single_frames[0].study_uid
+        for fset in fsets:
+            # remove ds from single frome for multi_processing purpose
+            for bl_f in single_frames:
+                bl_f.dicom_ds = None
+            mf_instace_uid = generate_uid()
+            mf_file_path = os.path.join(
+                mf_series_dir, '{}.dcm'.format(mf_instace_uid))
+            pr_ch = conv.ConvertFrameset(
+                fset,
+                mf_file_path,
+                mf_study_uid,
+                mf_series_uid,
+                mf_instace_uid
+            )
+            if pr_ch is None:
+                for fr in fset.Frames:
+                    st_id = fr.StudyInstanceUID
+                    se_id = fr.SeriesInstanceUID
+                    sop_id = fr.SOPInstanceUID
+                f_query = flaw_query_form.format(
+                    inst_infos[0].bucket_name,
+                    st_id, se_id, sop_id, 'CONVERSION')
+                flaw_queries.append(f_query)
+            else:
+                number_of_all_converted_mf += 1
+                origin_queries.extend(
+                    pr_ch.GetQuery(fx_table_name, mf_table_name))
+                multiframe_log = []
+                VER(pr_ch.child_dicom_file, multiframe_log)
+                mf_issues = IssueCollection(
+                    multiframe_log[1:], mf_table_name,
+                    pr_ch.child_study_instance_uid,
+                    pr_ch.child_series_instance_uid,
+                    pr_ch.child_sop_instance_uid,)
+                issue_queries.extend(mf_issues.GetQuery())
+                mf_blob_path = '{}/dicom/{}/{}/{}.dcm'.format(
+                        mf_gc_info.Bucket.DataObject,
+                        pr_ch.child_study_instance_uid,
+                        pr_ch.child_series_instance_uid,
+                        pr_ch.child_series_instance_uid
+                    )
+                success = upload_blob (
+                    mf_gc_info.Bucket.ProjectID,
+                    mf_gc_info.Bucket.Dataset,
+                    mf_blob_path, pr_ch.child_dicom_file)
+                if not success:
+                    flaw_queries.append(flaw_query_form.format(
+                    mf_gc_info.Bucket.Dataset, pr_ch.study_uid,
+                    pr_ch.series_uid, pr_ch.instance_uid,
+                    'UPLOAD')
+                )
+
+    return (fix_queries, issue_queries, origin_queries, flaw_queries,
+            len(fsets), number_of_all_converted_mf)
+
+
+
+def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
+                            in_gc_info, fx_gc_info, mf_gc_info,
+                            max_number: int = 2**63 - 1) -> ProcessPerformance:
+    logger = logging.getLogger(__name__)
+    fx_sub_dir = 'FIXED'
+    mf_sub_dir = 'MULTIFRAME'
+    in_sub_dir = 'ORIGINAL'
+    logger.info('Start to process a chunk of {} stud{}'.format(
+        len(studies_chunk), 'y' if len(studies_chunk) == 1 else 'ies'
+            ))
+    max_number_of_instances = max_number
+    max_number_of_series = max_number
+    blob_address_pattern = 'dicom/{}/{}/{}.dcm'
+    input_blob_file_pairs = []
+    study_local_folders = []
+    for number_of_studies, (study_uid, collection_id, series_dictinary) in\
+            enumerate(studies_chunk, 1):
+        study_local_folder = os.path.join(
+                in_folder, study_uid)
+        study_local_folders.append(study_local_folder)
+        for number_of_series, (series_uid, instances) in\
+                enumerate(series_dictinary.items(), 1):
+            if number_of_series > max_number_of_series:
+                break
+            # ------------------------------------
+            # create the folder for downloading series:
+            series_local_folder = os.path.join(
+                study_local_folder, '{}/{}'.format(
+                    in_sub_dir, series_uid))
+            if not os.path.exists(series_local_folder):
+                os.makedirs(series_local_folder)
+            fx_series_local_folder = os.path.join(
+                study_local_folder, '{}/{}'.format(
+                    fx_sub_dir, series_uid))
+            if not os.path.exists(fx_series_local_folder):
+                os.makedirs(fx_series_local_folder)
+            for number_of_inst, instance_uid in enumerate(instances, 1):
+                if number_of_inst > max_number_of_instances:
+                    break
+                blob_address = blob_address_pattern.format(
+                    study_uid, series_uid, instance_uid
+                )
+                file_path = os.path.join(
+                    series_local_folder, '{}.dcm'.format(instance_uid))
+                input_blob_file_pairs.append(
+                    DicomFileInfo(
+                        in_gc_info.Bucket.ProjectID,
+                        collection_id,
+                        blob_address,
+                        file_path,
+                        study_uid,
+                        series_uid,
+                        instance_uid
+                    ))
+    # ----> download, fix, convert, upload series:
+    fix_queries = []
+    issue_queries = []
+    origin_queries = []
+    flaw_queries = []
+    frameset_number = 0
+    multiframe_number = 0
+    proc_num = min(number_of_series, max_number_of_up_down_load_processes)
+    tic = time.time()
+    processes = ProcessPool(proc_num, 'd+f+c+u')
+    study_series_dict, st_count, se_count, inst_count =\
+        organiase_file_blob_infos(input_blob_file_pairs)
+    for study_uid, study_contents in study_series_dict.items():
+        for series_uid, series_contents in study_contents.items():
+            processes.queue.put(
+                (
+                    download_fix_convert_upload_bunch_of_studies,
+                    (
+                        series_contents,
+                        '{}{}{}'.format(
+                            in_folder, '/{}', '/{}'.format(fx_sub_dir)),
+                        '{}{}{}'.format(
+                            in_folder, '/{}', '/{}'.format(mf_sub_dir)),
+                        in_gc_info, fx_gc_info, mf_gc_info
+                    )
+                )
+            )
+    processes.queue.join()
+    processes.kill_them_all()
+    toc = time.time()
+    results = processes.output
+    for args, outs in results:
+        fq, isq, orq, flq, fs, ms = outs
+        fix_queries.extend(fq)
+        issue_queries.extend(isq)
+        origin_queries.extend(orq)
+        flaw_queries.extend(flq)
+        frameset_number += fs
+        multiframe_number += ms
+    perfs = PerformanceMeasure(inst_count, toc - tic, '(inst)')
+    logger.info('download, fix, convert, upload is finished for the chunk {}'.format(perfs))
+    # --> Populate big query tables:
+    # -------------------------------
+    dataset_id = '{}.{}'.format(
+        fx_gc_info.BigQuery.ProjectID,
+        fx_gc_info.BigQuery.Dataset)
+    big_q_processes = ProcessPool(
+        max_number_of_bq_processes, 'BQ')
+    tic = time.time()
+    all_rows = (len(fix_queries) + len(issue_queries) + len(origin_queries) +
+                len(flaw_queries))
+    if len(fix_queries) != 0:
+        BuildQueries(
+            FixCollection.GetQueryHeader(),
+            fix_queries,
+            dataset_id, False,
+            big_q_processes
+            )
+    if len(issue_queries) != 0:
+        BuildQueries(
+            IssueCollection.GetQueryHeader(),
+            issue_queries,
+            dataset_id, False,
+            big_q_processes
+            )
+    if len(origin_queries) != 0:
+        BuildQueries(
+            conv.ParentChildDicoms.GetQueryHeader(),
+            origin_queries,
+            dataset_id, False,
+            big_q_processes
+            )
+    if len(flaw_queries) != 0:
+        BuildQueries(
+            "INSERT INTO `{0}`.DEFECTED VALUES {1};",
+            flaw_queries,
+            dataset_id, False,
+            big_q_processes
+            )
+    big_q_processes.queue.join()
+    big_q_processes.kill_them_all()
+    toc = time.time()
+    big_query_measure = PerformanceMeasure(all_rows, toc - tic, '(row)')
+    logger.info(
+        'Big query tables were populated'
+        ' successfully {}'.format(big_query_measure))
+    rm(study_local_folders)
+    return ProcessPerformance(
+        perfs, perfs, perfs, perfs, perfs, big_query_measure)
+
+ 
+
 def upload_bunch_of_studies(blob_file_pairs: List[DicomFileInfo]) -> list:
     tic = time.time()
     results = down_up_load_files_form_google_cloud(
@@ -777,7 +1067,7 @@ def upload_bunch_of_studies(blob_file_pairs: List[DicomFileInfo]) -> list:
             size_measure.queue.put(
                 (
                     os.path.getsize,
-                    (blob_info.file_path,)
+                    (blob_info.file_path)
                 )
             )
     size_measure.queue.join()
@@ -854,6 +1144,7 @@ def process_bunche_of_studies(in_folder: str, studies_chunk: List[Tuple],
                         series_uid,
                         instance_uid
                     ))
+    
     # --> Starting download
     # -------------------------------
     downloaded_files, defected_queries, download_measure =\
@@ -1051,7 +1342,7 @@ def main(number_of_processes: int = None):
         mf_dicoms.Bucket.Dataset,
         False)
     max_number = 2**63 - 1
-    # max_number = 10
+    max_number = 10
     if max_number < 2**63 - 1:
         limit_q = 'LIMIT 50000'
     else:
@@ -1118,7 +1409,7 @@ def main(number_of_processes: int = None):
                     number_of_studies == len(uids) or \
                     number_of_studies == max_number_of_studies:
                 try:
-                    perf = process_bunche_of_studies(
+                    perf = process_series_parallel(
                         local_tmp_folder,
                         study_chunk,
                         in_dicoms, fx_dicoms, mf_dicoms,
@@ -1138,9 +1429,11 @@ def main(number_of_processes: int = None):
                 time_left = round(
                     number_of_all_inst - number_of_inst_processed
                     ) * time_elapsed / float(number_of_inst_processed)
-                header = '{}/{})Study was fix/convert-ed successfully'.format(
-                    number_of_st_processed,
-                    number_of_all_studies)
+                header = '{}/{})Study = ({}/{}) instances was fix/'\
+                    'convert-ed successfully'.format(
+                        number_of_st_processed, number_of_all_studies,
+                        number_of_inst_processed, number_of_all_inst
+                    )
                 logger.info(header)
                 for st in study_uids:
                     logger.info('\t\t\t{}'.format(st))
@@ -1157,6 +1450,7 @@ def main(number_of_processes: int = None):
                         number_of_processes,
                         str(whole_performace)))
                 study_chunk = []
+                study_uids = []
     rm(local_tmp_folder)
     import_dicom_bucket(
         fx_dicoms.DicomStore.ProjectID,

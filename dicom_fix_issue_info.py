@@ -409,12 +409,12 @@ class ProcessPerformance:
         self.frameset: PerformanceMeasure = fr_
         self.convert: PerformanceMeasure = cn_
         self.bigquery: PerformanceMeasure = bq
-        self.download.suffix = 'B'
-        self.upload.suffix = 'B'
-        self.bigquery.suffix = '(row)'
-        self.fix.suffix = '(inst)'
-        self.convert.suffix = '(multiframe-inst'
-        self.frameset.suffix = '(frameset-inst'
+        # self.download.suffix = 'B'
+        # self.upload.suffix = 'B'
+        # self.bigquery.suffix = '(row)'
+        # self.fix.suffix = '(inst)'
+        # self.convert.suffix = '(multiframe-inst'
+        # self.frameset.suffix = '(frameset-inst'
 
     def __add__(self, other):
         download = self.download + other.download
