@@ -1,3 +1,4 @@
+from __future__ import absolute_import, division, unicode_literals
 from threading import Thread, Lock as ThLock
 import logging, logging.config
 import time
@@ -6,9 +7,12 @@ from random import randrange
 import common_tools as ctools
 import queue
 from dicom_fix_issue_info import ProcessPerformance
-from multiprocessing import Process, Lock
-from multiprocessing import JoinableQueue, Queue, Manager
-import json
+import multiprocessing
+from multiprocessing import Process
+from multiprocessing import JoinableQueue, Queue
+import sys
+import threading
+import traceback
 
 
 MAX_NUMBER_OF_THREADS = os.cpu_count() + 1
@@ -150,7 +154,7 @@ class WorkerThread(Thread):
 
     def run(self):
         logger = logging.getLogger(__name__)
-        time_interval_for_log = 30 * 20
+        time_interval_for_log = 30 * 20 * 10
         tic = time.time() - randrange(0, time_interval_for_log)
         while not self._kill:
             toc = time.time()
@@ -222,41 +226,32 @@ class ThreadPool:
 class WorkerProcess(Process):
 
     def __init__(self, queue: JoinableQueue, res_queue: Queue,
-                 log_config: dict, **kwarg):
+                  **kwarg):
         Process.__init__(self, **kwarg)
         self.output = res_queue
         self._queue = queue
         self._kill = False
-        self._log_config = log_config
 
     def run(self):
-        if self._log_config is not None:
-            logging.config.dictConfig(self._log_config)
         logger = logging.getLogger(__name__)
-        time_interval_for_log = 30 * 20
-        tic = time.time() - randrange(0, time_interval_for_log)
+        # tic = time.time() - randrange(0, time_interval_for_log)
         n = 0
-        logger.info('Process started')
         while True:
             n += 1
             toc = time.time()
-            if (toc - tic) > time_interval_for_log:
-                tic = toc
-                logger.info(
-                    "new task out of {} in queue".format(
-                        self._queue.qsize()+1))
+            # if (toc - tic) > time_interval_for_log:
+            #     tic = toc
+            #     logger.info(
+            #         "new task out of {} in queue".format(
+            #             self._queue.qsize()+1))
             (work_fun, args) = self._queue.get()
-            # print(work_fun)
             if work_fun is None or args is None:
                 break
             try:
                 out = work_fun(*args)
-                # print('putting type {} into the queue'.format(type(out)))
                 self.output.put((args, out,))
-                # print('successful'.format(type(out)))
             except BaseException as err:
                 msg = str(err)
-                # print('Afshin ---- > {}'.format(msg))
                 if len(msg) > MAX_EXEPTION_MESSAGE_LENGTH:
                     msg = self.chop_message(MAX_EXEPTION_MESSAGE_LENGTH, msg)
                 logger.error(msg, exc_info=True)
@@ -273,17 +268,13 @@ class WorkerProcess(Process):
 
 
 class ProcessPool:
-    def __init__(self, max_number_of_processs: int, logger_config: dict = None,
+    def __init__(self, max_number_of_processs: int,
                  process_name_prifix: str = ''):
         self.logger = logging.getLogger(__name__)
         self._queue = JoinableQueue()
         self._res_queue = Queue()
         self._process_pool = []
         self.output = []
-        if logger_config is None:
-            self._logger_config = None
-        else:
-            self._logger_config = logger_config
         for i in range(max_number_of_processs):
             self._process_pool.append(self._create_pr(
                 '{}{:02d}'.format(process_name_prifix, i)
@@ -291,7 +282,7 @@ class ProcessPool:
 
     def _create_pr(self, th_name) -> WorkerProcess:
         t = WorkerProcess(
-            self._queue, self._res_queue, self._logger_config, name=th_name)
+            self._queue, self._res_queue, name=th_name)
         t.daemon = True
         t.start()
         return t
@@ -303,7 +294,6 @@ class ProcessPool:
     def kill_them_all(self):
         logger = logging.getLogger(__name__)
         logger.debug('killing all processs')
-        print('killing all processs')
         for t in self._process_pool:
             # I'm putting none to push queue out of block
             self._queue.put((None, None))
@@ -316,3 +306,111 @@ class ProcessPool:
             self.output.append(result)
             result = self._res_queue.get() 
         logger.debug('processs all finished')
+
+
+class MultiProcessingHandler(logging.Handler):
+
+    def __init__(self, name, sub_handler=None):
+        super(MultiProcessingHandler, self).__init__()
+
+        if sub_handler is None:
+            sub_handler = logging.StreamHandler()
+        self.sub_handler = sub_handler
+
+        self.setLevel(self.sub_handler.level)
+        self.setFormatter(self.sub_handler.formatter)
+        self.filters = self.sub_handler.filters
+
+        self.queue = multiprocessing.Queue(-1)
+        self._is_closed = False
+        # The thread handles receiving records asynchronously.
+        self._receive_thread = threading.Thread(target=self._receive, name=name)
+        self._receive_thread.daemon = True
+        self._receive_thread.start()
+
+    def setFormatter(self, fmt):
+        super(MultiProcessingHandler, self).setFormatter(fmt)
+        self.sub_handler.setFormatter(fmt)
+
+    def _receive(self):
+        while True:
+            try:
+                if self._is_closed and self.queue.empty():
+                    break
+
+                record = self.queue.get(timeout=0.2)
+                self.sub_handler.emit(record)
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except (BrokenPipeError, EOFError):
+                break
+            except queue.Empty:
+                pass  # This periodically checks if the logger is closed.
+            except:
+                traceback.print_exc(file=sys.stderr)
+
+        self.queue.close()
+        self.queue.join_thread()
+
+    def _send(self, s):
+        self.queue.put_nowait(s)
+
+    def _format_record(self, record):
+        # ensure that exc_info and args
+        # have been stringified. Removes any chance of
+        # unpickleable things inside and possibly reduces
+        # message size sent over the pipe.
+        if record.args:
+            record.msg = record.msg % record.args
+            record.args = None
+        if record.exc_info:
+            self.format(record)
+            record.exc_info = None
+
+        return record
+
+    def emit(self, record):
+        try:
+            s = self._format_record(record)
+            self._send(s)
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except:
+            self.handleError(record)
+
+    def close(self):
+        if not self._is_closed:
+            self._is_closed = True
+            self._receive_thread.join(5.0)  # Waits for receive queue to empty.
+
+            self.sub_handler.close()
+            super(MultiProcessingHandler, self).close()
+
+
+def install_mp_handler(logger=None):
+    """Wraps the handlers in the given Logger with an MultiProcessingHandler.
+    :param logger: whose handlers to wrap. By default, the root logger.
+    """
+    if logger is None:
+        logger = logging.getLogger()
+
+    for i, orig_handler in enumerate(list(logger.handlers)):
+        handler = MultiProcessingHandler(
+            'mp-handler-{0}'.format(i), sub_handler=orig_handler)
+
+        logger.removeHandler(orig_handler)
+        logger.addHandler(handler)
+
+
+def uninstall_mp_handler(logger=None):
+    """Unwraps the handlers in the given Logger from a MultiProcessingHandler wrapper
+    :param logger: whose handlers to unwrap. By defaul, the root logger.
+    """
+    if logger is None:
+        logger = logging.getLogger()
+
+    for handler in logger.handlers:
+        if isinstance(handler, MultiProcessingHandler):
+            orig_handler = handler.sub_handler
+            logger.removeHandler(handler)
+            logger.addHandler(orig_handler)

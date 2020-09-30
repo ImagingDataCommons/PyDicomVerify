@@ -19,7 +19,8 @@ from highdicom.legacy.sop import FrameSetCollection
 from DicomStoreStuff import (
     create_dataset, exists_dataset, exists_dicom_store, create_dicom_store,
     import_dicom_bucket, export_dicom_instance_bigquery)
-from parallelization import (ProcessPool, MAX_NUMBER_OF_THREADS)
+from parallelization import (ProcessPool, MAX_NUMBER_OF_THREADS,
+                             install_mp_handler)
 from BigQueryStuff import (
     create_all_tables,
     query_string,
@@ -65,6 +66,7 @@ logger_config_dict["handlers"]['file']['filename'] = file_name
 with open('log_config.json', 'w') as json_file:
     json.dump(logger_config_dict, json_file, indent=4)
 logging.config.dictConfig(logger_config_dict)
+install_mp_handler()
 logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.CRITICAL)
 # -----------------------------------------------------------------------
 
@@ -264,7 +266,7 @@ def extract_convert_framesets_for_bunch_of_studies(
     mf_table_name = mf_gc_info.BigQuery.GetBigQueryStyleAddress(False)
     tic = time.time()
     frameset_processes = ProcessPool(
-        max_number_of_frameset_processes, logger_config_dict, 'frset')
+        max_number_of_frameset_processes, 'frset')
     for study_uid, series_dict in study_series_dict.items():
         study_folder = mf_local_study_path_pattern.format(study_uid)
         for series_uid, file_blob_pairs in series_dict.items():
@@ -292,7 +294,7 @@ def extract_convert_framesets_for_bunch_of_studies(
     logger.info('Frameset calculation finished. '
                 'Now starting converting the framesets')
     conversion_processes = ProcessPool(
-        max_number_of_conversion_processes, logger_config_dict, 'convert')
+        max_number_of_conversion_processes, 'convert')
     for (file_blob_pairs, prefix),\
             (fsets, mf_series_uid, mf_series_dir) in results:
         if len(fsets) == 0:
@@ -392,7 +394,7 @@ def fix_bunch_of_studies(inst_infos: List[DicomFileInfo],
     single_frames = []
     fix_processes = ProcessPool(
         min(len(inst_infos), max_number_of_fix_processes),
-        logger_config_dict, 'instance')
+        'instance')
     for obj in inst_infos:
         # I'm using downloaded file uids for fix files
         stuyd_folder = fx_study_path_pattern.format(obj.study_uid)
@@ -473,7 +475,7 @@ def down_up_load_files_form_google_cloud(blob_file_pairs: List[DicomFileInfo],
         function = upload_blob
     load_processes = ProcessPool(
         min(max_number_of_up_down_load_processes, len(blob_file_pairs)),
-        logger_config_dict, prifix)
+        prifix)
     blob_dict = {}
     for obj in blob_file_pairs:
         blob_dict[obj.blob_address] = obj
@@ -524,7 +526,7 @@ def download_bunch_of_studies(blob_file_pairs: List[DicomFileInfo]) -> tuple:
     # ----------------------------------
     download_elapsed_time = toc - tic
     pr_count = min(max_number_of_up_down_load_processes, len(results))
-    size_measure = ProcessPool(pr_count, logger_config_dict, "size")
+    size_measure = ProcessPool(pr_count, "size")
     for bl, success in results:
         if success:
             size_measure.queue.put(
@@ -711,7 +713,7 @@ def fix_convert_bunch_of_studies(inst_infos: List[DicomFileInfo],
         orgniase_file_blob_infos(inst_infos)
     tic = time.time()
     number_of_processes = min(max_number_of_fix_processes, se_count)
-    processes = ProcessPool(number_of_processes, logger_config_dict, 'fx+conv')
+    processes = ProcessPool(number_of_processes, 'fx+conv')
     for stuy_uid, study_content in study_series_dict.items():
         for sreies_uid, curretn_file_blobs in study_content.items():
             processes.queue.put(
@@ -769,7 +771,7 @@ def upload_bunch_of_studies(blob_file_pairs: List[DicomFileInfo]) -> list:
     # ----------------------------------
     upload_elapsed_time = toc - tic
     pr_count = min(MAX_NUMBER_OF_THREADS, len(results))
-    size_measure = ProcessPool(pr_count, logger_config_dict, "size")
+    size_measure = ProcessPool(pr_count, "size")
     for blob_info, success in results:
         if success:
             size_measure.queue.put(
@@ -902,7 +904,7 @@ def process_bunche_of_studies(in_folder: str, studies_chunk: List[Tuple],
         fx_gc_info.BigQuery.ProjectID,
         fx_gc_info.BigQuery.Dataset)
     big_q_processes = ProcessPool(
-        max_number_of_bq_processes, logger_config_dict, 'BQ')
+        max_number_of_bq_processes, 'BQ')
     tic = time.time()
     all_rows = (len(fix_queries) + len(issue_queries) + len(origin_queries) +
                 len(flaw_queries))
@@ -1049,7 +1051,7 @@ def main(number_of_processes: int = None):
         mf_dicoms.Bucket.Dataset,
         False)
     max_number = 2**63 - 1
-    max_number = 2
+    # max_number = 40
     if max_number < 2**63 - 1:
         limit_q = 'LIMIT 50000'
     else:
@@ -1104,7 +1106,7 @@ def main(number_of_processes: int = None):
             else:
                 uids[stuid] = (cln_id, {seuid: [sopuid]})
         number_of_all_studies = min(len(uids), max_number_of_studies)
-        study_chunk_count = 5
+        study_chunk_count = 10
         study_chunk = []
         study_uids = []
         for number_of_studies, (study_uid, sub_study) in enumerate(uids.items(), 1):
@@ -1193,6 +1195,6 @@ def main(number_of_processes: int = None):
     # Wait unitl populating bigquery stops
 
 th = list(range(0, 64, 4))
-th = [0]
+th = [32]
 for nt in th:
     main(nt + 1)
