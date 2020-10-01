@@ -967,11 +967,14 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
     flaw_queries = []
     frameset_number = 0
     multiframe_number = 0
-    proc_num = min(number_of_series, max_number_of_fix_processes)
-    tic = time.time()
-    processes = ProcessPool(proc_num, 'd+f+c+u')
     study_series_dict, st_count, se_count, inst_count =\
         organiase_file_blob_infos(input_blob_file_pairs)
+    proc_num = min(se_count, max_number_of_fix_processes)
+    logger.info('starting {} = min({}, {})'.format(
+        proc_num, se_count, max_number_of_fix_processes
+    ))
+    tic = time.time()
+    processes = ProcessPool(proc_num, 'd+f+c+u')
     for study_uid, study_contents in study_series_dict.items():
         for series_uid, series_contents in study_contents.items():
             processes.queue.put(
