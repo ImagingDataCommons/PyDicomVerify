@@ -995,7 +995,11 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
     study_series_dict, st_count, se_count, inst_count =\
         organiase_file_blob_infos(input_blob_file_pairs)
     proc_num = min(se_count, max_number_of_fix_processes)
-    logger.info('starting {} = min({}, {}) parallel subprocesses'.format(
+
+    logger.info(
+        'Chunk containing {} studies, {} series and, {} instances'.format(
+            st_count, se_count, inst_count))
+    logger.info('Starting {} = min({}, {}) parallel subprocesses'.format(
         proc_num, se_count, max_number_of_fix_processes
     ))
     tic = time.time()
@@ -1090,7 +1094,7 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
         ' successfully {}'.format(big_query_measure))
     rm(study_local_folders)
     return ProcessPerformance(
-        dl_perfs, fx_perfs, frset_perfs, mf_perfs, ul_perfs, big_query_measure)
+        dl_perfs, ul_perfs, fx_perfs, frset_perfs, mf_perfs, big_query_measure)
 
 
 def upload_bunch_of_studies(blob_file_pairs: List[DicomFileInfo]) -> list:
@@ -1534,6 +1538,6 @@ def main(number_of_processes: int = None):
     # Wait unitl populating bigquery stops
 
 th = list(range(0, 64, 4))
-th = [64]
+th = [100]
 for nt in th:
     main(nt + 1)
