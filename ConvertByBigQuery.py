@@ -1385,7 +1385,7 @@ def main(number_of_processes: int = None):
         mf_dicoms.Bucket.Dataset,
         False)
     max_number = 2**63 - 1
-    max_number = 10
+    # max_number = 10
     if max_number < 2**63 - 1:
         limit_q = 'LIMIT 50000'
     else:
@@ -1420,7 +1420,6 @@ def main(number_of_processes: int = None):
     start_time = time.time()
     studies = query_string_with_result(study_query)
     number_of_all_inst = studies.total_rows
-    logger.info('Starting {} active processes'.format(MAX_NUMBER_OF_THREADS))
     performance_history = []
     number_of_inst_processed = 1
     whole_performace = None
@@ -1440,7 +1439,7 @@ def main(number_of_processes: int = None):
             else:
                 uids[stuid] = (cln_id, {seuid: [sopuid]})
         number_of_all_studies = min(len(uids), max_number_of_studies)
-        study_chunk_count = 2
+        study_chunk_count = 100
         study_chunk = []
         study_uids = []
         for number_of_studies, (study_uid, sub_study) in enumerate(uids.items(), 1):
