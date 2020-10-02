@@ -389,8 +389,8 @@ class PerformanceMeasure:
         sz = ct.get_human_readable_string(self.size)
         speed = 0 if self.time_in_sec == 0 else (self.size / self.time_in_sec)
         rate = ct.get_human_readable_string(speed)
-        output = '{1}{0} in {2:24.24s} ({3}{0}/sec)'.format(
-            self.suffix, sz, str(e_t), rate)
+        output = '{1}{0:8.8s} in {2:24.24s} ({3}{4:12.12s})'.format(
+            self.suffix, sz, str(e_t), rate, self.suffix + '/sec')
         return output
 
 
