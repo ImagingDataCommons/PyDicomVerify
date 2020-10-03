@@ -19,6 +19,25 @@ import gc
 MAX_NUMBER_OF_THREADS = os.cpu_count() + 1
 MAX_EXEPTION_MESSAGE_LENGTH = 1024
 
+class Periodic:
+
+    def __init__(self, f, args: list, period_in_sec: int):
+        self._kill_timer: bool = False
+        self._function = f
+        self._args = args
+        self.period_in_sec = period_in_sec
+
+    def start(self):
+        if self._args is None:
+            self._function()
+        else:
+            self._function(self._args)
+        if not self._kill_timer:
+            threading.Timer(self.period_in_sec, self.start).start()
+
+    def kill_timer(self):
+        self._kill_timer = True
+
 
 class StudyThread(Thread):
     number_of_inst_processed: int = 1

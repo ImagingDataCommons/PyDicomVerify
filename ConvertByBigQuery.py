@@ -3,7 +3,6 @@ from pydicom.uid import generate_uid
 import pydicom
 import re
 import os
-import threading
 import psutil
 import fix_frequent_errors
 import pydicom.charset
@@ -22,7 +21,7 @@ from DicomStoreStuff import (
     create_dataset, exists_dataset, exists_dicom_store, create_dicom_store,
     import_dicom_bucket, export_dicom_instance_bigquery)
 from parallelization import (ProcessPool, MAX_NUMBER_OF_THREADS,
-                             install_mp_handler)
+                             install_mp_handler, Periodic)
 from BigQueryStuff import (
     create_all_tables,
     query_string,
@@ -1338,7 +1337,8 @@ def main(number_of_processes: int = None):
     home = os.path.expanduser("~")
     pid = os.getpid()
     local_tmp_folder = os.path.join(home, "Tmp-{:05d}".format(pid))
-    threading.Timer(60, log_status).start()
+    status_logger = Periodic(log_status, None, 60)
+    status_logger.start()
     in_dicoms = DataInfo(
         Datalet('idc-tcia',      # Bucket
                 'us',
@@ -1557,6 +1557,7 @@ def main(number_of_processes: int = None):
         mf_dicoms.BigQuery.Dataset,
         mf_dicoms.BigQuery.DataObject)
     # Wait unitl populating bigquery stops
+    status_logger.kill_timer()
 
 th = list(range(0, 64, 4))
 th = [120]
