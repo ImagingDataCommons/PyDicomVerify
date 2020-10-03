@@ -1303,21 +1303,22 @@ def rm(folders, log: bool = True):
             if log:
                 logging.info("FOLDER {} DOESN'T EXIST TO BE ROMOVED".format(a))
 
+
 def get_status_str(header, used, free, total):
-    u = ct.get_human_readable_string(used)
-    f = ct.get_human_readable_string(free)
-    t = ct.get_human_readable_string(total)
+    u = ctools.get_human_readable_string(used)
+    f = ctools.get_human_readable_string(free)
+    t = ctools.get_human_readable_string(total)
     tt = 1 if total == 0 else total
-    return (
-        '{} -> used:{}({:.1%}) free: {}({:.1%}) total:{}'.format(
-        header, u, used/tt, f, free/tt, t ))
+    return '{} -> used:{}({:.1%}) free: {}({:.1%}) total:{}'.format(
+        header, u, used/tt, f, free/tt, t)
+
 
 def log_status():
     logger = logging.getLogger(__name__)
     vr = psutil.virtual_memory()
     status = get_status_str('RAM', vr.used, vr.free, vr.total)
     logger.info(status)
-        
+
 
 def main(number_of_processes: int = None):
     if number_of_processes is None:
