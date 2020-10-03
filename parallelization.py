@@ -13,6 +13,7 @@ from multiprocessing import JoinableQueue, Queue
 import sys
 import threading
 import traceback
+import gc
 
 
 MAX_NUMBER_OF_THREADS = os.cpu_count() + 1
@@ -168,6 +169,7 @@ class WorkerThread(Thread):
                 continue
             try:
                 out = work_fun(*args)
+                gc.collect()
                 self.output.append((args, out,))
             except BaseException as err:
                 msg = str(err)

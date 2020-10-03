@@ -3,6 +3,8 @@ from pydicom.uid import generate_uid
 import pydicom
 import re
 import os
+import threading
+import psutil
 import fix_frequent_errors
 import pydicom.charset
 import time
@@ -921,6 +923,7 @@ def download_fix_convert_upload_one_sereis(
                     upload_files_size += os.path.getsize(pr_ch.child_dicom_file)
     # Now I can remove the series:
     rm((in_series_dir, fx_series_dir, mf_series_dir), False)
+
     return (fix_queries, issue_queries, origin_queries, flaw_queries,
             len(fsets), number_of_all_converted_mf,
             downloaded_files_size, fixed_files_size,
@@ -1300,6 +1303,21 @@ def rm(folders, log: bool = True):
             if log:
                 logging.info("FOLDER {} DOESN'T EXIST TO BE ROMOVED".format(a))
 
+def get_status_str(header, used, free, total):
+    u = ct.get_human_readable_string(used)
+    f = ct.get_human_readable_string(free)
+    t = ct.get_human_readable_string(total)
+    tt = 1 if total == 0 else total
+    return (
+        '{} -> used:{}({:.1%}) free: {}({:.1%}) total:{}'.format(
+        header, u, used/tt, f, free/tt, t ))
+
+def log_status():
+    logger = logging.getLogger(__name__)
+    vr = psutil.virtual_memory()
+    status = get_status_str('RAM', vr.used, vr.free, vr.total)
+    logger.info(status)
+        
 
 def main(number_of_processes: int = None):
     if number_of_processes is None:
@@ -1319,7 +1337,7 @@ def main(number_of_processes: int = None):
     home = os.path.expanduser("~")
     pid = os.getpid()
     local_tmp_folder = os.path.join(home, "Tmp-{:05d}".format(pid))
-
+    threading.Timer(60, log_status).start()
     in_dicoms = DataInfo(
         Datalet('idc-tcia',      # Bucket
                 'us',
@@ -1447,6 +1465,8 @@ def main(number_of_processes: int = None):
         study_chunk = []
         study_uids = []
         for number_of_studies, (study_uid, sub_study) in enumerate(uids.items(), 1):
+            if number_of_studies < 3201:
+                continue
             if number_of_studies > max_number_of_studies:
                 break
             study_chunk.append((study_uid, sub_study[0], sub_study[1]))
@@ -1538,6 +1558,6 @@ def main(number_of_processes: int = None):
     # Wait unitl populating bigquery stops
 
 th = list(range(0, 64, 4))
-th = [100]
+th = [120]
 for nt in th:
     main(nt + 1)
