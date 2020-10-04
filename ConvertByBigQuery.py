@@ -1463,6 +1463,8 @@ def main(number_of_processes: int = None):
                 uids[stuid] = (cln_id, {seuid: [sopuid]})
         number_of_all_studies = min(len(uids), max_number_of_studies)
         study_chunk_count = 100
+        max_series_count_in_chunk = 2 * number_of_processes
+        series_chunk_count = 0
         study_chunk = []
         study_uids = []
         for number_of_studies, (study_uid, sub_study) in enumerate(uids.items(), 1):
@@ -1470,11 +1472,20 @@ def main(number_of_processes: int = None):
                 continue
             if number_of_studies > max_number_of_studies:
                 break
-            study_chunk.append((study_uid, sub_study[0], sub_study[1]))
+            series_chunk_count += len(sub_study[1])
             study_uids.append(study_uid)
+            if series_chunk_count > max_series_count_in_chunk:
+                diff = series_chunk_count - max_series_count_in_chunk
+                first_half = sub_study[1][:-diff]
+                second_half = sub_study[1][-diff:]
+            else:
+                first_half = sub_study[1]
+                second_half = []
+            study_chunk.append((study_uid, sub_study[0], first_half))
             if number_of_studies % study_chunk_count == 0 or\
                     number_of_studies == len(uids) or \
-                    number_of_studies == max_number_of_studies:
+                    number_of_studies == max_number_of_studies or \
+                    series_chunk_count > max_series_count_in_chunk:
                 try:
                     perf = process_series_parallel(
                         local_tmp_folder,
@@ -1520,7 +1531,9 @@ def main(number_of_processes: int = None):
                         number_of_processes,
                         str(whole_performace)))
                 study_chunk = []
+                study_chunk.append((study_uid, sub_study[0], second_half))
                 study_uids = []
+                series_chunk_count = len(second_half)
     rm(local_tmp_folder)
     import_dicom_bucket(
         fx_dicoms.DicomStore.ProjectID,
