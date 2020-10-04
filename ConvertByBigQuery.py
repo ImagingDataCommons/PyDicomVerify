@@ -1004,11 +1004,15 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
     logger.info('Starting {} = min({}, {}) parallel subprocesses'.format(
         proc_num, se_count, max_number_of_fix_processes
     ))
-    tic = time.time()
-    processes = ProcessPool(proc_num, 'd+f+c+u')
+    jobs = []
+    q_sz = 0
+    max_q_cap = 2 * proc_num
     for study_uid, study_contents in study_series_dict.items():
         for series_uid, series_contents in study_contents.items():
-            processes.queue.put(
+            if q_sz % max_q_cap == 0:
+                container = []
+                jobs.append(container)
+            container.append(
                 (
                     download_fix_convert_upload_one_sereis,
                     (
@@ -1021,22 +1025,28 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
                     )
                 )
             )
-    processes.queue.join()
-    processes.kill_them_all()
+            q_sz += 1
+    tic = time.time()
+    for job_let in jobs:
+        processes = ProcessPool(proc_num, 'd+f+c+u')
+        for j in job_let:
+            processes.queue.put(j)
+        processes.queue.join()
+        processes.kill_them_all()
+        results = processes.output
+        for args, outs in results:
+            fq, isq, orq, flq, fs, ms, dl_sz, fx_sz, mf_sz, ul_sz = outs
+            fix_queries.extend(fq)
+            issue_queries.extend(isq)
+            origin_queries.extend(orq)
+            flaw_queries.extend(flq)
+            frameset_number += fs
+            multiframe_number += ms
+            downloaded_files_size += dl_sz
+            fixed_files_size += fx_sz
+            mf_files_size += mf_sz
+            uploaded_files_size += mf_sz
     toc = time.time()
-    results = processes.output
-    for args, outs in results:
-        fq, isq, orq, flq, fs, ms, dl_sz, fx_sz, mf_sz, ul_sz = outs
-        fix_queries.extend(fq)
-        issue_queries.extend(isq)
-        origin_queries.extend(orq)
-        flaw_queries.extend(flq)
-        frameset_number += fs
-        multiframe_number += ms
-        downloaded_files_size += dl_sz
-        fixed_files_size += fx_sz
-        mf_files_size += mf_sz
-        uploaded_files_size += mf_sz
     dl_perfs = PerformanceMeasure(downloaded_files_size, toc - tic, 'B')
     fx_perfs = PerformanceMeasure(inst_count, toc - tic, '(inst)')
     frset_perfs = PerformanceMeasure(frameset_number, toc - tic, '(inst)')
@@ -1319,7 +1329,20 @@ def log_status():
     logger.info(status)
 
 
-def main(number_of_processes: int = None):
+def partition_series(series_dict: dict, from_the_last: int):
+    fist_part = {}
+    second_part = {}
+    l = len(series_dict)
+    for i, (key, val) in enumerate(series_dict.items(), 0):
+        if i < (l - from_the_last):
+            fist_part[key] = val
+        else:
+            second_part[key] = val
+    return (fist_part, second_part)
+
+
+def main(number_of_processes: int = None,
+         rough_series_count_in_chunk: int = 600 ):
     if number_of_processes is None:
         number_of_processes = MAX_NUMBER_OF_THREADS
 
@@ -1408,7 +1431,7 @@ def main(number_of_processes: int = None):
         mf_dicoms.Bucket.Dataset,
         False)
     max_number = 2**63 - 1
-    # max_number = 10
+    # max_number = 70
     if max_number < 2**63 - 1:
         limit_q = 'LIMIT 50000'
     else:
@@ -1462,27 +1485,28 @@ def main(number_of_processes: int = None):
             else:
                 uids[stuid] = (cln_id, {seuid: [sopuid]})
         number_of_all_studies = min(len(uids), max_number_of_studies)
-        study_chunk_count = 100
-        max_series_count_in_chunk = 2 * number_of_processes
+        max_study_count_in_chunk = 300
+        max_series_count_in_chunk = (
+            rough_series_count_in_chunk // number_of_processes
+            ) * number_of_processes
         series_chunk_count = 0
         study_chunk = []
         study_uids = []
         for number_of_studies, (study_uid, sub_study) in enumerate(uids.items(), 1):
-            if number_of_studies < 3201:
-                continue
+            # if number_of_studies < 3201:
+            #     continue
             if number_of_studies > max_number_of_studies:
                 break
             series_chunk_count += len(sub_study[1])
             study_uids.append(study_uid)
             if series_chunk_count > max_series_count_in_chunk:
                 diff = series_chunk_count - max_series_count_in_chunk
-                first_half = sub_study[1][:-diff]
-                second_half = sub_study[1][-diff:]
+                first_half, second_half = partition_series(sub_study[1], diff)
             else:
                 first_half = sub_study[1]
                 second_half = []
             study_chunk.append((study_uid, sub_study[0], first_half))
-            if number_of_studies % study_chunk_count == 0 or\
+            if number_of_studies % max_study_count_in_chunk == 0 or\
                     number_of_studies == len(uids) or \
                     number_of_studies == max_number_of_studies or \
                     series_chunk_count > max_series_count_in_chunk:
@@ -1572,7 +1596,11 @@ def main(number_of_processes: int = None):
     # Wait unitl populating bigquery stops
     status_logger.kill_timer()
 
-th = list(range(0, 64, 4))
-th = [120]
-for nt in th:
-    main(nt + 1)
+# th = list(range(8, 256, 8))
+# th = 88
+# th = 35
+# chunk = [100]
+# for ch in chunk:
+#     chunk *= 2
+#     main(th, ch)
+main(88, 1000)
