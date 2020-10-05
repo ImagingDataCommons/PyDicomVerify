@@ -118,11 +118,11 @@ def FixFile(dicom_file: str, dicom_fixed_file: str,
 def BuildQueries(header: str, qs: list, dataset_id: str,
                  return_: bool = True, processes: ProcessPool = None) -> list:
     logger = logging.getLogger(__name__)
-    m = re.search("\.(.*)\n", header)
-    if m is not None:
-        table_name = m.group(1)
-    else:
-        table_name = ''
+    # m = re.search("\.(.*)\n", header)
+    # if m is not None:
+    #     table_name = m.group(1)
+    # else:
+    #     table_name = ''
     out_q = []
     ch_limit = 1024*1000
     row_limit = 1000
@@ -139,24 +139,24 @@ def BuildQueries(header: str, qs: list, dataset_id: str,
             elem_q = ''
             rn = 0
             if processes is None:
-                query_string(out_q[-1], table_name)
+                query_string(out_q[-1], '')
             else:
-                logger.info('putting in queue')
+                # logger.info('putting in queue')
                 processes.queue.put(
                     (
                         query_string,
-                        (out_q[-1], table_name)
+                        (out_q[-1], '')
                     )
                 )
     out_q.append(header.format(dataset_id, elem_q))
     if processes is None:
-        query_string(out_q[-1], table_name)
+        query_string(out_q[-1], '')
     else:
-        logger.info('putting in queue')
+        # logger.info('putting in queue')
         processes.queue.put(
                     (
                         query_string,
-                        (out_q[-1], table_name)
+                        (out_q[-1], '')
                     )
                 )
     if return_:
@@ -1006,7 +1006,7 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
     ))
     jobs = []
     q_sz = 0
-    max_q_cap = 2 * proc_num
+    max_q_cap = 4 * proc_num
     for study_uid, study_contents in study_series_dict.items():
         for series_uid, series_contents in study_contents.items():
             if q_sz % max_q_cap == 0:
@@ -1027,7 +1027,8 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
             )
             q_sz += 1
     tic = time.time()
-    for job_let in jobs:
+    for ii, job_let in enumerate(jobs, 1):
+        logger.info('{}/{} of job bunches'.format(ii, len(jobs)))
         processes = ProcessPool(proc_num, 'd+f+c+u')
         for j in job_let:
             processes.queue.put(j)
@@ -1064,6 +1065,7 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
     dataset_id = '{}.{}'.format(
         fx_gc_info.BigQuery.ProjectID,
         fx_gc_info.BigQuery.Dataset)
+    logger.info('Start running bigquery jobs')
     big_q_processes = ProcessPool(
         max_number_of_bq_processes, 'BQ')
     tic = time.time()
@@ -1504,7 +1506,7 @@ def main(number_of_processes: int = None,
                 first_half, second_half = partition_series(sub_study[1], diff)
             else:
                 first_half = sub_study[1]
-                second_half = []
+                second_half = {}
             study_chunk.append((study_uid, sub_study[0], first_half))
             if number_of_studies % max_study_count_in_chunk == 0 or\
                     number_of_studies == len(uids) or \

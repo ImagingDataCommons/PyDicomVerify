@@ -328,19 +328,21 @@ class ProcessPool:
             self.output.append(result)
             result = self._res_queue.get()
         logger.debug('data were collected waiting for processses to join')
-        for t in self._process_pool:
-            t.join(.01)
-        logger.debug('Processses joined successfully -  now closing them all')
-        for t in self._process_pool:
-            try:
-                t.close()
-            except ValueError as err:
-                logger.debug(err, exc_info=True)
-                logger.info(
-                    'Closing the process was not seuccessful.'
-                    ' I will terminate it')
-                t.terminate()
-        logger.debug('processs all closed')
+        for p in self._process_pool:
+            p.terminate()
+        # for t in self._process_pool:
+        #     t.join(.01)
+        # logger.debug('Processses joined successfully -  now closing them all')
+        # for t in self._process_pool:
+        #     try:
+        #         t.close()
+        #     except ValueError as err:
+        #         logger.debug(err, exc_info=True)
+        #         logger.info(
+        #             'Closing the process was not seuccessful.'
+        #             ' I will terminate it')
+        #         t.terminate()
+        # logger.debug('processs all closed')
 
 
 class MultiProcessingHandler(logging.Handler):

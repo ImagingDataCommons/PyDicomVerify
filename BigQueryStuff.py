@@ -28,13 +28,14 @@ def dataset_exists(dataset_id) -> bool:
         return False
 
 
-def query_string(q: str, table_name: str = ''):
+def query_string(q: str, table_name: str = '', silent: bool = True):
     logger = logging.getLogger(__name__)
     client = bigquery.Client()
     job_config = bigquery.QueryJobConfig(priority=bigquery.QueryPriority.BATCH)
     try:
         # if table_name != '':
-        logger.info("running query for '{}".format(table_name))
+        if not silent:
+            logger.info("running query for '{}".format(table_name))
         client.query(q, job_config=job_config)
         # query_job.result()
     except BaseException as err:

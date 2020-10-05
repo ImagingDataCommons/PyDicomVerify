@@ -258,7 +258,7 @@ def download_blob(project_id: str, bucket_name: str,
                 source_blob_name, destination_file_name))
             success = True
             break
-        except RequestException as err:
+        except BaseException as err:
             retries += 1
             if retries >= maximum_retry:
                 logger.error(
@@ -295,7 +295,7 @@ def upload_blob(project_id: str, bucket_name: str,
             )
             success = True
             break
-        except RequestException as err:
+        except BaseException as err:
             retries += 1
             if retries >= maximum_retry:
                 logger.error(
