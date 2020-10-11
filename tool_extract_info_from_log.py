@@ -1,5 +1,5 @@
 import re
-import common_tools as ctools
+import common.common_tools as ctools
 
 def FindThreads(content):
     ptrn = 'with <([0-9]+)>'

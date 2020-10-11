@@ -1,17 +1,35 @@
-import common_tools as ctools
+import logging
 import numpy
-import pydicom
-from pydicom.uid import generate_uid
-from pydicom.filereader import dcmread
-from pydicom.filewriter import dcmwrite
-from highdicom.legacy import sop
-from highdicom.legacy.sop import FrameSet, FrameSetCollection
-import sopclc_h as sop_class_uids
 import os
+import pydicom
 import re
-from sopclc_h import (MRImageStorageSOPClassUID,
-                      CTImageStorageSOPClassUID,
-                      PETImageStorageSOPClassUID)
+import common.common_tools as ctools
+from highdicom.legacy.sop import(
+    # CLASSES
+    FrameSet,
+    FrameSetCollection,
+    LegacyConvertedEnhanceImage,
+)
+from pydicom.filereader import(
+    # FUNCTIONS
+    dcmread,
+)
+from pydicom.filewriter import(
+    # FUNCTIONS
+    dcmwrite,
+)
+from pydicom.uid import(
+    # FUNCTIONS
+    generate_uid,
+    # VARIABLES
+    ExplicitVRLittleEndian,
+)
+from rightdicom.dcmvfy.sopclc_h import(
+    # VARIABLES
+    CTImageStorageSOPClassUID,
+    MRImageStorageSOPClassUID,
+    PETImageStorageSOPClassUID,
+)
 floating_point_tolerance = 0.001
 supported_sop_class_uids = [
     MRImageStorageSOPClassUID,
@@ -46,8 +64,8 @@ class ParentChildDicoms:
         self.child_study_instance_uid = child_study_instance_uid
         self.child_series_instance_uid = child_series_instance_uid
         self.child_dicom_file = child_dicom_file_path
-
     @staticmethod
+
     def GetQueryHeader() -> str:
         header = '''
             INSERT INTO `{0}`.ORIGINATED_FROM
@@ -110,12 +128,12 @@ class PositionBaseCategoryElement:
     def AddNewCandidate(self, new_touple):
         success = False
         new_pos = new_touple[1]
-        if abs(self.DicomDataset[0][1] - new_pos - self.StepSize) <\
+        if abs(self.DicomDataset[0][1] - new_pos - self.StepSize) < \
             floating_point_tolerance and \
                 new_pos < self.DicomDataset[0][1]:
             success = True
             self.DicomDataset.insert(0, new_touple)
-        elif abs(new_pos - self.DicomDataset[-1][1] - self.StepSize) <\
+        elif abs(new_pos - self.DicomDataset[-1][1] - self.StepSize) < \
             floating_point_tolerance and \
                 new_pos > self.DicomDataset[-1][1]:
             success = True
@@ -151,7 +169,7 @@ def GetSopClassCategory(ds_list):
 def GetStudyCategory(ds_list):
     studies = {}
     for ds in ds_list:
-        if (ds.StudyInstanceUID in studies):
+        if(ds.StudyInstanceUID in studies):
             studies[ds.StudyInstanceUID].append(ds)
         else:
             studies[ds.StudyInstanceUID] = [ds]
@@ -161,7 +179,7 @@ def GetStudyCategory(ds_list):
 def GetSeriesCategory(ds_list):
     series = {}
     for ds in ds_list:
-        if (ds.SeriesInstanceUID in series):
+        if(ds.SeriesInstanceUID in series):
             series[ds.SeriesInstanceUID].append(ds)
         else:
             series[ds.SeriesInstanceUID] = [ds]
@@ -177,7 +195,7 @@ def GetSpacingCategory(ds_list):
         else:
             found_match = False
             for s in series:
-                if ctools.GetVectorDistance(s[0], ds.PixelSpacing) <\
+                if ctools.GetVectorDistance(s[0], ds.PixelSpacing) < \
                         floating_point_tolerance:
                     found_match = True
                     s[1].append(ds)
@@ -197,7 +215,7 @@ def GetOrientationCategory(ds_list):
             found_match = False
             for s in series:
                 if ctools.GetVectorDistance(
-                    s[0], ds.ImageOrientationPatient) <\
+                    s[0], ds.ImageOrientationPatient) < \
                          floating_point_tolerance:
                     found_match = True
                     s[1].append(ds)
@@ -232,7 +250,7 @@ def ClassifySeriesByPosition(ds_list):
     category = [
         PositionBaseCategoryElement(
             sorted_ds[1][1] - sorted_ds[0][1], sorted_ds[0])]
-    for (ds, idx) in zip(sorted_ds[1:], range(1, len(sorted_ds))):
+    for(ds, idx) in zip(sorted_ds[1:], range(1, len(sorted_ds))):
         if not category[-1].AddNewCandidate(ds):
             if idx == len(sorted_ds) - 1:
                 category.append(PositionBaseCategoryElement(1, ds))
@@ -271,7 +289,7 @@ def GetFrameSetsFromFiles(single_frame_folder_or_list):
 def ConvertFrameset(frameset: FrameSet, OutputFileName: str,
                     multi_frame_study_instance_uid: str = None,
                     multi_frame_series_instance_uid: str = None,
-                    multi_frame_sop_instance_uid: str = None):
+                    multi_frame_sop_instance_uid: str=None):
     logger = logging.getLogger(__name__)
     ref_ds = frameset.Frames[0]
     if multi_frame_sop_instance_uid is None:
@@ -281,16 +299,16 @@ def ConvertFrameset(frameset: FrameSet, OutputFileName: str,
     if multi_frame_study_instance_uid is None:
         multi_frame_study_instance_uid = generate_uid()
     try:
-        x = sop.LegacyConvertedEnhanceImage(
-            frame_set=frameset,
-            series_instance_uid=multi_frame_series_instance_uid,
-            series_number=ref_ds.SeriesNumber,
-            sop_instance_uid=multi_frame_sop_instance_uid,
-            instance_number=1,
+        x = LegacyConvertedEnhanceImage(
+            frame_set = frameset,
+            series_instance_uid = multi_frame_series_instance_uid,
+            series_number = ref_ds.SeriesNumber,
+            sop_instance_uid = multi_frame_sop_instance_uid,
+            instance_number = 1,
             transfer_syntax_uid=pydicom.uid.ExplicitVRLittleEndian)
         x.BuildMultiFrame()
         dcmwrite(
-            filename=OutputFileName, dataset=x, write_like_original=False)
+            filename = OutputFileName, dataset = x, write_like_original=False)
         pr_ch = ParentChildDicoms(
             frameset.GetSOPInstanceUIDList(),
             frameset.StudyInstanceUID,
@@ -306,22 +324,25 @@ def ConvertFrameset(frameset: FrameSet, OutputFileName: str,
 def ConvertByHighDicomNew(single_frame_folder_or_list,
                           OutputPrefix, log=[]) -> list:
     all_datasets = GetFrameSetsFromFiles(single_frame_folder_or_list)
-    framesets = sop.FrameSetCollection(all_datasets).FrameSets
+    framesets = FrameSetCollection(all_datasets).FrameSets
     multi_frame_study_instance_uid = all_datasets[0].StudyInstanceUID
     parent_child_uids = []
+    multi_frame_series_instance_uid = generate_uid()
+    mf_dir = os.path.join(OutputPrefix, '{}'.format(
+        multi_frame_series_instance_uid))
     for n, frameset in enumerate(framesets, 1):
         ref_ds = frameset.Frames[0]
         sop_class_uid = frameset.GetSOPClassUID()
         if sop_class_uid not in supported_sop_class_uids:
             continue
         # try:
-        multi_frame_series_instance_uid = generate_uid()
         multi_frame_sop_instance_uid = generate_uid()
-        mf_prifix = os.path.join(OutputPrefix, '{}/{}.dcm'.format(
-            multi_frame_series_instance_uid,
+        mf_prefix = os.path.join(mf_dir, '{}.dcm'.format(
             multi_frame_sop_instance_uid))
+        if not os.path.exists(mf_dir):
+            os.makedirs(mf_dir)
         pr_ch = ConvertFrameset(
-            frameset, mf_prifix, multi_frame_study_instance_uid,
+            frameset, mf_prefix, multi_frame_study_instance_uid,
             multi_frame_series_instance_uid)
         parent_child_uids.append(pr_ch)
     return parent_child_uids
@@ -363,10 +384,10 @@ def ConvertByHighDicom(SingleFrameDir, OutputPrefix, log=[]):
             for sris_UID, sris_ds in Modality_Series:
                 spacing_categories = GetSpacingCategory(sris_ds)
                 for spacing_element in spacing_categories:
-                    orientation_categories =\
+                    orientation_categories = \
                         GetOrientationCategory(spacing_element[1])
                     for orientation_element in orientation_categories:
-                        equally_positioned_classes =\
+                        equally_positioned_classes = \
                             ClassifySeriesByPosition(orientation_element[1])
                         for uniform_class in equally_positioned_classes:
                             final_ds = []
@@ -406,11 +427,11 @@ def ConvertByHighDicom(SingleFrameDir, OutputPrefix, log=[]):
                             uniform_class.Print(3)
                             # try:
                             ModalityConvertorObj = ModalityConvertorClass(
-                                egacy_datasets=final_ds,
-                                series_instance_uid=generate_uid(),
-                                series_number=final_ds[0].SeriesNumber,
-                                sop_instance_uid=generate_uid(),
-                                instance_number=final_ds[0].InstanceNumber)
+                                egacy_datasets = final_ds,
+                                series_instance_uid = generate_uid(),
+                                series_number = final_ds[0].SeriesNumber,
+                                sop_instance_uid = generate_uid(),
+                                instance_number = final_ds[0].InstanceNumber)
                             id = "_%02d_.dcm" % n
                             FileName = os.path.join(OutputPrefix,
                                                     Modality + id)
@@ -418,8 +439,8 @@ def ConvertByHighDicom(SingleFrameDir, OutputPrefix, log=[]):
                             if not os.path.exists(folder):
                                 os.makedirs(folder)
                             # x.file_meta['']
-                            dcmwrite(filename=FileName,
-                                     dataset=ModalityConvertorObj,
+                            dcmwrite(filename = FileName,
+                                     dataset = ModalityConvertorObj,
                                      write_like_original=False)
                             log.append("File " + FileName +
                                        " was successfully written ...")
