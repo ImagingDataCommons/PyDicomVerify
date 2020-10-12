@@ -4,8 +4,12 @@ from rightdicom.dcmvfy.condn_cc import *
 from rightdicom.dcmvfy.sopclc_h import *
 from pydicom.tag import Tag
 from pydicom.dataset import Dataset
+
+
 def Condition_Never(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
 	 return False
+
+
 def Condition_Always(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
 	 return True
 def Condition_TractographyResultsInstance(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
@@ -569,10 +573,10 @@ def Condition_NeedModuleOverlayPlane(ds:Dataset, parentds:Dataset, rootds:Datase
 	cond0 = cond0  or (ElementPresentMasked(ds , "OverlayDescriptorRed", 0xff00))
 	cond0 = cond0  or (ElementPresentMasked(ds , "OverlayDescriptorGreen", 0xff00))
 	cond0 = cond0  or (ElementPresentMasked(ds , "OverlayDescriptorBlue", 0xff00))
-	cond0 = cond0  or (ElementPresentMasked(ds , "OverlayGray", 0xff00))
-	cond0 = cond0  or (ElementPresentMasked(ds , "OverlayRed", 0xff00))
-	cond0 = cond0  or (ElementPresentMasked(ds , "OverlayGreen", 0xff00))
-	cond0 = cond0  or (ElementPresentMasked(ds , "OverlayBlue", 0xff00))
+	cond0 = cond0  or (ElementPresentMasked(ds , "OverlaysGray", 0xff00))
+	cond0 = cond0  or (ElementPresentMasked(ds , "OverlaysRed", 0xff00))
+	cond0 = cond0  or (ElementPresentMasked(ds , "OverlaysGreen", 0xff00))
+	cond0 = cond0  or (ElementPresentMasked(ds , "OverlaysBlue", 0xff00))
 	cond0 = cond0  or (ElementPresentMasked(ds , "OverlayDescription", 0xff00))
 	cond0 = cond0  or (ElementPresentMasked(ds , "OverlayLabel", 0xff00))
 	return cond0
@@ -1052,7 +1056,7 @@ def Condition_RescaleTypeIsPresentAndIsHUAndImageIsOriginalLocalizerAndNotMultie
 	return cond0
 def Condition_KVPNotEmptyWhenAlsoPresentInMultienergyCTAcquisitionSequence(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
 	cond0 = False
-	cond0 = cond0  or  not (StringValueMatch(ds , "KVP", -1, ""))
+	cond0 = cond0  or (ValuePresent(ds , "KVP", -1))
 	cond0 = cond0  and (ElementPresentInPathFromRoot(rootds , "KVP", "MultienergyCTAcquisitionSequence"))
 	return cond0
 def Condition_WindowCenterPresent(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
@@ -3821,18 +3825,12 @@ def Condition_JPEG2000LosslessTransferSyntaxAndThreeSamples(ds:Dataset, parentds
 def Condition_JPEG2000TransferSyntaxAndOneSample(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
 	cond0 = False
 	cond0 = cond0  or (BinaryValueMatch(ds , "SamplesPerPixel", -1, BinaryValueMatchOperator.Equals, 1))
-	cond1 = False
-	cond1 = cond1  or (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.90"))
-	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.91"))
-	cond0 = cond0 and cond1
+	cond0 = cond0  and (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.91"))
 	return cond0
 def Condition_JPEG2000TransferSyntaxAndThreeSamples(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
 	cond0 = False
 	cond0 = cond0  or (BinaryValueMatch(ds , "SamplesPerPixel", -1, BinaryValueMatchOperator.Equals, 3))
-	cond1 = False
-	cond1 = cond1  or (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.90"))
-	cond1 = cond1 or(StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.91"))
-	cond0 = cond0 and cond1
+	cond0 = cond0  and (StringValueMatch(ds , "TransferSyntaxUID", -1, "1.2.840.10008.1.2.4.91"))
 	return cond0
 def Condition_MPEG2TransferSyntax(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
 	cond0 = False
@@ -7123,4 +7121,12 @@ def Condition_NeedWADORSRetrievalSequence(ds:Dataset, parentds:Dataset, rootds:D
 	cond0 = cond0  and  not (ElementPresent(ds , "DICOMMediaRetrievalSequence"))
 	cond0 = cond0  and  not (ElementPresent(ds , "WADORetrievalSequence"))
 	cond0 = cond0  and  not (ElementPresent(ds , "XDSRetrievalSequence"))
+	return cond0
+def Condition_PixelIntensityRelationshipPresent(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+	cond0 = False
+	cond0 = cond0  or (ElementPresent(ds , "PixelIntensityRelationship"))
+	return cond0
+def Condition_ContentSequencePresent(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:
+	cond0 = False
+	cond0 = cond0  or (ElementPresent(ds , "ContentSequence"))
 	return cond0

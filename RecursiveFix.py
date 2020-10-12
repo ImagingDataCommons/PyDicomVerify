@@ -95,7 +95,7 @@ def VER(file:str, out_folder:str, log:list, write_meta=True):
     else:
         meta_file = ''
     # print('{:=^120}'.format("DAVID'S"))
-    dcm_verify = "/Users/afshin/Documents/softwares/dicom3tools/exe_20200430/dciodvfy"
+    dcm_verify = "/Users/afshin/Documents/softwares/dicom3tools/most_recent_exe/dciodvfy"
     if not os.path.exists(dcm_verify):
         dcm_verify = shutil.which('dciodvfy')
         if dcm_verify is None:

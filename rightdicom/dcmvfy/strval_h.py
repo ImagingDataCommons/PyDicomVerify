@@ -1709,6 +1709,17 @@ StringValueTable_TypeOfInstances = {
 	,"CDA" : ""
 }
 
+StringValueTable_EncapsulatedDocumentRootValueTypes = {
+	"CONTAINER" : ""
+}
+
+StringValueTable_EncapsulatedDocumentRelationshipType = {
+	"CONTAINS" : ""
+	,"HAS OBS CONTEXT" : ""
+	,"HAS ACQ CONTEXT" : ""
+	,"HAS CONCEPT MOD" : ""
+}
+
 StringValueTable_SpecificCharacterSet = {
 	"" : "Default ASCII"
 	,"ISO_IR 100" : "Latin alphabet No. 1"
@@ -4712,7 +4723,7 @@ StringValueTable_PhotometricInterpretationMonochrome2OrRGBorYBRFULL422orYBRRCTor
 
 StringValueTable_AcquisitionContextValueTypes = {
 	"TEXT" : ""
-	,"NUM" : ""
+	,"NUMERIC" : ""
 	,"CODE" : ""
 	,"DATE" : ""
 	,"TIME" : ""

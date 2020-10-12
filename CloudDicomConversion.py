@@ -115,7 +115,7 @@ def VER(file: str, log: list):
     if file_name.endswith('.dcm'):
         file_name = file_name[:-4]
     dcm_verify = "/Users/afshin/Documents/softwares"\
-        "/dicom3tools/exe_20200430/dciodvfy"
+        "/dicom3tools/most_recent_exe/dciodvfy"
     if not os.path.exists(dcm_verify):
         dcm_verify = shutil.which('dciodvfy')
         if dcm_verify is None:

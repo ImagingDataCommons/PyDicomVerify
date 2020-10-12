@@ -8,13 +8,13 @@
 NR==1	{
 	print "# Automatically generated from template - EDITS WILL BE LOST"
 	print ""
-	print "from cond" nestinglevel "n_cc import *"
+	print "from rightdicom.dcmvfy.condn_cc import *"
 	print "from rightdicom.dcmvfy.sopclc_h import *"
 	print "from pydicom.tag import Tag"
 	print "from pydicom.dataset import Dataset"
-	print "def Condition_Never(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:"  
+	print "\n\ndef Condition_Never(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:"  
 	print "\t return False"
-	print "def Condition_Always(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:" 
+	print "\n\ndef Condition_Always(ds:Dataset, parentds:Dataset, rootds:Dataset)->bool:" 
 	print "\t return True"
 	
 

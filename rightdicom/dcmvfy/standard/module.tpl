@@ -1856,7 +1856,7 @@ Module="USImage"
 
 	Verify="PhotometricInterpretation"				Condition="UncompressedTransferSyntaxAndThreeSamples"					StringEnumValues="PhotometricInterpretationRGB"
 	Verify="PhotometricInterpretation"				Condition="JPEGLSLosslessTransferSyntaxAndThreeSamples"					StringEnumValues="PhotometricInterpretationRGB"
-	Verify="PhotometricInterpretation"				Condition="JPEG2000TransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRICT"
+	Verify="PhotometricInterpretation"				Condition="JPEG2000TransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRRCTOrICT"
 	Verify="PhotometricInterpretation"				Condition="JPEG2000LosslessTransferSyntaxAndThreeSamples"				StringEnumValues="PhotometricInterpretationYBRRCT"
 	Verify="PhotometricInterpretation"				Condition="MPEG2TransferSyntax"											StringEnumValues="PhotometricInterpretationYBRPartial420"	# regardless of number of samples (required to be 3 by PS 3.5)
 	Verify="PhotometricInterpretation"				Condition="JPEGLossyTransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRFull422"
@@ -2621,8 +2621,8 @@ Module="SpatialFiducials"
 	Name="ContentTime"											Type="1"
 	InvokeMacro="ContentIdentificationMacro"
 	Sequence="FiducialSetSequence"								Type="1"	VM="1-n"
-		Name="FrameOfReferenceUID"								Type="1C"	Condition="ReferencedImageSequenceNotPresent"
-		Sequence="ReferencedImageSequence"						Type="1C"	VM="1-n"	Condition="FrameOfReferenceUIDNotPresent"
+		Name="FrameOfReferenceUID"								Type="1C"				Condition="ReferencedImageSequenceNotPresent" mbpo="true"
+		Sequence="ReferencedImageSequence"						Type="1C"	VM="1-n"	Condition="FrameOfReferenceUIDNotPresent" mbpo="true"
 			InvokeMacro="ImageSOPInstanceReferenceMacro"
 		SequenceEnd
 		Sequence="FiducialSequence"								Type="1"	VM="1-n"
@@ -2630,7 +2630,7 @@ Module="SpatialFiducials"
 			Sequence="FiducialsPropertyCategoryCodeSequence"	Type="3"	VM="1"
 				InvokeMacro="CodeSequenceMacro"
 			SequenceEnd
-			Sequence="FiducialIdentifierCodeSequence"			Type="1C"	VM="1"	Condition="FiducialIdentifierNotPresent"
+			Sequence="FiducialIdentifierCodeSequence"			Type="1C"	VM="1"	Condition="FiducialIdentifierNotPresent" mbpo="true"
 				InvokeMacro="CodeSequenceMacro"
 			SequenceEnd
 			Name="FiducialUID"									Type="3"
@@ -2639,7 +2639,7 @@ Module="SpatialFiducials"
 			Name="NumberOfContourPoints"						Type="1C"	Condition="ContourDataIsPresent"	NotZeroError=""
 			Name="ContourData"									Type="1C"	Condition="FrameOfReferenceUIDIsPresentInParent"
 			Name="ContourUncertaintyRadius"						Type="3"
-			Sequence="GraphicCoordinatesDataSequence"			Type="1C"	VM="1-n"	Condition="ContourDataNotPresent"
+			Sequence="GraphicCoordinatesDataSequence"			Type="1C"	VM="1-n"	Condition="ContourDataNotPresent" mbpo="true"
 				Name="GraphicData"								Type="1"
 				Sequence="ReferencedImageSequence"				Type="1"	VM="1"
 					InvokeMacro="ImageSOPInstanceReferenceMacro"
@@ -2657,6 +2657,8 @@ Module="EncapsulatedDocumentSeries"
 	Name="Modality"												Type="1"	StringDefinedTerms="Modality"
 	Name="SeriesInstanceUID"									Type="1"
 	Name="SeriesNumber"											Type="1"
+	Name="SeriesDate"											Type="3"
+	Name="SeriesTime"											Type="3"
 	Sequence="ReferencedPerformedProcedureStepSequence"			Type="3"	VM="1"
 		InvokeMacro="SOPInstanceReferenceMacro"
 	SequenceEnd
@@ -2684,9 +2686,20 @@ Module="EncapsulatedDocument"
 			InvokeMacro="CodeSequenceMacro"									DefinedContextID="7060"
 		SequenceEnd
 	SequenceEnd
+	Sequence="ReferencedImageSequence"							Type="3"	VM="1-n"
+		InvokeMacro="ImageSOPInstanceReferenceMacro"
+		Name="RelativeURIReferenceWithinEncapsulatedDocument"	Type="1C"	VM="1"	NoCondition=""
+	SequenceEnd
+	Sequence="ReferencedInstanceSequence"						Type="3"	VM="1-n"
+		InvokeMacro="SOPInstanceReferenceMacro"
+		Name="RelativeURIReferenceWithinEncapsulatedDocument"	Type="1C"	VM="1"	NoCondition=""
+	SequenceEnd
 	Name="DocumentTitle"										Type="2"
 	Sequence="ConceptNameCodeSequence"							Type="2"	VM="0-1"
-		InvokeMacro="CodeSequenceMacro"										BaselineContextID="7020"	# or 7061 if Modality is M3D ... not checke anyway :(
+		InvokeMacro="CodeSequenceMacro"										BaselineContextID="7020"	# or 7061 if Modality is M3D ... not checked anyway :(
+	SequenceEnd
+	Sequence="DocumentClassCodeSequence"						Type="3"	VM="1-n"
+		InvokeMacro="CodeSequenceMacro"
 	SequenceEnd
 	Name="VerificationFlag"										Type="3"	StringEnumValues="VerificationFlag"
 	Name="HL7InstanceIdentifier"								Type="1C"	Condition="EncapsulatedCDAInstance"
@@ -2701,6 +2714,18 @@ Module="EncapsulatedDocument"
 	Name="ImageLaterality"										Type="3"	StringEnumValues="ImageLaterality"
 	Name="EncapsulatedDocument"									Type="1"
 	Name="EncapsulatedDocumentLength"							Type="3"
+	Name="ValueType"											Type="1C"	Condition="ContentSequencePresent"	StringEnumValues="EncapsulatedDocumentRootValueTypes"
+	Sequence="ContentSequence"									Type="3"	VM="1-n"
+		Name="RelationshipType"									Type="1"	StringDefinedTerms="EncapsulatedDocumentRelationshipType"
+		InvokeMacro="DocumentRelationshipMacro"					Type="1"
+		InvokeMacro="DocumentContentMacro"						Type="1"
+	SequenceEnd
+	Name="ContinuityOfContent"									Type="1C"	Condition="ContentSequencePresent"	StringEnumValues="ContinuityOfContent"
+	Sequence="ContentTemplateSequence"							Type="1C"	VM="1"	NoCondition=""
+		Name="MappingResource"									Type="1"	StringDefinedTerms="SRTemplateMappingResource"
+		Name="MappingResourceUID"								Type="3"	StringDefinedTerms="MappingResourceUIDs"
+		Name="TemplateIdentifier"								Type="1"
+	SequenceEnd
 ModuleEnd
 
 Module="EncapsulatedDocumentPDFPseudo"
@@ -3801,8 +3826,8 @@ Module="RTImage"
 	Name="BitsStored"									Type="1"	BinaryEnumValues="BitsAre8Or12To16"	#should real be 8 if BitsAllocated is 8 and 12 to 16 if BitsAllocated is 16
 	Name="HighBit"										Type="1"	BinaryEnumValues="BitsAre7Or11To15"	#should real be one less than BitsStored
 	Name="PixelRepresentation"							Type="1"	BinaryEnumValues="PixelRepresentationUnsigned"
-	Name="PixelIntensityRelationship"					Type="1"	StringEnumValues="DXPixelIntensityRelationship"
-	Name="PixelIntensityRelationshipSign"				Type="1"	BinaryEnumValues="PixelIntensityRelationshipSign"
+	Name="PixelIntensityRelationship"					Type="3"	StringEnumValues="DXPixelIntensityRelationship"
+	Name="PixelIntensityRelationshipSign"				Type="1C"	Condition="PixelIntensityRelationshipPresent"	BinaryEnumValues="PixelIntensityRelationshipSign"
 	Name="RTImageLabel"									Type="1"
 	Name="RTImageName"									Type="3"
 	Name="RTImageDescription"							Type="3"
@@ -6059,7 +6084,7 @@ Module="VLImage"
 
 	Verify="PhotometricInterpretation"				Condition="UncompressedTransferSyntaxAndThreeSamples"					StringEnumValues="PhotometricInterpretationRGB"
 	Verify="PhotometricInterpretation"				Condition="JPEGLSLosslessTransferSyntaxAndThreeSamples"					StringEnumValues="PhotometricInterpretationRGB"
-	Verify="PhotometricInterpretation"				Condition="JPEG2000TransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRICT"
+	Verify="PhotometricInterpretation"				Condition="JPEG2000TransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRRCTOrICT"
 	Verify="PhotometricInterpretation"				Condition="JPEG2000LosslessTransferSyntaxAndThreeSamples"				StringEnumValues="PhotometricInterpretationYBRRCT"
 	Verify="PhotometricInterpretation"				Condition="MPEG2TransferSyntax"											StringEnumValues="PhotometricInterpretationYBRPartial420"	# regardless of number of samples (required to be 3 by PS 3.5)
 	Verify="PhotometricInterpretation"				Condition="JPEGLossyTransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRFull422"
@@ -6157,7 +6182,7 @@ Module="OphthalmicPhotographyImage"
 
 	Verify="PhotometricInterpretation"				Condition="UncompressedTransferSyntaxAndThreeSamples"					StringEnumValues="PhotometricInterpretationRGB"
 	Verify="PhotometricInterpretation"				Condition="JPEGLSLosslessTransferSyntaxAndThreeSamples"					StringEnumValues="PhotometricInterpretationRGB"
-	Verify="PhotometricInterpretation"				Condition="JPEG2000TransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRICT"
+	Verify="PhotometricInterpretation"				Condition="JPEG2000TransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRRCTOrICT"
 	Verify="PhotometricInterpretation"				Condition="JPEG2000LosslessTransferSyntaxAndThreeSamples"				StringEnumValues="PhotometricInterpretationYBRRCT"
 	Verify="PhotometricInterpretation"				Condition="MPEG2TransferSyntax"											StringEnumValues="PhotometricInterpretationYBRPartial420"	# regardless of number of samples (required to be 3 by PS 3.5)
 	Verify="PhotometricInterpretation"				Condition="JPEGLossyTransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRFull422"
@@ -8536,7 +8561,7 @@ Module="EnhancedMRImage"
 
 	Verify="PhotometricInterpretation"				Condition="UncompressedTransferSyntaxAndThreeSamples"					StringEnumValues="PhotometricInterpretationRGB"
 	Verify="PhotometricInterpretation"				Condition="JPEGLSLosslessTransferSyntaxAndThreeSamples"					StringEnumValues="PhotometricInterpretationRGB"
-	Verify="PhotometricInterpretation"				Condition="JPEG2000TransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRICT"
+	Verify="PhotometricInterpretation"				Condition="JPEG2000TransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRRCTOrICT"
 	Verify="PhotometricInterpretation"				Condition="JPEG2000LosslessTransferSyntaxAndThreeSamples"				StringEnumValues="PhotometricInterpretationYBRRCT"
 	Verify="PhotometricInterpretation"				Condition="MPEG2TransferSyntax"											StringEnumValues="PhotometricInterpretationYBRPartial420"	# regardless of number of samples (required to be 3 by PS 3.5)
 	Verify="PhotometricInterpretation"				Condition="JPEGLossyTransferSyntaxAndThreeSamples"						StringEnumValues="PhotometricInterpretationYBRFull422"
@@ -8694,7 +8719,7 @@ Module="MultiFrameFunctionalGroupsForLegacyConvertedEnhancedMRImage"
 		InvokeMacro="FrameAnatomyMacro"						Condition="FrameAnatomyMacroOKInSharedFunctionalGroupSequence"
 		InvokeMacro="PixelValueTransformationMacro"			Condition="PixelValueTransformationSequenceOKInSharedFunctionalGroupSequence"
 		InvokeMacro="FrameVOILUTMacro"						Condition="FrameVOILUTMacroOKInSharedFunctionalGroupSequence"
-		InvokeMacro="RealWorldValueMappingMacro"			Condition="FrameVOILUTMacroOKInSharedFunctionalGroupSequence"
+		InvokeMacro="RealWorldValueMappingMacro"			Condition="RealWorldValueMappingMacroOKInSharedFunctionalGroupSequence"
 		InvokeMacro="ContrastBolusUsageMacro"				Condition="NeedContrastBolusUsageMacroInSharedFunctionalGroupSequence"
 		InvokeMacro="RespiratorySynchronizationMacro"		Condition="RespiratorySynchronizationMacroOKInSharedFunctionalGroupSequence"
 		InvokeMacro="MRImageFrameTypeMacro"					Condition="MRImageFrameTypeSequenceNotInPerFrameFunctionalGroupSequence"
@@ -8988,7 +9013,7 @@ MacroEnd
 
 DefineMacro="CTExposureMacro" InformationEntity="FunctionalGroup"
 	Sequence="CTExposureSequence"				Type="1"	VM="1-n"
-		Name="ReferencedPathIndex"					Type="1C"	Condition="IsMultienergyCTAcquisition"
+		Name="ReferencedXRaySourceIndex"		Type="1C"	Condition="IsMultienergyCTAcquisition"
 		Name="ExposureTimeInms"					Type="1C"	Condition="Always"	NotZeroWarning=""							# ORIGINAL frame (or image if multi-energy) )mbpo
 		Name="XRayTubeCurrentInmA"				Type="1C"	Condition="Always"	NotZeroWarning=""							# ORIGINAL mbpo
 		Name="ExposureInmAs"					Type="1C"	Condition="Always"	NotZeroWarning=""							# ORIGINAL mbpo

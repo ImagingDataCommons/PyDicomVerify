@@ -568,10 +568,10 @@ Condition="NeedModuleOverlayPlane"
 	Element="OverlayDescriptorRed"		ElementPresent="0xff00"
 	Element="OverlayDescriptorGreen"	ElementPresent="0xff00"
 	Element="OverlayDescriptorBlue"		ElementPresent="0xff00"
-	Element="OverlayGray"			ElementPresent="0xff00"
-	Element="OverlayRed"			ElementPresent="0xff00"
-	Element="OverlayGreen"			ElementPresent="0xff00"
-	Element="OverlayBlue"			ElementPresent="0xff00"
+	Element="OverlaysGray"			ElementPresent="0xff00"
+	Element="OverlaysRed"			ElementPresent="0xff00"
+	Element="OverlaysGreen"			ElementPresent="0xff00"
+	Element="OverlaysBlue"			ElementPresent="0xff00"
 	Element="OverlayDescription"		ElementPresent="0xff00"
 	Element="OverlayLabel"			ElementPresent="0xff00"
 ConditionEnd
@@ -1062,7 +1062,7 @@ Condition="RescaleTypeIsPresentAndIsHUAndImageIsOriginalLocalizerAndNotMultiener
 ConditionEnd
 
 Condition="KVPNotEmptyWhenAlsoPresentInMultienergyCTAcquisitionSequence"
-	Element="KVP"						Modifier="Not" StringValue=""
+	Element="KVP"						ValuePresent=""
 	Element="KVP"						Operator="And" ElementPresentInPathFromRoot="MultienergyCTAcquisitionSequence"
 ConditionEnd
 
@@ -3912,18 +3912,12 @@ ConditionEnd
 
 Condition="JPEG2000TransferSyntaxAndOneSample"
 	Element="SamplesPerPixel"							BinaryValue="== 1"
-	(
-		Element="TransferSyntaxUID"						StringValue="1.2.840.10008.1.2.4.90"
-		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.91"
-	) Operator="And"
+	Element="TransferSyntaxUID"			Operator="And"	StringValue="1.2.840.10008.1.2.4.91"
 ConditionEnd
 
 Condition="JPEG2000TransferSyntaxAndThreeSamples"
 	Element="SamplesPerPixel"							BinaryValue="== 3"
-	(
-		Element="TransferSyntaxUID"						StringValue="1.2.840.10008.1.2.4.90"
-		Element="TransferSyntaxUID"		Operator="Or"	StringValue="1.2.840.10008.1.2.4.91"
-	) Operator="And"
+	Element="TransferSyntaxUID"			Operator="And"	StringValue="1.2.840.10008.1.2.4.91"
 ConditionEnd
 
 Condition="MPEG2TransferSyntax"
@@ -7246,3 +7240,12 @@ Condition="NeedWADORSRetrievalSequence"
 	Element="WADORetrievalSequence"			Operator="And" Modifier="Not" ElementPresent=""
 	Element="XDSRetrievalSequence"			Operator="And" Modifier="Not" ElementPresent=""
 ConditionEnd
+
+Condition="PixelIntensityRelationshipPresent"
+	Element="PixelIntensityRelationship"	ElementPresent=""
+ConditionEnd
+
+Condition="ContentSequencePresent"
+	Element="ContentSequence"				ElementPresent=""
+ConditionEnd
+

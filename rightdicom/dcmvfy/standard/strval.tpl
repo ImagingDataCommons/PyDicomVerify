@@ -1709,6 +1709,17 @@ StringValues="TypeOfInstances" {
 	DICOM,
 	CDA
 }
+
+StringValues="EncapsulatedDocumentRootValueTypes" {
+	CONTAINER
+}
+
+StringValues="EncapsulatedDocumentRelationshipType" {
+	CONTAINS,
+	HAS OBS CONTEXT,
+	HAS ACQ CONTEXT,
+	HAS CONCEPT MOD
+}
 StringValues="SpecificCharacterSet" {
 	***EMPTYVALUE*** = Default ASCII,
 	ISO_IR 100 =	Latin alphabet No. 1,
@@ -4729,7 +4740,7 @@ StringValues="PhotometricInterpretationMonochrome2OrRGBorYBRFULL422orYBRRCTorYBR
 
 StringValues="AcquisitionContextValueTypes" {
 	TEXT,
-	NUM,
+	NUMERIC,
 	CODE,
 	DATE,
 	TIME,

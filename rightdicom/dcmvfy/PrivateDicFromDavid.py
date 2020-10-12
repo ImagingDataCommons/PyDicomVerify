@@ -2224,8 +2224,7 @@ add_private_dict_entry(
     "GEMS_GENIE_1",
     0x00090034,
     'SL',
-    "Gantry Motion Type (
-    Retired)",
+    "Gantry Motion Type (Retired)",
     '1')
 add_private_dict_entry(
     "GEMS_PETD_01",
@@ -2621,8 +2620,7 @@ add_private_dict_entry(
     "GEMS_GENIE_1",
     0x00090044,
     'SL',
-    "Num Views Acquired (
-    Retired)",
+    "Num Views Acquired (Retired)",
     '1')
 add_private_dict_entry(
     "QUASAR_INTERNAL_USE",
@@ -5412,8 +5410,7 @@ add_private_dict_entry(
     "GEMS_GENIE_1",
     0x0011001e,
     'SL',
-    "Energy Width (
-    Retired)",
+    "Energy Width (Retired)",
     '4')
 add_private_dict_entry(
     "GEMS_GENIE_1",
@@ -5497,8 +5494,7 @@ add_private_dict_entry(
     "GEMS_GENIE_1",
     0x00110021,
     'DS',
-    "Acq Zoom (
-    Retired)",
+    "Acq Zoom (Retired)",
     '1')
 add_private_dict_entry(
     "Hipaa Private Creator",
@@ -5528,8 +5524,7 @@ add_private_dict_entry(
     "GEMS_GENIE_1",
     0x00110022,
     'DS',
-    "Acq Pan (
-    Retired)",
+    "Acq Pan (Retired)",
     '1')
 add_private_dict_entry(
     "Hipaa Private Creator",
@@ -5733,8 +5728,7 @@ add_private_dict_entry(
     "GEMS_GENIE_1",
     0x0011002a,
     'FD',
-    "Phase Duration (
-    Retired)",
+    "Phase Duration (Retired)",
     '1')
 add_private_dict_entry(
     "SIEMENS RA PLANE A",
@@ -6088,8 +6082,7 @@ add_private_dict_entry(
     "GEMS_GENIE_1",
     0x0011003d,
     'SL',
-    "Energy Peak (
-    Retired)",
+    "Energy Peak (Retired)",
     '4')
 add_private_dict_entry(
     "GEMS_GENIE_1",
@@ -8528,8 +8521,7 @@ add_private_dict_entry(
     "Set Window Magnification Power",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190001,
     'IS',
     "?",
@@ -8580,8 +8572,7 @@ add_private_dict_entry(
     "WG12 Supplement 43",
     0x00190001,
     'FD',
-    "Focus Depth(
-    s)",
+    "Focus Depth(s)",
     '1')
 add_private_dict_entry(
     "SVISION",
@@ -8686,8 +8677,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190002,
     'IS',
     "?",
@@ -8813,8 +8803,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190003,
     'IS',
     "?",
@@ -8934,8 +8923,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190004,
     'IS',
     "?",
@@ -9139,8 +9127,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190006,
     'LO',
     "Paddle ID",
@@ -9254,8 +9241,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190007,
     'SH',
     "Paddle Position",
@@ -9375,8 +9361,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190008,
     'LO',
     "Collimation Size",
@@ -10744,8 +10729,7 @@ add_private_dict_entry(
     "?",
     '1-n')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190016,
     'DS',
     "Paddle Angle",
@@ -11528,8 +11512,7 @@ add_private_dict_entry(
     "DLX_SERIE_01",
     0x00190021,
     'DS',
-    "Table position Z (
-    vertical) first frame",
+    "Table position Z (vertical) first frame",
     '1')
 add_private_dict_entry(
     "NNT",
@@ -11601,8 +11584,7 @@ add_private_dict_entry(
     "DLX_SERIE_01",
     0x00190022,
     'DS',
-    "Table position X (
-    longitudinal) first frame",
+    "Table position X (longitudinal) first frame",
     '1')
 add_private_dict_entry(
     "GEMS_ACQU_01",
@@ -11692,8 +11674,7 @@ add_private_dict_entry(
     "DLX_SERIE_01",
     0x00190023,
     'DS',
-    "Table position Y (
-    lateral) first frame",
+    "Table position Y (lateral) first frame",
     '1')
 add_private_dict_entry(
     "NNT",
@@ -11870,8 +11851,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190025,
     'SH',
     "?",
@@ -11949,8 +11929,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190026,
     'LO',
     "Paddle ID Description",
@@ -12055,12 +12034,10 @@ add_private_dict_entry(
     "GEMS_ACQU_01",
     0x00190027,
     'DS',
-    "Rotation Speed (
-    Gantry Period)",
+    "Rotation Speed (Gantry Period)",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190027,
     'SH',
     "Paddle Position Description",
@@ -12120,8 +12097,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190028,
     'LO',
     "Collimation Size Description",
@@ -12211,8 +12187,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190029,
     'LO',
     "AEC User Density Scale Factor Description",
@@ -12482,8 +12457,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190030,
     'US',
     "AEC User Density Scale Factor",
@@ -12591,8 +12565,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190031,
     'US',
     "AEC System Density Scale Factor",
@@ -12670,8 +12643,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190032,
     'US',
     "AEC Calculated mAs",
@@ -12737,8 +12709,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190033,
     'US',
     "AEC Auto Pixel 1",
@@ -12774,8 +12745,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190034,
     'US',
     "AEC Auto Pixel 2",
@@ -12829,8 +12799,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190035,
     'US',
     "AEC Sensor",
@@ -12890,8 +12859,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190037,
     'LO',
     "NPT Mode",
@@ -13191,8 +13159,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190040,
     'DS',
     "Skin Edge",
@@ -13288,8 +13255,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190041,
     'DS',
     "Exposure Index",
@@ -13361,8 +13327,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190042,
     'IS',
     "Exposure Index Target",
@@ -13446,8 +13411,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190043,
     'DS',
     "Short Index Ratio",
@@ -13489,8 +13453,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190044,
     'DS',
     "Scout kVp",
@@ -13562,8 +13525,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190045,
     'IS',
     "Scout mA",
@@ -13599,8 +13561,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190046,
     'IS',
     "Scout mAs",
@@ -13978,8 +13939,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190050,
     'DS',
     "Display Minimum OD",
@@ -14075,8 +14035,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190051,
     'DS',
     "Dispaly Maximum OD",
@@ -14130,8 +14089,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190052,
     'IS',
     "Display Minimum Nits",
@@ -14197,8 +14155,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190053,
     'IS',
     "Display Maximum Nits",
@@ -14612,8 +14569,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190060,
     'LT',
     "Geometry Calibration",
@@ -14745,8 +14701,7 @@ add_private_dict_entry(
     "Curve Data Before Acquisition",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190061,
     'OB',
     "3D IP Parameters",
@@ -14806,8 +14761,7 @@ add_private_dict_entry(
     "Number of Points Trigger",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190062,
     'LT',
     "2D IP Parameters",
@@ -15425,8 +15379,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190070,
     'LO',
     "Frame of Reference ID",
@@ -15540,8 +15493,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190071,
     'CS',
     "Paired Position",
@@ -15592,8 +15544,7 @@ add_private_dict_entry(
     "AGFA_ADC_Compact",
     0x00190072,
     'US',
-    "Wait (
-    or Hold) flag",
+    "Wait (or Hold) flag",
     '1')
 add_private_dict_entry(
     "GEMS_ACQU_01",
@@ -16148,8 +16099,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190080,
     'SH',
     "Detector Image Offset",
@@ -16539,8 +16489,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190085,
     'SH',
     "Image Source",
@@ -16624,8 +16573,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190087,
     'LO',
     "Marker Text",
@@ -16667,8 +16615,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190088,
     'LO',
     "Marker Tech Initials",
@@ -16740,8 +16687,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190089,
     'DS',
     "Marker Location",
@@ -16771,8 +16717,7 @@ add_private_dict_entry(
     "Calibration Frame Original",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x0019008A,
     'SQ',
     "Marker Sequence",
@@ -17030,8 +16975,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190090,
     'DS',
     "Conventional Tomo Angle",
@@ -17457,8 +17401,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190097,
     'SH',
     "Markers Burned Into Image",
@@ -17488,8 +17431,7 @@ add_private_dict_entry(
     "?",
     '1-n')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x00190098,
     'LO',
     "Grid Line Correction",
@@ -20549,8 +20491,7 @@ add_private_dict_entry(
     "Window Of Images ID",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210000,
     'SQ',
     "Person Information Sequence",
@@ -20610,8 +20551,7 @@ add_private_dict_entry(
     "Reconstruction Number",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210001,
     'LO',
     "Person ID",
@@ -20770,8 +20710,7 @@ add_private_dict_entry(
     "WG12 Supplement 43",
     0x00210001,
     'FD',
-    "Image Position (
-    Volume)",
+    "Image Position (Volume)",
     '1')
 add_private_dict_entry(
     "SVISION",
@@ -20798,8 +20737,7 @@ add_private_dict_entry(
     "WindowOfImagesScope",
     '1-n')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210002,
     'PN',
     "Person Name",
@@ -20916,8 +20854,7 @@ add_private_dict_entry(
     "WG12 Supplement 43",
     0x00210002,
     'FD',
-    "Image Orientation (
-    Volume)",
+    "Image Orientation (Volume)",
     '1')
 add_private_dict_entry(
     "SVISION",
@@ -20932,8 +20869,7 @@ add_private_dict_entry(
     "?",
     '1-n')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210003,
     'LO',
     "Person Role",
@@ -21029,8 +20965,7 @@ add_private_dict_entry(
     "?",
     '1-n')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210004,
     'SH',
     "Person Home Phone",
@@ -21108,8 +21043,7 @@ add_private_dict_entry(
     "Mixing Time",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210005,
     'SH',
     "Person Work Phone",
@@ -21181,8 +21115,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210006,
     'SH',
     "Person Cell Phone",
@@ -21248,8 +21181,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210007,
     'SH',
     "Person Pager Phone",
@@ -21309,8 +21241,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210008,
     'SH',
     "Person Fax Phone",
@@ -21382,8 +21313,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210009,
     'LO',
     "Person EMail",
@@ -21437,8 +21367,7 @@ add_private_dict_entry(
     "Volume to Transducer Mapping Matrix",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x0021000A,
     'ST',
     "Person Address",
@@ -21498,8 +21427,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x0021000B,
     'LO',
     "Person Password",
@@ -21529,8 +21457,7 @@ add_private_dict_entry(
     "Filter ID",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x0021000C,
     'SH',
     "Person Emergency Phone",
@@ -21578,8 +21505,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x0021000D,
     'LO',
     "Physician ID",
@@ -21642,8 +21568,7 @@ add_private_dict_entry(
     "WG12 Supplement 43",
     0x0021000E,
     'SQ',
-    "Plane Position (
-    Volume) Sequence",
+    "Plane Position (Volume) Sequence",
     '1')
 add_private_dict_entry(
     "Siemens: Thorax/Multix FD Post Processing",
@@ -21667,8 +21592,7 @@ add_private_dict_entry(
     "WG12 Supplement 43",
     0x0021000F,
     'SQ',
-    "Plane Orientation (
-    Volume) Sequence",
+    "Plane Orientation (Volume) Sequence",
     '1')
 add_private_dict_entry(
     "PHILIPS MR/PART",
@@ -21827,8 +21751,7 @@ add_private_dict_entry(
     "Find Range Algorithm",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210011,
     'LO',
     "Original Patient ID",
@@ -21918,8 +21841,7 @@ add_private_dict_entry(
     "Series Unique Identifier",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210012,
     'UI',
     "Original Study Instance UID",
@@ -22003,8 +21925,7 @@ add_private_dict_entry(
     "Image Sequence Number",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210013,
     'UI',
     "Original Series Instance UID",
@@ -22070,8 +21991,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210014,
     'LO',
     "Master Accession Number",
@@ -22137,8 +22057,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210015,
     'LO',
     "Order Category",
@@ -22192,8 +22111,7 @@ add_private_dict_entry(
     "Auto Window Shift",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210016,
     'LO',
     "Patient ICN",
@@ -22259,8 +22177,7 @@ add_private_dict_entry(
     "Auto Window Expansion",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210017,
     'LO',
     "Patient DFS",
@@ -22314,8 +22231,7 @@ add_private_dict_entry(
     "System Type",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210018,
     'LO',
     "Patient Class",
@@ -22375,8 +22291,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210019,
     'LO',
     "Patient Type",
@@ -22616,8 +22531,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x0021001F,
     'LT',
     "Generic String",
@@ -22683,8 +22597,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210020,
     'LO',
     "QC Study Assigned By",
@@ -22798,8 +22711,7 @@ add_private_dict_entry(
     "Slice Gap",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210021,
     'LO',
     "QC Study Split By",
@@ -22835,8 +22747,7 @@ add_private_dict_entry(
     "Stack Radial Angle",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210022,
     'LO',
     "QC Study Moved By",
@@ -22896,8 +22807,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210023,
     'LO',
     "QC Study Edited By",
@@ -22933,8 +22843,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210024,
     'LO',
     "QC Series Split By",
@@ -22982,8 +22891,7 @@ add_private_dict_entry(
     "Post Proc Protocol",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210025,
     'LO',
     "QC Series Moved By",
@@ -23025,8 +22933,7 @@ add_private_dict_entry(
     "Table Position Origin",
     '3')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210026,
     'LO',
     "QC Series Edited By",
@@ -23080,8 +22987,7 @@ add_private_dict_entry(
     "Misc Sequence Param",
     '32')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210027,
     'LO',
     "QC Image Moved By",
@@ -23129,8 +23035,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210028,
     'LO',
     "QC Image Edited By",
@@ -23376,8 +23281,7 @@ add_private_dict_entry(
     "Echo Number",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210030,
     'LO',
     "QC Done Time",
@@ -23491,8 +23395,7 @@ add_private_dict_entry(
     "Patient Reference ID",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210031,
     'LO',
     "QC Last Modification Time",
@@ -23552,8 +23455,7 @@ add_private_dict_entry(
     "Upper Window Offset",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210032,
     'LO',
     "QC Image Accepted By",
@@ -23601,8 +23503,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210033,
     'LO',
     "QC Image Rejected By",
@@ -23638,15 +23539,13 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210034,
     'DA',
     "QC Done Date",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210034,
     'DA',
     "QC Last Modification Date",
@@ -24678,8 +24577,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210050,
     'LO',
     "QC Deletion Requested",
@@ -25981,8 +25879,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210090,
     'AE',
     "Original Sender AE Title",
@@ -26012,8 +25909,7 @@ add_private_dict_entry(
     "Brightness",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210091,
     'LO',
     "Software Title",
@@ -26043,8 +25939,7 @@ add_private_dict_entry(
     "Contrast",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210092,
     'SH',
     "Software Version",
@@ -26074,8 +25969,7 @@ add_private_dict_entry(
     "Shape Factor",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x00210093,
     'LO',
     "Serial Number",
@@ -26189,8 +26083,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x002100a0,
     'SQ',
     "Object Action Sequence",
@@ -26214,8 +26107,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x002100a1,
     'ST',
     "Object Action",
@@ -26233,8 +26125,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x002100a2,
     'DA',
     "Object Action Date",
@@ -26264,8 +26155,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x002100a3,
     'TM',
     "Object Action Time",
@@ -26307,8 +26197,7 @@ add_private_dict_entry(
     "Label X",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x002100a5,
     'AE',
     "Local AE Title",
@@ -26332,8 +26221,7 @@ add_private_dict_entry(
     "Label Y",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x002100a6,
     'SH',
     "Local IP Address",
@@ -26351,8 +26239,7 @@ add_private_dict_entry(
     "Legend",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x002100a7,
     'AE',
     "Remote AE Title",
@@ -26370,8 +26257,7 @@ add_private_dict_entry(
     "Scroll Bar X",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x002100a8,
     'SH',
     "Remote IP Address",
@@ -26449,8 +26335,7 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x002100b0,
     'ST',
     "?",
@@ -26468,8 +26353,7 @@ add_private_dict_entry(
     "Curve ID",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x002100b1,
     'ST',
     "?",
@@ -26487,8 +26371,7 @@ add_private_dict_entry(
     "Plot Type",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x002100b2,
     'ST',
     "?",
@@ -26500,8 +26383,7 @@ add_private_dict_entry(
     "Curve Values",
     '1-n')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x002100b3,
     'ST',
     "?",
@@ -26513,8 +26395,7 @@ add_private_dict_entry(
     "Line Color",
     '3')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x002100b4,
     'ST',
     "?",
@@ -26532,8 +26413,7 @@ add_private_dict_entry(
     "Marker Color",
     '3')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x002100b5,
     'ST',
     "?",
@@ -26545,8 +26425,7 @@ add_private_dict_entry(
     "Line Filled",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x002100b6,
     'ST',
     "?",
@@ -26558,8 +26437,7 @@ add_private_dict_entry(
     "Label",
     '1')
 add_private_dict_entry(
-    "BRIT Systems,
-    Inc.",
+    "BRIT Systems,Inc.",
     0x002100b7,
     'ST',
     "?",
@@ -28164,8 +28042,7 @@ add_private_dict_entry(
     "GEMS_SERS_01",
     0x0025001b,
     'OB',
-    "Protocol Data Block (
-    compressed)",
+    "Protocol Data Block (compressed)",
     '1')
 add_private_dict_entry(
     "GEMS_DL_FRAME_01",
@@ -29053,15 +28930,13 @@ add_private_dict_entry(
     "GEMS_IMAG_01",
     0x00270050,
     'FL',
-    "Table Start Location (
-    Scout)",
+    "Table Start Location (Scout)",
     '1')
 add_private_dict_entry(
     "GEMS_IMAG_01",
     0x00270051,
     'FL',
-    "Table End Location (
-    Scout)",
+    "Table End Location (Scout)",
     '1')
 add_private_dict_entry(
     "GEMS_IMAG_01",
@@ -32559,8 +32434,7 @@ add_private_dict_entry(
     "SIEMENS SYNGO VOLUME",
     0x00290032,
     'DS',
-    "Volume Position (
-    Patient)",
+    "Volume Position (Patient)",
     '3')
 add_private_dict_entry(
     "SIEMENS SYNGO ADVANCED PRESENTATION",
@@ -32818,8 +32692,7 @@ add_private_dict_entry(
     "SIEMENS SYNGO VOLUME",
     0x00290037,
     'DS',
-    "Volume Orientation (
-    Patient)",
+    "Volume Orientation (Patient)",
     '9')
 add_private_dict_entry(
     "SIEMENS CT APPL DATASET",
@@ -37901,8 +37774,7 @@ add_private_dict_entry(
     "SIEMENS MED NM",
     0x00330014,
     'FL',
-    "MHR (
-     Y-Shift) data for detector 1",
+    "MHR (Y-Shift) data for detector 1",
     '1')
 add_private_dict_entry(
     "MITRA OBJECT UTF8 ATTRIBUTES 1.0",
@@ -37914,8 +37786,7 @@ add_private_dict_entry(
     "SIEMENS MED NM",
     0x00330015,
     'FL',
-    "MHR (
-     Y-Shift) data for detector 2",
+    "MHR (Y-Shift) data for detector 2",
     '1')
 add_private_dict_entry(
     "GEMS_GENIE_1",
@@ -40783,8 +40654,7 @@ add_private_dict_entry(
     "GEMS_PARM_01",
     0x0043002f,
     'SS',
-    "Image Type (
-    Real,Imaginary,Phase,Magnitude)",
+    "Image Type (Real,Imaginary,Phase,Magnitude)",
     '1')
 add_private_dict_entry(
     "dcm4che/archive",
@@ -41168,15 +41038,13 @@ add_private_dict_entry(
     "GEMS_PARM_01",
     0x00430085,
     'UT',
-    "Debug Data (
-    Text Format)",
+    "Debug Data (Text Format)",
     '1')
 add_private_dict_entry(
     "GEMS_PARM_01",
     0x00430086,
     'OB',
-    "Debug Data (
-    Binary Format)",
+    "Debug Data (Binary Format)",
     '1')
 add_private_dict_entry(
     "GEMS_PARM_01",
@@ -41194,9 +41062,7 @@ add_private_dict_entry(
     "GEMS_PARM_01",
     0x00430089,
     'LO',
-    "Governing Body,
-    dB/dt,
-    and SAR definition",
+    "Governing Body,dB/dt,and SAR definition",
     '3')
 add_private_dict_entry(
     "GEMS_PARM_01",
@@ -41718,8 +41584,7 @@ add_private_dict_entry(
     "GEMS_SENO_02",
     0x00450028,
     'CS',
-    "WindowingType (
-    LINEAR or GAMMA)",
+    "WindowingType (LINEAR or GAMMA)",
     '1')
 add_private_dict_entry(
     "GEMS_SENO_02",
@@ -41935,8 +41800,7 @@ add_private_dict_entry(
     "GEMS_SENO_02",
     0x00450050,
     'UI',
-    "Fallback Instance UID (
-    CR or SC)",
+    "Fallback Instance UID (CR or SC)",
     '1')
 add_private_dict_entry(
     "GEMS_HELIOS_01",
@@ -41948,8 +41812,7 @@ add_private_dict_entry(
     "GEMS_SENO_02",
     0x00450051,
     'UI',
-    "Fallback Series UID (
-    CR or SC)",
+    "Fallback Series UID (CR or SC)",
     '1')
 add_private_dict_entry(
     "GEMS_HELIOS_01",
@@ -46923,8 +46786,7 @@ add_private_dict_entry(
     "UCSF BIRP PRIVATE CREATOR 011710xx",
     0x01170035,
     'IS',
-    "Signal Enhancement Ratio (
-    SER) Timing Indices",
+    "Signal Enhancement Ratio (SER) Timing Indices",
     '3')
 add_private_dict_entry(
     "UCSF BIRP PRIVATE CREATOR 011710xx",
@@ -47038,22 +46900,19 @@ add_private_dict_entry(
     "UCSF BIRP PRIVATE CREATOR 011710xx",
     0x011700b0,
     'SQ',
-    "Functional Tumor Volume (
-    FTV) Results Sequence",
+    "Functional Tumor Volume (FTV) Results Sequence",
     '1')
 add_private_dict_entry(
     "UCSF BIRP PRIVATE CREATOR 011710xx",
     0x011700b1,
     'DS',
-    "Signal Enhancement Ratio (
-    SER) Minimum",
+    "Signal Enhancement Ratio (SER) Minimum",
     '1')
 add_private_dict_entry(
     "UCSF BIRP PRIVATE CREATOR 011710xx",
     0x011700b2,
     'DS',
-    "Signal Enhancement Ratio (
-    SER) Maximum",
+    "Signal Enhancement Ratio (SER) Maximum",
     '1')
 add_private_dict_entry(
     "UCSF BIRP PRIVATE CREATOR 011710xx",
@@ -47065,8 +46924,7 @@ add_private_dict_entry(
     "UCSF BIRP PRIVATE CREATOR 011710xx",
     0x011700b4,
     'DS',
-    "Volume (
-    cc)",
+    "Volume (cc)",
     '1')
 add_private_dict_entry(
     "UCSF BIRP PRIVATE CREATOR 011710xx",
@@ -48815,29 +48673,25 @@ add_private_dict_entry(
     "Batch Slice Number",
     '1')
 add_private_dict_entry(
-    "PI Private Block (
-    0781:3000 - 0781:30FF)",
+    "PI Private Block (0781:3000 - 0781:30FF)",
     0x07810001,
     'US',
     "?",
     '1')
 add_private_dict_entry(
-    "PI Private Block (
-    0781:3000 - 0781:30FF)",
+    "PI Private Block (0781:3000 - 0781:30FF)",
     0x07810002,
     'US',
     "?",
     '1')
 add_private_dict_entry(
-    "PI Private Block (
-    0781:3000 - 0781:30FF)",
+    "PI Private Block (0781:3000 - 0781:30FF)",
     0x07810005,
     'FL',
     "?",
     '1')
 add_private_dict_entry(
-    "PI Private Block (
-    0781:3000 - 0781:30FF)",
+    "PI Private Block (0781:3000 - 0781:30FF)",
     0x07810009,
     'FL',
     "?",
@@ -59952,8 +59806,7 @@ add_private_dict_entry(
     "Applicare/RadWorks/Version 5.0",
     0x310900EF,
     'CS',
-    "Action (
-    Add,Remove,Change)",
+    "Action (Add,Remove,Change)",
     '1')
 add_private_dict_entry(
     "AMI StudyExtensions_01",
@@ -61036,78 +60889,67 @@ add_private_dict_entry(
     "Referenced Beam Profile Number",
     '1')
 add_private_dict_entry(
-    "A.L.I. Technologies,
-    Inc.",
+    "A.L.I. Technologies,Inc.",
     0x37110001,
     'LO',
     "Filename",
     '1')
 add_private_dict_entry(
-    "A.L.I. Technologies,
-    Inc.",
+    "A.L.I. Technologies,Inc.",
     0x37110002,
     'OB',
     "Data Blob of a Visit",
     '1')
 add_private_dict_entry(
-    "A.L.I. Technologies,
-    Inc.",
+    "A.L.I. Technologies,Inc.",
     0x37110003,
     'US',
     "Revision Number",
     '1')
 add_private_dict_entry(
-    "A.L.I. Technologies,
-    Inc.",
+    "A.L.I. Technologies,Inc.",
     0x37110004,
     'UL',
     "Unix Timestamp",
     '1')
 add_private_dict_entry(
-    "A.L.I. Technologies,
-    Inc.",
+    "A.L.I. Technologies,Inc.",
     0x37110005,
     'IS',
     "Bag ID",
     '1')
 add_private_dict_entry(
-    "A.L.I. Technologies,
-    Inc.",
+    "A.L.I. Technologies,Inc.",
     0x3711000C,
     'UI',
     "Original Study UID",
     '1')
 add_private_dict_entry(
-    "A.L.I. Technologies,
-    Inc.",
+    "A.L.I. Technologies,Inc.",
     0x3711000D,
     'US',
     "Overlay Grayscale Value",
     '1')
 add_private_dict_entry(
-    "A.L.I. Technologies,
-    Inc.",
+    "A.L.I. Technologies,Inc.",
     0x3711000E,
     'CS',
     "Anonymization Status",
     '1')
 add_private_dict_entry(
-    "A.L.I. Technologies,
-    Inc.",
+    "A.L.I. Technologies,Inc.",
     0x3711000F,
     'CS',
     "Instance Type",
     '1')
 add_private_dict_entry(
-    "A.L.I. Technologies,
-    Inc.",
+    "A.L.I. Technologies,Inc.",
     0x37110030,
     'LO',
     "IP Converted Frame",
     '1')
 add_private_dict_entry(
-    "A.L.I. Technologies,
-    Inc.",
+    "A.L.I. Technologies,Inc.",
     0x37110097,
     'OB',
     "?",
@@ -61488,8 +61330,7 @@ add_private_dict_entry(
     "Applicare/RadWorks/Version 6.0",
     0x41050005,
     'US',
-    "Annotation Color (
-    RGB)",
+    "Annotation Color (RGB)",
     '3')
 add_private_dict_entry(
     "Applicare/RadWorks/Version 6.0",
@@ -61612,50 +61453,43 @@ add_private_dict_entry(
     "POD Mode",
     '1')
 add_private_dict_entry(
-    "DR Systems,
-    Inc.",
+    "DR Systems,Inc.",
     0x44530000,
     'LO',
     "Exam ?",
     '1')
 add_private_dict_entry(
-    "DR Systems,
-    Inc.",
+    "DR Systems,Inc.",
     0x44530001,
     'LO',
     "Exam ID",
     '1')
 add_private_dict_entry(
-    "DR Systems,
-    Inc.",
+    "DR Systems,Inc.",
     0x44530002,
     'LO',
     "Image Type",
     '1')
 add_private_dict_entry(
-    "DR Systems,
-    Inc.",
+    "DR Systems,Inc.",
     0x44530004,
     'LO',
     "File Type",
     '1')
 add_private_dict_entry(
-    "DR Systems,
-    Inc.",
+    "DR Systems,Inc.",
     0x44530005,
     'LO',
     "File Suffix",
     '1')
 add_private_dict_entry(
-    "DR Systems,
-    Inc.",
+    "DR Systems,Inc.",
     0x4453000A,
     'LO',
     "Annotation Type",
     '1')
 add_private_dict_entry(
-    "DR Systems,
-    Inc.",
+    "DR Systems,Inc.",
     0x4453000C,
     'SQ',
     "Original Instance UID Sequence",
@@ -63302,8 +63136,7 @@ add_private_dict_entry(
     "TOSHIBA_MEC_CT3",
     0x7005000f,
     'SH',
-    "Direction (
-    head or feet first)",
+    "Direction (head or feet first)",
     '1')
 add_private_dict_entry(
     "SIEMENS MED",
@@ -63327,8 +63160,7 @@ add_private_dict_entry(
     "TOSHIBA_MEC_CT3",
     0x70050012,
     'SH',
-    "Position (
-    supine or prone)",
+    "Position (supine or prone)",
     '1')
 add_private_dict_entry(
     "TOSHIBA_MEC_CT3",
@@ -63604,8 +63436,7 @@ add_private_dict_entry(
     "TOSHIBA_MEC_CT3",
     0x7005006b,
     'DS',
-    "Image Position of 4D-Volume Top (
-    Equipment)",
+    "Image Position of 4D-Volume Top (Equipment)",
     '3')
 add_private_dict_entry(
     "TOSHIBA_MEC_CT3",
@@ -63629,8 +63460,7 @@ add_private_dict_entry(
     "TOSHIBA_MEC_CT3",
     0x700500F1,
     'CS',
-    "Protect Mark for Image,
-    Curve or Private Record",
+    "Protect Mark for Image,Curve or Private Record",
     '1')
 add_private_dict_entry(
     "TOSHIBA_MEC_CT3",
@@ -64797,71 +64627,61 @@ add_private_dict_entry(
     "?",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x7e010001,
     'LO',
     "Codec Version",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x7e010002,
     'SH',
     "Codec Content Type",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x7e010010,
     'SQ',
     "High Resolution Data Sequence",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x7e010011,
     'SQ',
     "Low Resolution Data Sequence",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x7e010012,
     'OB',
     "Codec Content",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x7f010001,
     'LO',
     "Codec Version",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x7f010002,
     'SH',
     "Codec Content Type",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x7f010010,
     'SQ',
     "High Resolution Data Sequence",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x7f010011,
     'SQ',
     "Low Resolution Data Sequence",
     '1')
 add_private_dict_entry(
-    "HOLOGIC,
-    Inc.",
+    "HOLOGIC,Inc.",
     0x7f010012,
     'OB',
     "Codec Content",
@@ -65020,8 +64840,7 @@ add_private_dict_entry(
     "GEMS_GDXE_ATHENAV2_INTERNAL_USE",
     0x7FDF0011,
     'LT',
-    "Pixel Data References (
-    temporary)",
+    "Pixel Data References (temporary)",
     '1')
 add_private_dict_entry(
     "GEMS_GDXE_ATHENAV2_INTERNAL_USE",
@@ -65954,76 +65773,43 @@ add_private_dict_entry(
     "?",
     '1-n')
 add_private_dict_entry(
-    "Image (
-    ID,
-    Version,
-    Size,
-    Dump,
-    GUID)",
+    "Image (ID,Version,Size,Dump,GUID)",
     0x80030000,
     'LO',
     "ID",
     '1')
 add_private_dict_entry(
-    "Image (
-    ID,
-    Version,
-    Size,
-    Dump,
-    GUID)",
+    "Image (ID,Version,Size,Dump,GUID)",
     0x80030010,
     'LO',
     "Version",
     '1')
 add_private_dict_entry(
-    "Image (
-    ID,
-    Version,
-    Size,
-    Dump,
-    GUID)",
+    "Image (ID,Version,Size,Dump,GUID)",
     0x80030020,
     'UL',
     "Size",
     '1')
 add_private_dict_entry(
-    "Image (
-    ID,
-    Version,
-    Size,
-    Dump,
-    GUID)",
+    "Image (ID,Version,Size,Dump,GUID)",
     0x80030030,
     'OB',
     "Dump",
     '1')
 add_private_dict_entry(
-    "Image (
-    ID,
-    Version,
-    Size,
-    Dump,
-    GUID)",
+    "Image (ID,Version,Size,Dump,GUID)",
     0x80030040,
     'LO',
     "GUID",
     '1')
 add_private_dict_entry(
-    "ObjectModel (
-    ID,
-    Version,
-    Place,
-    PlaceDescription)",
+    "ObjectModel (ID,Version,Place,PlaceDescription)",
     0x81010000,
     'LO',
     "ID",
     '1')
 add_private_dict_entry(
-    "ObjectModel (
-    ID,
-    Version,
-    Place,
-    PlaceDescription)",
+    "ObjectModel (ID,Version,Place,PlaceDescription)",
     0x81010010,
     'LO',
     "Version",

@@ -2,10 +2,19 @@ import os
 PROJECTLIBSTANDARDDIR = "./standard/"
 PROJECTLIBSUPPORTDIR = "./support/"
 dest = "./"
+# after partial building of david clunie's dicom3tools: 
+# cp dicom3tools/libsrc/src/locale/mesgtext.tpl ./standard
+# cp dicom3tools/libsrc/standard/*.tpl ./standard
+#     cp dicom3tools/libsrc/standard/binval.tpl ./standard
+#     cp dicom3tools/libsrc/standard/condn.tpl ./standard
+#     cp dicom3tools/libsrc/standard/elmdict.tpl ./standard
+#     cp dicom3tools/libsrc/standard/iodcomp.tpl ./standard
+#     cp dicom3tools/libsrc/standard/module.tpl ./standard
+#     cp dicom3tools/libsrc/standard/sopcl.tpl ./standard
+#     cp dicom3tools/libsrc/standard/strval.tpl ./standard
+#     cp dicom3tools/libsrc/standard/tagval.tpl ./standard
+#     cp dicom3tools/libsrc/standard/transyn.tpl ./standard
 # ============================================================
-
-
-
 def ls_ext(pathname, ext, give_fullpath=False):
     filelist = os.listdir(pathname)
     output = []

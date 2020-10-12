@@ -48,6 +48,7 @@ def ConvertByPixelMed(pixel_med_jars: str, input_dcm_folder: str,
                input_dcm_folder, output_dcm_folder]
     ctools.RunExe(command, conversion_error_file,
                   conversin_output_file, log=log)
+    print('running pixelmed on {}'.format(input_dcm_folder))
 
 
 class ParentChildDicoms:
