@@ -1,65 +1,31 @@
-import pydicom
 import pydicom.datadict as Dictionary
 import rightdicom.dcmvfy.mesgtext_cc as mesgtext_cc
 import rightdicom.dcmvfy.sopclc_h as sopclc_h
-import rightdicom.dcmvfy.validate_vr as validate_vr
 import rightdicom.dcmvfy.verify as verify
-from pydicom.dataelem import(
+from pydicom.dataset import (
     # CLASSES
-    DataElement,)
-from pydicom.dataset import(
-    # CLASSES
-    Dataset,)
-from pydicom.sequence import(
-    # CLASSES
-    Sequence,)
-from pydicom.tag import(
-    # FUNCTIONS
-    Tag,)
-from pydicom.uid import(
-    # CLASSES
-    UID,)
-from rightdicom.dcmfix.fix_tools import(
+    Dataset,
+)
+from rightdicom.dcmfix.fix_tools import (
     # FUNCTIONS
     subfix_AddMissingAttrib,
     subfix_AddOrChangeAttrib,
     subfix_CodeSeqItem2txt,
-    subfix_LookUpRegexInLog,)
-from rightdicom.dcmvfy.mesgtext_cc import(
+    subfix_LookUpRegexInLog,
+)
+from rightdicom.dcmvfy.mesgtext_cc import (
     # CLASSES
-    ErrorInfo,)
-from rightdicom.dcmvfy.sopclc_h import(
+    ErrorInfo,
+)
+from rightdicom.dcmvfy.sopclc_h import (
     # VARIABLES
-    PETImageStorageSOPClassUID,)
+    PETImageStorageSOPClassUID,
+)
 
 
 def fix_Trivials(ds: Dataset, log: list):
     verify.SelectAndRunCompositeIOD(ds, False, log, True, '')
     # verify.PrintLog(log)
-def priorfix_RemoveIllegalTags(ds: Dataset, parent_kw:str, log:list) -> bool:
-    tags_to_be_removed = []
-    fixed = False
-    for k, a in ds.items():
-        try:
-            a = ds[k]
-        except KeyError as err:
-            if not k.is_private:
-                if not Dictionary.dictionary_has_tag(k):
-                    ttaagg = validate_vr.tag2str(a.tag)
-                    eerr = mesgtext_cc.ErrorInfo("General Fix - tag {} in {}is not a standard dicom tag".format(
-                        ttaagg, parent_kw),
-                    'fixed by removing the attribute')
-                    log.append(eerr.getWholeMessage())
-                    tags_to_be_removed.append(a.tag)
-                    continue
-        if type(a.value) == Sequence:
-            for item in a.value:
-                fixed = fixed or priorfix_RemoveIllegalTags(item, a.keyword, log)
-        elif type(a.value) == Dataset:
-            fixed = fixed or priorfix_RemoveIllegalTags(a.value, a.keyword, log)
-    for tg in tags_to_be_removed:
-        del ds[tg]
-    return fixed
 
 
 def fix_VRForLongitudinalTemporalInformationModified(ds: Dataset,

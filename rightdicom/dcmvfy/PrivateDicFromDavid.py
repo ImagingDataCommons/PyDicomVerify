@@ -139,8 +139,7 @@ add_private_dict_entry(
     "Image ID Information Patient Name ID",
     '1')
 add_private_dict_entry(
-    "MERGE TECHNOLOGIES,
-    INC.",
+    "MERGE TECHNOLOGIES, INC.",
     0x00090000,
     'OB',
     "?",

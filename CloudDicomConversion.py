@@ -71,7 +71,7 @@ from pydicom.uid import(
 )
 from rightdicom.dcmfix import(
     # SUBMODULES
-    fix_frequent_errors,
+    specific_patches,
 )
 from typing import(
     # VARIABLES
@@ -130,21 +130,21 @@ def FixFile(dicom_file: str, dicom_fixed_file: str,
     ds = pydicom.read_file(dicom_file)
     # log_mine = []
     VER(dicom_file, log_david_pre)
-    fix_frequent_errors.priorfix_RemoveIllegalTags(ds, 'All', log_fix)
+    specific_patches.priorfix_RemoveIllegalTags(ds, 'All', log_fix)
     # (1)general fixes:
-    for ffix in dir(fix_frequent_errors):
+    for ffix in dir(specific_patches):
         if ffix.startswith("generalfix_"):
-            item = getattr(fix_frequent_errors, ffix)
+            item = getattr(specific_patches, ffix)
             if callable(item):
                 item(ds, log_fix)
     # (2)fix with verification:
-    fix_frequent_errors.fix_Trivials(ds, log_fix)
+    specific_patches.fix_Trivials(ds, log_fix)
     # (3)specific fixes:
-    for ffix in dir(fix_frequent_errors):
+    for ffix in dir(specific_patches):
         if ffix.startswith("fix_"):
             if ffix == "fix_Trivials":
                 continue
-            item = getattr(fix_frequent_errors, ffix)
+            item = getattr(specific_patches, ffix)
             if callable(item):
                 item(ds, log_fix)
     # fix_report = PrintLog(log_fix)
