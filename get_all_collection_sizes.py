@@ -3,7 +3,7 @@ from BigQueryStuff import create_all_tables,\
                           query_string_with_result
 from StorageBucketStuff import download_blob, upload_blob, exists_bucket,\
     list_blobs, create_bucket,empty_bukcet, delete_bucket
-import common_tools as ct
+import common.common_tools as ct
 import parallelization as pl
 
 

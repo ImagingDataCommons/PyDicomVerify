@@ -1,44 +1,83 @@
-import shutil
-from pydicom.uid import generate_uid
-import pydicom
-import re
-import os
-import psutil
-import fix_frequent_errors
-import pydicom.charset
-import time
-from queue import Queue
-from datetime import timedelta
-import common_tools as ctools
-import conversion as conv
 import json
-from datetime import datetime
-from typing import List, Tuple
 import logging
 import logging.config
-from highdicom.legacy.sop import FrameSetCollection
-from DicomStoreStuff import (
-    create_dataset, exists_dataset, exists_dicom_store, create_dicom_store,
-    import_dicom_bucket, export_dicom_instance_bigquery)
-from parallelization import (ProcessPool, MAX_NUMBER_OF_THREADS,
-                             install_mp_handler, Periodic)
-from BigQueryStuff import (
-    create_all_tables,
-    query_string,
-    query_string_with_result)
-from StorageBucketStuff import (
-    download_blob,
-    upload_blob,
-    create_bucket,
-    )
-from dicom_fix_issue_info import (
+import os
+import psutil
+import pydicom
+import shutil
+import time
+import common.common_tools as ctools
+import conversion as conv
+from common.parallelization import(
+    # FUNCTIONS
+    install_mp_handler,
+    # CLASSES
+    Periodic,
+    ProcessPool,
+    # VARIABLES
+    MAX_NUMBER_OF_THREADS,
+)
+from datetime import(
+    # CLASSES
+    datetime,
+    time,
+    timedelta,
+    # VARIABLES
+    datetime,
+    time,
+    timedelta,
+)
+from dicom_fix_issue_info import(
+    # CLASSES
+    DataInfo,
+    Datalet,
+    DicomFileInfo,
     FixCollection,
     IssueCollection,
-    Datalet,
-    DataInfo,
-    DicomFileInfo,
-    PerformanceMeasure, ProcessPerformance
-    )
+    PerformanceMeasure,
+    ProcessPerformance,
+)
+from gcloud.BigQueryStuff import(
+    # FUNCTIONS
+    create_all_tables,
+    create_dataset,
+    query_string,
+    query_string_with_result,
+)
+from gcloud.DicomStoreStuff import(
+    # FUNCTIONS
+    create_dataset,
+    create_dicom_store,
+    exists_dataset,
+    exists_dicom_store,
+    export_dicom_instance_bigquery,
+    import_dicom_bucket,
+)
+from gcloud.StorageBucketStuff import(
+    # FUNCTIONS
+    create_bucket,
+    download_blob,
+    upload_blob,
+)
+from highdicom.legacy.sop import(
+    # CLASSES
+    FrameSetCollection,
+    # VARIABLES
+    logger,
+)
+from pydicom.uid import(
+    # FUNCTIONS
+    generate_uid,
+)
+from rightdicom.dcmfix import(
+    # SUBMODULES
+    specific_patches,
+)
+from typing import(
+    # VARIABLES
+    List,
+    Tuple,
+)
 # ---------------- Global Vars --------------------------:
 max_number_of_study_processes = 1
 max_number_of_fix_processes = MAX_NUMBER_OF_THREADS
@@ -46,7 +85,6 @@ max_number_of_up_down_load_processes = MAX_NUMBER_OF_THREADS
 max_number_of_bq_processes = MAX_NUMBER_OF_THREADS
 max_number_of_frameset_processes = MAX_NUMBER_OF_THREADS
 max_number_of_conversion_processes = MAX_NUMBER_OF_THREADS
-
 flaw_query_form = '''(
         "{}",-- COLLECTION_NAME
         "{}",-- STUDY_INSTANCE_UID
@@ -77,14 +115,14 @@ def VER(file: str, log: list):
     if file_name.endswith('.dcm'):
         file_name = file_name[:-4]
     dcm_verify = "/Users/afshin/Documents/softwares"\
-        "/dicom3tools/exe_20200430/dciodvfy"
+        "/dicom3tools/most_recent_exe/dciodvfy"
     if not os.path.exists(dcm_verify):
         dcm_verify = shutil.which('dciodvfy')
         if dcm_verify is None:
             print("Error: install dciodvfy into system path")
             assert(False)
-    ctools.RunExe([dcm_verify, '-filename', file], '', '', errlog=log)
-    # my_code_output = verify(file, False, '')
+    ctools.RunExe([dcm_verify, '-filename', file], '', '', errlog = log)
+    # my_code_output = verify_dicom(file, False, '')
 
 
 def FixFile(dicom_file: str, dicom_fixed_file: str,
@@ -92,21 +130,21 @@ def FixFile(dicom_file: str, dicom_fixed_file: str,
     ds = pydicom.read_file(dicom_file)
     # log_mine = []
     VER(dicom_file, log_david_pre)
-    fix_frequent_errors.priorfix_RemoveIllegalTags(ds, 'All', log_fix)
+    specific_patches.priorfix_RemoveIllegalTags(ds, 'All', log_fix)
     # (1)general fixes:
-    for ffix in dir(fix_frequent_errors):
+    for ffix in dir(specific_patches):
         if ffix.startswith("generalfix_"):
-            item = getattr(fix_frequent_errors, ffix)
+            item = getattr(specific_patches, ffix)
             if callable(item):
                 item(ds, log_fix)
     # (2)fix with verification:
-    fix_frequent_errors.fix_Trivials(ds, log_fix)
+    specific_patches.fix_Trivials(ds, log_fix)
     # (3)specific fixes:
-    for ffix in dir(fix_frequent_errors):
+    for ffix in dir(specific_patches):
         if ffix.startswith("fix_"):
             if ffix == "fix_Trivials":
                 continue
-            item = getattr(fix_frequent_errors, ffix)
+            item = getattr(specific_patches, ffix)
             if callable(item):
                 item(ds, log_fix)
     # fix_report = PrintLog(log_fix)
@@ -116,7 +154,7 @@ def FixFile(dicom_file: str, dicom_fixed_file: str,
 
 
 def BuildQueries(header: str, qs: list, dataset_id: str,
-                 return_: bool = True, processes: ProcessPool = None) -> list:
+                 return_: bool = True, processes: ProcessPool=None) -> list:
     logger = logging.getLogger(__name__)
     # m = re.search("\.(.*)\n", header)
     # if m is not None:
@@ -124,7 +162,7 @@ def BuildQueries(header: str, qs: list, dataset_id: str,
     # else:
     #     table_name = ''
     out_q = []
-    ch_limit = 1024*1000
+    ch_limit = 1024 * 1000
     row_limit = 1000
     elem_q = ''
     n = 0
@@ -197,7 +235,7 @@ def fix_one_instance(inst_info: DicomFileInfo,
         fx_inst_info.dicom_ds = {'dataset': fx_ds}
     except BaseException as err:
         logger.error(err, exc_info=True)
-        return ([], [], [], flaw_query_form.format(
+        return([], [], [], flaw_query_form.format(
             inst_info.bucket_name, inst_info.study_uid,
             inst_info.series_uid, inst_info.instance_uid, 'FIX'))
     fixes_all = FixCollection(
@@ -226,9 +264,8 @@ def fix_one_instance(inst_info: DicomFileInfo,
         fx_inst_info.file_path)
     origin_queries = fixed_input_relation.GetQuery(
         input_table_name,
-        fixed_table_name
-    )
-    return (fix_queries, issue_queries, origin_queries, '')
+        fixed_table_name)
+    return(fix_queries, issue_queries, origin_queries, '')
 
 
 def frameset_for_one_series(file_blob_pairs: List[DicomFileInfo],
@@ -253,7 +290,7 @@ def frameset_for_one_series(file_blob_pairs: List[DicomFileInfo],
     except BaseException as err:
         logger.error(err, exc_info=True)
         fs = []
-    return (fs, multi_frame_series_uid, multi_frame_series_folder)
+    return(fs, multi_frame_series_uid, multi_frame_series_folder)
 
 
 def extract_convert_framesets_for_bunch_of_studies(
@@ -276,8 +313,7 @@ def extract_convert_framesets_for_bunch_of_studies(
                     frameset_for_one_series,
                     (
                         file_blob_pairs,
-                        study_folder
-                    )
+                        study_folder)
                 )
             )
     frameset_processes.queue.join()
@@ -296,7 +332,7 @@ def extract_convert_framesets_for_bunch_of_studies(
                 'Now starting converting the framesets')
     conversion_processes = ProcessPool(
         max_number_of_conversion_processes, 'convert')
-    for (file_blob_pairs, prefix),\
+    for(file_blob_pairs, prefix), \
             (fsets, mf_series_uid, mf_series_dir) in results:
         if len(fsets) == 0:
             for file_blob in file_blob_pairs:
@@ -320,8 +356,7 @@ def extract_convert_framesets_for_bunch_of_studies(
                             mf_file_path,
                             mf_study_uid,
                             mf_series_uid,
-                            mf_instace_uid
-                        )
+                            mf_instace_uid)
                     )
                 )
     conversion_processes.queue.join()
@@ -350,22 +385,20 @@ def extract_convert_framesets_for_bunch_of_studies(
                 multiframe_log[1:], mf_table_name,
                 pr_ch.child_study_instance_uid,
                 pr_ch.child_series_instance_uid,
-                pr_ch.child_sop_instance_uid,)
+                pr_ch.child_sop_instance_uid, )
             issue_queries.extend(mf_issues.GetQuery())
             mf_blob_path = '{}/dicom/{}/{}/{}.dcm'.format(
                     mf_gc_info.Bucket.DataObject,
                     pr_ch.child_study_instance_uid,
                     pr_ch.child_series_instance_uid,
-                    pr_ch.child_series_instance_uid
-                )
+                    pr_ch.child_series_instance_uid)
             upload_blobfile_pairs.append(DicomFileInfo(
                 mf_gc_info.Bucket.ProjectID,
                 mf_gc_info.Bucket.Dataset,
                 mf_blob_path, pr_ch.child_dicom_file,
                 pr_ch.child_study_instance_uid,
                 pr_ch.child_series_instance_uid,
-                pr_ch.child_sop_instance_uid
-            ))
+                pr_ch.child_sop_instance_uid))
     frameset_perf = PerformanceMeasure(
         number_of_all_framesets, frameset_elapsed_time, '(frameset)')
     mf_perf = PerformanceMeasure(
@@ -374,7 +407,7 @@ def extract_convert_framesets_for_bunch_of_studies(
     logger.info(
         '\tfinished conversion to multi-frame '
         'instances first {} then {}'.format(str(frameset_perf), str(mf_perf)))
-    return (issue_queries, origin_queries, upload_blobfile_pairs, flaw_queries,
+    return(issue_queries, origin_queries, upload_blobfile_pairs, flaw_queries,
             frameset_perf, mf_perf)
 
 
@@ -387,7 +420,6 @@ def fix_bunch_of_studies(inst_infos: List[DicomFileInfo],
          len(inst_infos))
          )
     tic = time.time()
-
     # Get table neames for populating bigquery tables:
     in_table_name = in_gc_info.BigQuery.GetBigQueryStyleAddress(False)
     fx_table_name = fx_gc_info.BigQuery.GetBigQueryStyleAddress(False)
@@ -410,8 +442,7 @@ def fix_bunch_of_studies(inst_infos: List[DicomFileInfo],
                 (
                     obj,
                     fx_obj,
-                    in_table_name, fx_table_name
-                )
+                    in_table_name, fx_table_name)
             )
         )
     # wait for all fix processes to finish
@@ -434,6 +465,7 @@ def fix_bunch_of_studies(inst_infos: List[DicomFileInfo],
     origin_queries = []
     flaw_queries = []
     study_series_dict = {}
+
     defected_study_series = []
     fx_blob_form = '{}/dicom/{{}}/{{}}/{{}}.dcm'.format(
         fx_gc_info.Bucket.DataObject)
@@ -453,7 +485,7 @@ def fix_bunch_of_studies(inst_infos: List[DicomFileInfo],
             flaw_queries.append(flaw)
             defected_study_series.append(
                 (fx_file_info.study_uid, fx_file_info.series_uid))
-    study_series_dict, st_count, se_count, inst_count =\
+    study_series_dict, st_count, se_count, inst_count = \
         organiase_file_blob_infos(single_frames)
     for study, series in defected_study_series:
         logger.info(
@@ -463,12 +495,12 @@ def fix_bunch_of_studies(inst_infos: List[DicomFileInfo],
         if study in study_series_dict:
             if series in study_series_dict[study]:
                 del study_series_dict[study][series]
-    return (fix_queries, issue_queries,
+    return(fix_queries, issue_queries,
             origin_queries, study_series_dict, flaw_queries, performance)
 
 
 def down_up_load_files_form_google_cloud(blob_file_pairs: List[DicomFileInfo],
-                                         download: bool = True):
+                                         download: bool=True):
     if download:
         prifix = 'dn-load'
         function = download_blob
@@ -488,15 +520,14 @@ def down_up_load_files_form_google_cloud(blob_file_pairs: List[DicomFileInfo],
                     obj.project_id,
                     obj.bucket_name,
                     obj.blob_address,
-                    obj.file_path
-                )
+                    obj.file_path)
             )
         )
     load_processes.queue.join()
     load_processes.kill_them_all()
     results = []
-    for (poj, buck, b, f), (success) in load_processes.output:
-        results.append((blob_dict[b], success,))
+    for(poj, buck, b, f), (success) in load_processes.output:
+        results.append((blob_dict[b], success, ))
     return results
 
 
@@ -516,7 +547,7 @@ def organiase_file_blob_infos(file_blob_list: list):
             se_count += 1
             st_count += 1
             output[f.study_uid] = {f.series_uid: [f]}
-    return (output, st_count, se_count, inst_count)
+    return(output, st_count, se_count, inst_count)
 
 
 def download_bunch_of_studies(blob_file_pairs: List[DicomFileInfo]) -> tuple:
@@ -534,7 +565,7 @@ def download_bunch_of_studies(blob_file_pairs: List[DicomFileInfo]) -> tuple:
             size_measure.queue.put(
                 (
                     os.path.getsize,
-                    (bl.file_path,)
+                    (bl.file_path, )
                 )
             )
     size_measure.queue.join()
@@ -570,6 +601,7 @@ def download_bunch_of_studies(blob_file_pairs: List[DicomFileInfo]) -> tuple:
     #     del study_series_dict[st_uid][se_uid]
     # return (study_series_dict, flaw_queries,
     #         PerformanceMeasure(downloaded_size, download_elapsed_time,))
+
     defected_series = []
     downloaded_blobs = []
     flaw_queries = []
@@ -579,11 +611,11 @@ def download_bunch_of_studies(blob_file_pairs: List[DicomFileInfo]) -> tuple:
                 bl.bucket_name, bl.study_uid, bl.series_uid,
                 bl.instance_uid, 'DOWNLOAD')
             )
-            defected_series.append((bl.study_uid, bl.series_uid,))
+            defected_series.append((bl.study_uid, bl.series_uid, ))
         else:
             downloaded_blobs.append(bl)
-    return (downloaded_blobs, flaw_queries,
-            PerformanceMeasure(downloaded_size, download_elapsed_time,))
+    return(downloaded_blobs, flaw_queries,
+            PerformanceMeasure(downloaded_size, download_elapsed_time, ))
 
 
 def fix_conver_one_series(inst_infos: List[DicomFileInfo],
@@ -598,6 +630,7 @@ def fix_conver_one_series(inst_infos: List[DicomFileInfo],
     fix_queries = []
     origin_queries = []
     flaw_queries = []
+
     defected_study_series = []
     upload_blobfile_pairs = []
     fx_blob_form = '{}/dicom/{{}}/{{}}/{{}}.dcm'.format(
@@ -613,8 +646,7 @@ def fix_conver_one_series(inst_infos: List[DicomFileInfo],
         (fix_q, iss_q, org_q, flaw) = fix_one_instance(
             obj,
             fx_obj,
-            in_table_name, fx_table_name
-        )
+            in_table_name, fx_table_name)
         if flaw == '':
             fix_queries.extend(fix_q)
             issue_queries.extend(iss_q)
@@ -629,14 +661,13 @@ def fix_conver_one_series(inst_infos: List[DicomFileInfo],
                 (fx_obj.study_uid, fx_obj.series_uid))
     # The code is not gonna proceed to conversion if there is any fix issue
     if len(flaw_queries) != 0:
-        return ([], [], [], [], flaw_queries, 0, 0)
+        return([], [], [], [], flaw_queries, 0, 0)
     # Now I want to extract framesets from fixed sereis:
     study_uid = inst_infos[0].study_uid
     study_folder = mf_local_study_path.format(study_uid)
     (fsets, mf_series_uid, mf_series_dir) = frameset_for_one_series(
         single_frames,
-        study_folder
-    )
+        study_folder)
     number_of_all_converted_mf = 0
     if len(fsets) == 0:
         for file_blob in single_frames:
@@ -659,8 +690,7 @@ def fix_conver_one_series(inst_infos: List[DicomFileInfo],
                 mf_file_path,
                 mf_study_uid,
                 mf_series_uid,
-                mf_instace_uid
-            )
+                mf_instace_uid)
             if pr_ch is None:
                 for fr in fset.Frames:
                     st_id = fr.StudyInstanceUID
@@ -680,24 +710,21 @@ def fix_conver_one_series(inst_infos: List[DicomFileInfo],
                     multiframe_log[1:], mf_table_name,
                     pr_ch.child_study_instance_uid,
                     pr_ch.child_series_instance_uid,
-                    pr_ch.child_sop_instance_uid,)
+                    pr_ch.child_sop_instance_uid, )
                 issue_queries.extend(mf_issues.GetQuery())
                 mf_blob_path = '{}/dicom/{}/{}/{}.dcm'.format(
                         mf_gc_info.Bucket.DataObject,
                         pr_ch.child_study_instance_uid,
                         pr_ch.child_series_instance_uid,
-                        pr_ch.child_series_instance_uid
-                    )
+                        pr_ch.child_series_instance_uid)
                 upload_blobfile_pairs.append(DicomFileInfo(
                     mf_gc_info.Bucket.ProjectID,
                     mf_gc_info.Bucket.Dataset,
                     mf_blob_path, pr_ch.child_dicom_file,
                     pr_ch.child_study_instance_uid,
                     pr_ch.child_series_instance_uid,
-                    pr_ch.child_sop_instance_uid
-                ))
-
-    return (fix_queries, issue_queries, origin_queries,
+                    pr_ch.child_sop_instance_uid))
+    return(fix_queries, issue_queries, origin_queries,
             upload_blobfile_pairs, flaw_queries,
             len(fsets), number_of_all_converted_mf)
 
@@ -711,7 +738,7 @@ def fix_convert_bunch_of_studies(inst_infos: List[DicomFileInfo],
         "\tStart (fix+convert)ing bunch of studies containing {} instances".format(
          len(inst_infos))
          )
-    study_series_dict, st_count, se_count, inst_count =\
+    study_series_dict, st_count, se_count, inst_count = \
         organiase_file_blob_infos(inst_infos)
     tic = time.time()
     number_of_processes = min(max_number_of_fix_processes, se_count)
@@ -743,8 +770,7 @@ def fix_convert_bunch_of_studies(inst_infos: List[DicomFileInfo],
             fx_qr, iss_qr, orig_qr,
             blobfile_pairs, flaw_qr,
             number_of_framesets,
-            number_of_all_converted_mf
-        ) = outs
+            number_of_all_converted_mf) = outs
         fix_queries.extend(fx_qr)
         issue_queries.extend(iss_qr)
         origin_queries.extend(orig_qr)
@@ -760,7 +786,7 @@ def fix_convert_bunch_of_studies(inst_infos: List[DicomFileInfo],
     logger.info("\t\t\tFixes                 -> {}".format(fx_perf))
     logger.info("\t\t\tFrmeset extraction    -> {}".format(frameset_perf))
     logger.info("\t\t\tMultiframe conversion -> {}".format(mf_perf))
-    return (fix_queries, issue_queries, origin_queries, flaw_queries,
+    return(fix_queries, issue_queries, origin_queries, flaw_queries,
             upload_blobfile_pairs, fx_perf, frameset_perf, mf_perf)
 
 
@@ -770,7 +796,7 @@ def download_fix_convert_upload_one_sereis(
         mf_local_study_path: str,
         in_gc_info, fx_gc_info, mf_gc_info):
     if len(inst_infos) <= 1:
-        return ([], [], [], [], 0, 0, 0, 0, 0, 0)
+        return([], [], [], [], 0, 0, 0, 0, 0, 0)
     in_table_name = in_gc_info.BigQuery.GetBigQueryStyleAddress(False)
     fx_table_name = fx_gc_info.BigQuery.GetBigQueryStyleAddress(False)
     mf_table_name = mf_gc_info.BigQuery.GetBigQueryStyleAddress(False)
@@ -779,12 +805,12 @@ def download_fix_convert_upload_one_sereis(
     fix_queries = []
     origin_queries = []
     flaw_queries = []
+
     defected_study_series = []
     downloaded_files_size = 0
     fixed_files_size = 0
     mf_files_size = 0
     upload_files_size = 0
-
     fx_blob_form = '{}/dicom/{{}}/{{}}/{{}}.dcm'.format(
         fx_gc_info.Bucket.DataObject)
     for obj in inst_infos:
@@ -792,8 +818,7 @@ def download_fix_convert_upload_one_sereis(
             in_gc_info.Bucket.ProjectID,
             obj.bucket_name,
             obj.blob_address,
-            obj.file_path
-        )
+            obj.file_path)
         downloaded_files_size += os.path.getsize(obj.file_path)
         if not success:
             flaw_queries.append(flaw_query_form.format(
@@ -801,7 +826,7 @@ def download_fix_convert_upload_one_sereis(
                     obj.series_uid, obj.instance_uid,
                     'DOWNLOAD')
                 )
-            return ([], [], [], flaw_queries, 0, 0,
+            return([], [], [], flaw_queries, 0, 0,
                     downloaded_files_size, fixed_files_size,
                     mf_files_size, upload_files_size)
         # I'm using downloaded file uids for fix files
@@ -814,8 +839,7 @@ def download_fix_convert_upload_one_sereis(
         (fix_q, iss_q, org_q, flaw) = fix_one_instance(
             obj,
             fx_obj,
-            in_table_name, fx_table_name
-        )
+            in_table_name, fx_table_name)
         if flaw == '':
             fix_queries.extend(fix_q)
             issue_queries.extend(iss_q)
@@ -828,8 +852,7 @@ def download_fix_convert_upload_one_sereis(
                 fx_gc_info.Bucket.ProjectID,
                 fx_gc_info.Bucket.Dataset,
                 fx_obj.blob_address,
-                fx_file
-            )
+                fx_file)
             fixed_files_size += os.path.getsize(fx_obj.file_path)
             if not success:
                 flaw_queries.append(flaw_query_form.format(
@@ -845,7 +868,7 @@ def download_fix_convert_upload_one_sereis(
                 (fx_obj.study_uid, fx_obj.series_uid))
     # The code is not gonna proceed to conversion if there is any fix issue
     if len(flaw_queries) != 0:
-        return ([], [], [], flaw_queries, 0, 0,
+        return([], [], [], flaw_queries, 0, 0,
                 downloaded_files_size, fixed_files_size,
                 mf_files_size, upload_files_size)
     # Now I want to extract framesets from fixed sereis:
@@ -853,8 +876,7 @@ def download_fix_convert_upload_one_sereis(
     study_folder = mf_local_study_path.format(study_uid)
     (fsets, mf_series_uid, mf_series_dir) = frameset_for_one_series(
         single_frames,
-        study_folder
-    )
+        study_folder)
     fx_series_dir = os.path.dirname(single_frames[0].file_path)
     in_series_dir = os.path.dirname(inst_infos[0].file_path)
     number_of_all_converted_mf = 0
@@ -878,8 +900,7 @@ def download_fix_convert_upload_one_sereis(
                 mf_file_path,
                 mf_study_uid,
                 mf_series_uid,
-                mf_instace_uid
-            )
+                mf_instace_uid)
             if pr_ch is None:
                 for fr in fset.Frames:
                     st_id = fr.StudyInstanceUID
@@ -900,14 +921,13 @@ def download_fix_convert_upload_one_sereis(
                     multiframe_log[1:], mf_table_name,
                     pr_ch.child_study_instance_uid,
                     pr_ch.child_series_instance_uid,
-                    pr_ch.child_sop_instance_uid,)
+                    pr_ch.child_sop_instance_uid, )
                 issue_queries.extend(mf_issues.GetQuery())
                 mf_blob_path = '{}/dicom/{}/{}/{}.dcm'.format(
                         mf_gc_info.Bucket.DataObject,
                         pr_ch.child_study_instance_uid,
                         pr_ch.child_series_instance_uid,
-                        pr_ch.child_series_instance_uid
-                    )
+                        pr_ch.child_series_instance_uid)
                 success = upload_blob(
                     mf_gc_info.Bucket.ProjectID,
                     mf_gc_info.Bucket.Dataset,
@@ -922,8 +942,7 @@ def download_fix_convert_upload_one_sereis(
                     upload_files_size += os.path.getsize(pr_ch.child_dicom_file)
     # Now I can remove the series:
     rm((in_series_dir, fx_series_dir, mf_series_dir), False)
-
-    return (fix_queries, issue_queries, origin_queries, flaw_queries,
+    return(fix_queries, issue_queries, origin_queries, flaw_queries,
             len(fsets), number_of_all_converted_mf,
             downloaded_files_size, fixed_files_size,
             mf_files_size, upload_files_size)
@@ -931,7 +950,7 @@ def download_fix_convert_upload_one_sereis(
 
 def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
                             in_gc_info, fx_gc_info, mf_gc_info,
-                            max_number: int = 2**63 - 1) -> ProcessPerformance:
+                            max_number: int=2 ** 63 - 1) -> ProcessPerformance:
     logger = logging.getLogger(__name__)
     fx_sub_dir = 'FIXED'
     mf_sub_dir = 'MULTIFRAME'
@@ -969,8 +988,7 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
                 if number_of_inst > max_number_of_instances:
                     break
                 blob_address = blob_address_pattern.format(
-                    study_uid, series_uid, instance_uid
-                )
+                    study_uid, series_uid, instance_uid)
                 file_path = os.path.join(
                     series_local_folder, '{}.dcm'.format(instance_uid))
                 input_blob_file_pairs.append(
@@ -981,8 +999,7 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
                         file_path,
                         study_uid,
                         series_uid,
-                        instance_uid
-                    ))
+                        instance_uid))
     # ----> download, fix, convert, upload series:
     fix_queries = []
     issue_queries = []
@@ -994,16 +1011,14 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
     fixed_files_size = 0
     mf_files_size = 0
     uploaded_files_size = 0
-    study_series_dict, st_count, se_count, inst_count =\
+    study_series_dict, st_count, se_count, inst_count = \
         organiase_file_blob_infos(input_blob_file_pairs)
     proc_num = min(se_count, max_number_of_fix_processes)
-
     logger.info(
         'Chunk containing {} studies, {} series and, {} instances'.format(
             st_count, se_count, inst_count))
     logger.info('Starting {} = min({}, {}) parallel subprocesses'.format(
-        proc_num, se_count, max_number_of_fix_processes
-    ))
+        proc_num, se_count, max_number_of_fix_processes))
     jobs = []
     q_sz = 0
     max_q_cap = 4 * proc_num
@@ -1021,8 +1036,7 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
                             in_folder, '/{}', '/{}'.format(fx_sub_dir)),
                         '{}{}{}'.format(
                             in_folder, '/{}', '/{}'.format(mf_sub_dir)),
-                        in_gc_info, fx_gc_info, mf_gc_info
-                    )
+                        in_gc_info, fx_gc_info, mf_gc_info)
                 )
             )
             q_sz += 1
@@ -1059,7 +1073,6 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
     logger.info('fix      {} or {}'.format(fx_perfs, fx_perfs_sz))
     logger.info('convert  {} or {}'.format(mf_perfs, mf_perfs_sz))
     logger.info('upload   {}'.format(ul_perfs))
-
     # --> Populate big query tables:
     # -------------------------------
     dataset_id = '{}.{}'.format(
@@ -1076,29 +1089,25 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
             FixCollection.GetQueryHeader(),
             fix_queries,
             dataset_id, False,
-            big_q_processes
-            )
+            big_q_processes)
     if len(issue_queries) != 0:
         BuildQueries(
             IssueCollection.GetQueryHeader(),
             issue_queries,
             dataset_id, False,
-            big_q_processes
-            )
+            big_q_processes)
     if len(origin_queries) != 0:
         BuildQueries(
             conv.ParentChildDicoms.GetQueryHeader(),
             origin_queries,
             dataset_id, False,
-            big_q_processes
-            )
+            big_q_processes)
     if len(flaw_queries) != 0:
         BuildQueries(
             "INSERT INTO `{0}`.DEFECTED VALUES {1};",
             flaw_queries,
             dataset_id, False,
-            big_q_processes
-            )
+            big_q_processes)
     big_q_processes.queue.join()
     big_q_processes.kill_them_all()
     toc = time.time()
@@ -1133,7 +1142,7 @@ def upload_bunch_of_studies(blob_file_pairs: List[DicomFileInfo]) -> list:
     size_measure.kill_them_all()
     uploaded_size = 0
     for arg, sz in size_measure.output:
-        uploaded_size += sz 
+        uploaded_size += sz
     # Prepare the output
     # ----------------------------------
     flaw_queries = []
@@ -1144,13 +1153,13 @@ def upload_bunch_of_studies(blob_file_pairs: List[DicomFileInfo]) -> list:
                 blob_file_info.series_uid, blob_file_info.instance_uid,
                 'UPLOAD')
             )
-    return (flaw_queries,
+    return(flaw_queries,
             PerformanceMeasure(uploaded_size, upload_elapsed_time))
 
 
 def process_bunche_of_studies(in_folder: str, studies_chunk: List[Tuple],
                               in_gc_info, fx_gc_info, mf_gc_info,
-                              max_number: int = 2**63 - 1) -> int:
+                              max_number: int=2 ** 63 - 1) -> int:
     logger = logging.getLogger(__name__)
     number_of_inst_in_study = 0
     fx_sub_dir = 'FIXED'
@@ -1189,8 +1198,7 @@ def process_bunche_of_studies(in_folder: str, studies_chunk: List[Tuple],
                 if number_of_inst > max_number_of_instances:
                     break
                 blob_address = blob_address_pattern.format(
-                    study_uid, series_uid, instance_uid
-                )
+                    study_uid, series_uid, instance_uid)
                 file_path = os.path.join(
                     series_local_folder, '{}.dcm'.format(instance_uid))
                 input_blob_file_pairs.append(
@@ -1201,12 +1209,10 @@ def process_bunche_of_studies(in_folder: str, studies_chunk: List[Tuple],
                         file_path,
                         study_uid,
                         series_uid,
-                        instance_uid
-                    ))
-    
+                        instance_uid))
     # --> Starting download
     # -------------------------------
-    downloaded_files, defected_queries, download_measure =\
+    downloaded_files, defected_queries, download_measure = \
         download_bunch_of_studies(
             input_blob_file_pairs)
     # --> Fix and convert all  downloaded files
@@ -1239,10 +1245,7 @@ def process_bunche_of_studies(in_folder: str, studies_chunk: List[Tuple],
         in_gc_info, fx_gc_info, mf_gc_info)
     (
         fix_queries, issue_queries, origin_queries, flaw_queries,
-        upload_blobfile_pairs, fix_perf, frameset_perf, mf_perf
-
-    ) = fx_mf_results
-
+        upload_blobfile_pairs, fix_perf, frameset_perf, mf_perf) = fx_mf_results
     # --> Multiprocess uploading the data
     # -------------------------------
     upload_flawed_queries, upload_measure = upload_bunch_of_studies(
@@ -1263,29 +1266,25 @@ def process_bunche_of_studies(in_folder: str, studies_chunk: List[Tuple],
             FixCollection.GetQueryHeader(),
             fix_queries,
             dataset_id, False,
-            big_q_processes
-            )
+            big_q_processes)
     if len(issue_queries) != 0:
         BuildQueries(
             IssueCollection.GetQueryHeader(),
             issue_queries,
             dataset_id, False,
-            big_q_processes
-            )
+            big_q_processes)
     if len(origin_queries) != 0:
         BuildQueries(
             conv.ParentChildDicoms.GetQueryHeader(),
             origin_queries,
             dataset_id, False,
-            big_q_processes
-            )
+            big_q_processes)
     if len(flaw_queries) != 0:
         BuildQueries(
             "INSERT INTO `{0}`.DEFECTED VALUES {1};",
             flaw_queries,
             dataset_id, False,
-            big_q_processes
-            )
+            big_q_processes)
     big_q_processes.queue.join()
     big_q_processes.kill_them_all()
     toc = time.time()
@@ -1301,10 +1300,10 @@ def process_bunche_of_studies(in_folder: str, studies_chunk: List[Tuple],
                 big_query_measure)
 
 
-def rm(folders, log: bool = True):
+def rm(folders, log: bool=True):
     # print(folders)
     if type(folders) == str:
-        folders = (folders,)
+        folders = (folders, )
     for a in folders:
         if os.path.exists(a):
             if log:
@@ -1340,14 +1339,13 @@ def partition_series(series_dict: dict, from_the_last: int):
             fist_part[key] = val
         else:
             second_part[key] = val
-    return (fist_part, second_part)
+    return(fist_part, second_part)
 
 
 def main(number_of_processes: int = None,
-         rough_series_count_in_chunk: int = 600 ):
+         rough_series_count_in_chunk: int=600):
     if number_of_processes is None:
         number_of_processes = MAX_NUMBER_OF_THREADS
-
     # StudyProcess.initialize_statics()
     global max_number_of_fix_processes
     global max_number_of_up_down_load_processes
@@ -1432,9 +1430,9 @@ def main(number_of_processes: int = None,
         mf_dicoms.Bucket.ProjectID,
         mf_dicoms.Bucket.Dataset,
         False)
-    max_number = 2**63 - 1
+    max_number = 2 ** 63 - 1
     # max_number = 70
-    if max_number < 2**63 - 1:
+    if max_number < 2 ** 63 - 1:
         limit_q = 'LIMIT 50000'
     else:
         limit_q = ''
@@ -1472,7 +1470,6 @@ def main(number_of_processes: int = None,
     number_of_inst_processed = 1
     whole_performace = None
     number_of_st_processed = 1
-
     if studies is not None:
         for row in studies:
             stuid = row.STUDYINSTANCEUID
@@ -1489,8 +1486,7 @@ def main(number_of_processes: int = None,
         number_of_all_studies = min(len(uids), max_number_of_studies)
         max_study_count_in_chunk = 300
         max_series_count_in_chunk = (
-            rough_series_count_in_chunk // number_of_processes
-            ) * number_of_processes
+            rough_series_count_in_chunk // number_of_processes) * number_of_processes
         series_chunk_count = 0
         study_chunk = []
         study_uids = []
@@ -1517,8 +1513,7 @@ def main(number_of_processes: int = None,
                         local_tmp_folder,
                         study_chunk,
                         in_dicoms, fx_dicoms, mf_dicoms,
-                        max_number
-                    )
+                        max_number)
                     performance_history.append(perf)
                     number_of_inst_processed += perf.fix.size
                     if whole_performace is None:
@@ -1534,13 +1529,11 @@ def main(number_of_processes: int = None,
                 time_point = time.time()
                 time_elapsed = round(time_point - start_time)
                 time_left = round(
-                    number_of_all_inst - number_of_inst_processed
-                    ) * time_elapsed / float(number_of_inst_processed)
+                    number_of_all_inst - number_of_inst_processed) * time_elapsed / float(number_of_inst_processed)
                 header = '{}/{})Study = ({}/{}) instances was fix/'\
                     'convert-ed successfully'.format(
                         number_of_st_processed, number_of_all_studies,
-                        number_of_inst_processed, number_of_all_inst
-                    )
+                        number_of_inst_processed, number_of_all_inst)
                 logger.info(header)
                 for st in study_uids:
                     logger.info('\t\t\t{}'.format(st))
@@ -1568,8 +1561,7 @@ def main(number_of_processes: int = None,
         fx_dicoms.DicomStore.DataObject,
         fx_dicoms.Bucket.ProjectID,
         fx_dicoms.Bucket.Dataset,
-        fx_dicoms.Bucket.DataObject
-        )
+        fx_dicoms.Bucket.DataObject)
     import_dicom_bucket(
         mf_dicoms.DicomStore.ProjectID,
         mf_dicoms.DicomStore.CloudRegion,
@@ -1577,8 +1569,7 @@ def main(number_of_processes: int = None,
         mf_dicoms.DicomStore.DataObject,
         mf_dicoms.Bucket.ProjectID,
         mf_dicoms.Bucket.Dataset,
-        mf_dicoms.Bucket.DataObject
-        )
+        mf_dicoms.Bucket.DataObject)
     export_dicom_instance_bigquery(
         fx_dicoms.DicomStore.ProjectID,
         fx_dicoms.DicomStore.CloudRegion,
@@ -1597,7 +1588,6 @@ def main(number_of_processes: int = None,
         mf_dicoms.BigQuery.DataObject)
     # Wait unitl populating bigquery stops
     status_logger.kill_timer()
-
 # th = list(range(8, 256, 8))
 # th = 88
 # th = 35
@@ -1606,3 +1596,4 @@ def main(number_of_processes: int = None,
 #     chunk *= 2
 #     main(th, ch)
 main(88, 1000)
+
