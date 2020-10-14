@@ -1,16 +1,19 @@
 from googleapiclient import discovery
 import json
+import logging
 
 def get_client():
     """Returns an authorized API client by discovering the Healthcare API and
     creating a service object using the service account credentials in the
     GOOGLE_APPLICATION_CREDENTIALS environment variable."""
+    logger = logging.getLogger(__name__)
     api_version = "v1"
     service_name = "healthcare"
     return discovery.build(service_name, api_version)
 
 def create_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id):
     """Creates a new DICOM store within the parent dataset."""
+    logger = logging.getLogger(__name__)
     client = get_client()
     dicom_store_parent = "projects/{}/locations/{}/datasets/{}".format(
         project_id, cloud_region, dataset_id
@@ -23,11 +26,21 @@ def create_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id):
         .create(parent=dicom_store_parent, body={}, dicomStoreId=dicom_store_id)
     )
     response = request.execute()
-    print("Created DICOM store: {}".format(dicom_store_id))
+    logger.info("Created DICOM store: {}".format(dicom_store_id))
     return response
+
+def create_or_replace_dicom_store(
+        project_id, cloud_region, dataset_id, dicom_store_id):
+    if exists_dicom_store(
+            project_id, cloud_region, dataset_id, dicom_store_id):
+        delete_dicom_store(
+            project_id, cloud_region, dataset_id, dicom_store_id)
+    create_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id)
+
 
 def delete_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id):
     """Deletes the specified DICOM store."""
+    logger = logging.getLogger(__name__)
     client = get_client()
     dicom_store_parent = "projects/{}/locations/{}/datasets/{}".format(
         project_id, cloud_region, dataset_id
@@ -41,11 +54,12 @@ def delete_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id):
         .delete(name=dicom_store_name)
     )
     response = request.execute()
-    print("Deleted DICOM store: {}".format(dicom_store_id))
+    logger.info("Deleted DICOM store: {}".format(dicom_store_id))
     return response
 
 def get_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id):
     """Gets the specified DICOM store."""
+    logger = logging.getLogger(__name__)
     client = get_client()
     dicom_store_parent = "projects/{}/locations/{}/datasets/{}".format(
         project_id, cloud_region, dataset_id
@@ -53,11 +67,12 @@ def get_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id):
     dicom_store_name = "{}/dicomStores/{}".format(dicom_store_parent, dicom_store_id)
     dicom_stores = client.projects().locations().datasets().dicomStores()
     dicom_store = dicom_stores.get(name=dicom_store_name).execute()
-    print(json.dumps(dicom_store, indent=2))
+    logger.info(json.dumps(dicom_store, indent=2))
     return dicom_store
 
 def list_dicom_stores(project_id, cloud_region, dataset_id):
     """Lists the DICOM stores in the given dataset."""
+    logger = logging.getLogger(__name__)
     client = get_client()
     dicom_store_parent = "projects/{}/locations/{}/datasets/{}".format(
         project_id, cloud_region, dataset_id
@@ -72,11 +87,12 @@ def list_dicom_stores(project_id, cloud_region, dataset_id):
         .get("dicomStores", [])
     )
     for dicom_store in dicom_stores:
-        print(dicom_store)
+        logger.info(dicom_store)
     return dicom_stores
 
 def exists_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id):
     """Lists the DICOM stores in the given dataset."""
+    logger = logging.getLogger(__name__)
     client = get_client()
     dicom_store_parent = "projects/{}/locations/{}/datasets/{}".format(
         project_id, cloud_region, dataset_id
@@ -99,6 +115,7 @@ def patch_dicom_store(
     project_id, cloud_region, dataset_id, dicom_store_id, pubsub_topic
 ):
     """Updates the DICOM store."""
+    logger = logging.getLogger(__name__)
     client = get_client()
     dicom_store_parent = "projects/{}/locations/{}/datasets/{}".format(
         project_id, cloud_region, dataset_id
@@ -117,7 +134,7 @@ def patch_dicom_store(
         .patch(name=dicom_store_name, updateMask="notificationConfig", body=patch)
     )
     response = request.execute()
-    print(
+    logger.info(
         "Patched DICOM store {} with Cloud Pub/Sub topic: {}".format(
             dicom_store_id, pubsub_topic
         )
@@ -154,7 +171,7 @@ def export_dicom_instance_bigquery(
         .export(name=dicom_store_name, body=body)
     )
     response = request.execute()
-    # print("Exported DICOM instances to bigquery: bq://{}".format(uri_prefix))
+    # logger.info("Exported DICOM instances to bigquery: bq://{}".format(uri_prefix))
     return response
 
 def export_dicom_instance(
@@ -162,6 +179,7 @@ def export_dicom_instance(
 ):
     """Export data to a Google Cloud Storage bucket by copying
     it from the DICOM store."""
+    logger = logging.getLogger(__name__)
     client = get_client()
     dicom_store_parent = "projects/{}/locations/{}/datasets/{}".format(
         project_id, cloud_region, dataset_id
@@ -176,7 +194,7 @@ def export_dicom_instance(
         .export(name=dicom_store_name, body=body)
     )
     response = request.execute()
-    print("Exported DICOM instances to bucket: gs://{}".format(uri_prefix))
+    logger.info("Exported DICOM instances to bucket: gs://{}".format(uri_prefix))
     return response
 
 def import_dicom_bucket(
@@ -186,7 +204,8 @@ def import_dicom_bucket(
     bucket_project_id,
     bucket_name,
     sub_bucket_name=None
-):
+    ):
+    logger = logging.getLogger(__name__)
     client = get_client()
     dicom_store_parent = "projects/{}/locations/{}/datasets/{}".format(
         dicom_dataset_project_id, dicom_dataset_cloud_region, dicom_dataset_id
@@ -202,7 +221,7 @@ def import_dicom_bucket(
         .import_(name=dicom_store_name, body=body)
     )
     response = request.execute()
-    print("Imported DICOM instance: {}".format(bucket_name))
+    logger.info("Imported DICOM instance: {}".format(bucket_name))
     return response
 
 
@@ -212,6 +231,7 @@ def import_dicom_instance(
     """Import data into the DICOM store by copying it from the specified
     source.
     """
+    logger = logging.getLogger(__name__)
     client = get_client()
     dicom_store_parent = "projects/{}/locations/{}/datasets/{}".format(
         project_id, cloud_region, dataset_id
@@ -226,51 +246,55 @@ def import_dicom_instance(
         .import_(name=dicom_store_name, body=body)
     )
     response = request.execute()
-    print("Imported DICOM instance: {}".format(content_uri))
+    logger.info("Imported DICOM instance: {}".format(content_uri))
     return response
 
 def create_dataset(project_id, cloud_region, dataset_id):
     """Creates a dataset."""
+    logger = logging.getLogger(__name__)
     client = get_client()
     dataset_parent = 'projects/{}/locations/{}'.format(
         project_id, cloud_region)
     request = client.projects().locations().datasets().create(
         parent=dataset_parent, body={}, datasetId=dataset_id)
     response = request.execute()
-    print('Created dataset: {}'.format(dataset_id))
+    logger.info('Created dataset: {}'.format(dataset_id))
     return response
 
 def delete_dataset(project_id, cloud_region, dataset_id):
     """Deletes a dataset."""
+    logger = logging.getLogger(__name__)
     client = get_client()
     dataset_name = 'projects/{}/locations/{}/datasets/{}'.format(
         project_id, cloud_region, dataset_id)
     request = client.projects().locations().datasets().delete(
         name=dataset_name)
     response = request.execute()
-    print('Deleted dataset: {}'.format(dataset_id))
+    logger.info('Deleted dataset: {}'.format(dataset_id))
     return response
 
 def get_dataset(project_id, cloud_region, dataset_id):
     """Gets any metadata associated with a dataset."""
+    logger = logging.getLogger(__name__)
     client = get_client()
     dataset_name = 'projects/{}/locations/{}/datasets/{}'.format(
         project_id, cloud_region, dataset_id)
     datasets = client.projects().locations().datasets()
     dataset = datasets.get(name=dataset_name).execute()
-    print('Name: {}'.format(dataset.get('name')))
-    print('Time zone: {}'.format(dataset.get('timeZone')))
+    logger.info('Name: {}'.format(dataset.get('name')))
+    logger.info('Time zone: {}'.format(dataset.get('timeZone')))
     return dataset
 
 def list_datasets(project_id, cloud_region):
     """Lists the datasets in the project."""
+    logger = logging.getLogger(__name__)
     client = get_client()
     dataset_parent = 'projects/{}/locations/{}'.format(
         project_id, cloud_region)
     datasets = client.projects().locations().datasets().list(
         parent=dataset_parent).execute().get('datasets', [])
     for dataset in datasets:
-        print('Dataset: {}\nTime zone: {}'.format(
+        logger.info('Dataset: {}\nTime zone: {}'.format(
             dataset.get('name'),
             dataset.get('timeZone')
         ))
@@ -278,6 +302,7 @@ def list_datasets(project_id, cloud_region):
 
 def exists_dataset(project_id, cloud_region, dataset_id):
     """Lists the datasets in the project."""
+    logger = logging.getLogger(__name__)
     client = get_client()
     dataset_parent = 'projects/{}/locations/{}'.format(
         project_id, cloud_region)
@@ -285,11 +310,14 @@ def exists_dataset(project_id, cloud_region, dataset_id):
         parent=dataset_parent).execute().get('datasets', [])
     for dataset in datasets:
         if dataset['name'].endswith(dataset_id):
+            logger.info('dataset {} exists'.format(dataset_id))
             return True
+    logger.info("dataset {} doesn't exists".format(dataset_id))
     return False
 
 def patch_dataset(project_id, cloud_region, dataset_id, time_zone):
     """Updates dataset metadata."""
+    logger = logging.getLogger(__name__)
     client = get_client()
     dataset_parent = 'projects/{}/locations/{}'.format(
         project_id, cloud_region)
@@ -301,7 +329,7 @@ def patch_dataset(project_id, cloud_region, dataset_id, time_zone):
     request = client.projects().locations().datasets().patch(
         name=dataset_name, updateMask='timeZone', body=patch)
     response = request.execute()
-    print(
+    logger.info(
         'Patched dataset {} with time zone: {}'.format(
             dataset_id,
             time_zone))
@@ -316,6 +344,7 @@ def deidentify_dataset(
     """Creates a new dataset containing de-identified data
     from the source dataset.
     """
+    logger = logging.getLogger(__name__)
     client = get_client()
     source_dataset = 'projects/{}/locations/{}/datasets/{}'.format(
         project_id, cloud_region, dataset_id)
@@ -352,7 +381,7 @@ def deidentify_dataset(
     request = client.projects().locations().datasets().deidentify(
         sourceDataset=source_dataset, body=body)
     response = request.execute()
-    print(
+    logger.info(
         'Data in dataset {} de-identified.'
         'De-identified data written to {}'.format(
             dataset_id,
@@ -361,13 +390,14 @@ def deidentify_dataset(
 
 def get_dataset_iam_policy(project_id, cloud_region, dataset_id):
     """Gets the IAM policy for the specified dataset."""
+    logger = logging.getLogger(__name__)
     client = get_client()
     dataset_name = 'projects/{}/locations/{}/datasets/{}'.format(
         project_id, cloud_region, dataset_id)
     request = client.projects().locations().datasets().getIamPolicy(
         resource=dataset_name)
     response = request.execute()
-    print('etag: {}'.format(response.get('name')))
+    logger.info('etag: {}'.format(response.get('name')))
     return response
 
 def set_dataset_iam_policy(
@@ -389,6 +419,7 @@ def set_dataset_iam_policy(
         A role can be any IAM role, such as 'roles/viewer', 'roles/owner',
         or 'roles/editor'
     """
+    logger = logging.getLogger(__name__)
     client = get_client()
     dataset_name = 'projects/{}/locations/{}/datasets/{}'.format(
         project_id, cloud_region, dataset_id)
@@ -407,7 +438,7 @@ def set_dataset_iam_policy(
     request = client.projects().locations().datasets().setIamPolicy(
         resource=dataset_name, body={'policy': policy})
     response = request.execute()
-    print('etag: {}'.format(response.get('name')))
-    print('bindings: {}'.format(response.get('bindings')))
+    logger.info('etag: {}'.format(response.get('name')))
+    logger.info('bindings: {}'.format(response.get('bindings')))
     return response
 # [END healthcare_dataset_set_iam_policy]

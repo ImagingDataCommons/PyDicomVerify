@@ -1,19 +1,15 @@
-import pydicom.filebase
-import logging, traceback
+import logging
+import numpy
+import os
 import pydicom
-import re, os, numpy
+import pydicom.filebase
+import re
 import subprocess
-from datetime import(
+import traceback
+from datetime import (
     # CLASSES
-    time,
     timedelta,
-    # VARIABLES
-    time,
-    time,
-    time,
-    timedelta,
-    timedelta,
-    timedelta,)
+)
 
 
 def Find(address, max_depth = 0, cond_function = os.path.isfile,

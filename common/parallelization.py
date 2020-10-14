@@ -1,19 +1,31 @@
-from __future__ import absolute_import, division, unicode_literals
-from threading import Thread, Lock as ThLock
-import logging, logging.config
-import time
-import os
-from random import randrange
-import common.common_tools as ctools
-import queue
-from dicom_fix_issue_info import ProcessPerformance
+import gc
+import inspect
+import logging
 import multiprocessing
-from multiprocessing import Process
-from multiprocessing import JoinableQueue, Queue
+import os
+import queue
 import sys
 import threading
+import time
 import traceback
-import gc
+import common.common_tools as ctools
+from dicom_fix_issue_info import (
+    # CLASSES
+    ProcessPerformance,
+)
+from multiprocessing import (
+    # SUBMODULES
+    JoinableQueue,
+    Process,
+    Queue,
+    cpu_count,
+)
+from random import (
+    # VARIABLES
+    randrange,
+)
+from threading import Thread
+from threading import Lock as ThLock
 
 
 MAX_NUMBER_OF_THREADS = os.cpu_count() + 1
@@ -273,9 +285,16 @@ class WorkerProcess(Process):
                 out = work_fun(*args)
                 self.output.put((args, out,))
             except BaseException as err:
+                arg_labels = inspect.getfullargspec(work_fun)
                 msg = str(err)
                 if len(msg) > MAX_EXEPTION_MESSAGE_LENGTH:
                     msg = self.chop_message(MAX_EXEPTION_MESSAGE_LENGTH, msg)
+                msg += '\n\t -> Function {} list of arguments:'.format(
+                    work_fun.__name__)
+                for arg_l, arg in zip(arg_labels[0], args):
+                    if isinstance(arg, tuple) or isinstance(arg, list):
+                        arg = arg[0]
+                    msg += ('\n\t\t\t{} = {}'.format(arg_l, arg))
                 logger.error(msg, exc_info=True)
 
             self._queue.task_done()

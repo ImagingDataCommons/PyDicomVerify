@@ -8,26 +8,21 @@ import shutil
 import time
 import common.common_tools as ctools
 import conversion as conv
-from common.parallelization import(
-    # FUNCTIONS
-    install_mp_handler,
+from common.parallelization import (
     # CLASSES
     Periodic,
     ProcessPool,
+    # FUNCTIONS
+    install_mp_handler,
     # VARIABLES
     MAX_NUMBER_OF_THREADS,
 )
-from datetime import(
+from datetime import (
     # CLASSES
     datetime,
-    time,
-    timedelta,
-    # VARIABLES
-    datetime,
-    time,
     timedelta,
 )
-from dicom_fix_issue_info import(
+from dicom_fix_issue_info import (
     # CLASSES
     DataInfo,
     Datalet,
@@ -37,43 +32,44 @@ from dicom_fix_issue_info import(
     PerformanceMeasure,
     ProcessPerformance,
 )
-from gcloud.BigQueryStuff import(
+from gcloud.BigQueryStuff import (
     # FUNCTIONS
     create_all_tables,
     create_dataset,
     query_string,
     query_string_with_result,
 )
-from gcloud.DicomStoreStuff import(
+from gcloud.DicomStoreStuff import (
     # FUNCTIONS
-    create_dataset,
-    create_dicom_store,
+    create_or_replace_dicom_store,
     exists_dataset,
     exists_dicom_store,
     export_dicom_instance_bigquery,
     import_dicom_bucket,
 )
-from gcloud.StorageBucketStuff import(
+from gcloud.StorageBucketStuff import (
     # FUNCTIONS
     create_bucket,
     download_blob,
     upload_blob,
+    list_blobs,
+    delete_bucket,
+    exists_bucket,
+    delete_blob,
 )
-from highdicom.legacy.sop import(
+from highdicom.legacy.sop import (
     # CLASSES
     FrameSetCollection,
-    # VARIABLES
-    logger,
 )
-from pydicom.uid import(
+from pydicom.uid import (
     # FUNCTIONS
     generate_uid,
 )
-from rightdicom.dcmfix import(
-    # SUBMODULES
-    specific_patches,
+from rightdicom.dcmfix.fix_all import (
+    # FUNCTIONS
+    fix_dicom,
 )
-from typing import(
+from typing import (
     # VARIABLES
     List,
     Tuple,
@@ -130,23 +126,7 @@ def FixFile(dicom_file: str, dicom_fixed_file: str,
     ds = pydicom.read_file(dicom_file)
     # log_mine = []
     VER(dicom_file, log_david_pre)
-    specific_patches.priorfix_RemoveIllegalTags(ds, 'All', log_fix)
-    # (1)general fixes:
-    for ffix in dir(specific_patches):
-        if ffix.startswith("generalfix_"):
-            item = getattr(specific_patches, ffix)
-            if callable(item):
-                item(ds, log_fix)
-    # (2)fix with verification:
-    specific_patches.fix_Trivials(ds, log_fix)
-    # (3)specific fixes:
-    for ffix in dir(specific_patches):
-        if ffix.startswith("fix_"):
-            if ffix == "fix_Trivials":
-                continue
-            item = getattr(specific_patches, ffix)
-            if callable(item):
-                item(ds, log_fix)
+    fix_dicom(ds, log_fix)
     # fix_report = PrintLog(log_fix)
     pydicom.write_file(dicom_fixed_file, ds)
     VER(dicom_fixed_file, log_david_post)
@@ -207,11 +187,7 @@ def CreateDicomStore(project_id: str,
                      cloud_region: str,
                      dataset_id: str,
                      dicom_store_id: str):
-    if not exists_dataset(project_id, cloud_region, dataset_id):
-        create_dataset(project_id, cloud_region, dataset_id)
-    if not exists_dicom_store(project_id, cloud_region, dataset_id,
-                              dicom_store_id):
-        create_dicom_store(
+    create_or_replace_dicom_store(
             project_id, cloud_region, dataset_id, dicom_store_id)
 
 
@@ -232,9 +208,11 @@ def fix_one_instance(inst_info: DicomFileInfo,
         fx_inst_info.sereies_uid = fx_ds.SeriesInstanceUID
         fx_inst_info.instance_uid = fx_ds.SOPInstanceUID
         # as a trick to workaround pickling problem
-        fx_inst_info.dicom_ds = {'dataset': fx_ds}
+        fx_inst_info.dicom_ds = fx_ds
     except BaseException as err:
-        logger.error(err, exc_info=True)
+        msg = str(err)
+        msg += '\n{}'.format(str(inst_info))
+        logger.error(msg, exc_info=True)
         return([], [], [], flaw_query_form.format(
             inst_info.bucket_name, inst_info.study_uid,
             inst_info.series_uid, inst_info.instance_uid, 'FIX'))
@@ -283,12 +261,15 @@ def frameset_for_one_series(file_blob_pairs: List[DicomFileInfo],
         os.makedirs(multi_frame_series_folder)
     ds_list = []
     for f_bl in file_blob_pairs:
-        ds_list.append(f_bl.dicom_ds['dataset'])
+        ds_list.append(f_bl.dicom_ds)
     try:
         fs_collection = FrameSetCollection(ds_list)
         fs = fs_collection.FrameSets
     except BaseException as err:
-        logger.error(err, exc_info=True)
+        msg = str(err)
+        msg += '\n The first sample out of {}:\n{}'.format(
+            len(file_blob_pairs), str(file_blob_pairs[0]))
+        logger.error(msg, exc_info=True)
         fs = []
     return(fs, multi_frame_series_uid, multi_frame_series_folder)
 
@@ -968,7 +949,7 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
         study_local_folder = os.path.join(
                 in_folder, study_uid)
         study_local_folders.append(study_local_folder)
-        for number_of_series, (series_uid, instances) in\
+        for number_of_series, (series_uid, [size, instances]) in\
                 enumerate(series_dictinary.items(), 1):
             if number_of_series > max_number_of_series:
                 break
@@ -1300,7 +1281,7 @@ def process_bunche_of_studies(in_folder: str, studies_chunk: List[Tuple],
                 big_query_measure)
 
 
-def rm(folders, log: bool=True):
+def rm(folders, log: bool = True):
     # print(folders)
     if type(folders) == str:
         folders = (folders, )
@@ -1312,6 +1293,102 @@ def rm(folders, log: bool=True):
         else:
             if log:
                 logging.info("FOLDER {} DOESN'T EXIST TO BE ROMOVED".format(a))
+
+
+def empty_bucket_contents(proj_id: str, bucket: str,
+                          ps_num: int, prefix: str = None):
+    logger = logging.getLogger(__name__)
+    blob_list = list_blobs(proj_id, bucket, prefix)
+    ps = ProcessPool(ps_num, 'empty_bucket')
+    max_retries = 2
+    retries = 0
+    tic = time.time()
+    blob_list = list(blob_list)
+    total_number_of_blobs = len(blob_list)
+    logger.info(
+        'Started emptying bucket with {} contents'.format(
+            total_number_of_blobs))
+    while retries < max_retries:
+        for bl in blob_list:
+            if isinstance(bl, str):
+                bname = bl
+            else:
+                bname = bl.name
+            ps.queue.put(
+                (
+                    delete_blob,
+                    (proj_id, bucket, bname,)
+                )
+            )
+        ps.queue.join()
+        ps.kill_them_all()
+        results = ps.output
+        success = False
+        not_deleteds = []
+        for (pr, buc, bl_n,), suc in results:
+            if not suc:
+                not_deleteds.append(bl_n)
+        if len(not_deleteds) == 0:
+            break
+        retries += 1
+        blob_list = not_deleteds
+        logger.info(
+            'emptying was not seccessful. going for retry({})'.format(retries))
+    nn = len(not_deleteds)
+    if nn != 0:
+        logger.info(
+            "emptying was not successful couldn't delete {} blobs".format(nn))
+    else:
+        logger.info("emptying was successful")
+    toc = time.time()
+    perf = PerformanceMeasure(total_number_of_blobs, toc - tic, '(blob)')
+    logger.info('emptying operation {}'.format(perf))
+    return not_deleteds
+
+
+def delete_bucket_all_or_part(proj_id: str, bucket: str,
+                              ps_num: int, prefix: str = None):
+    if not exists_bucket(proj_id, bucket):
+        return True
+    not_deleteds = empty_bucket_contents(proj_id, bucket, ps_num, prefix)
+    if len(not_deleteds) == 0 and prefix is None:
+        delete_bucket(proj_id, bucket)           
+    return len(not_deleteds) == 0
+
+
+def get_one_series_size(project_id: str, bucket_name: str,
+                        study_uid: str, series_uid: str):
+    prefix = 'dicom/{}/{}/'.format(study_uid, series_uid)
+    blob_list = list_blobs(project_id, bucket_name, prefix)
+    size = float(0)
+    for bl in blob_list:
+        size += bl.size
+    return size
+
+
+def get_all_saeries_size(proj_id: str, uids: dict, ps_num: int):
+    logger = logging.getLogger(__name__)
+    tic = time.time()
+    ps = ProcessPool(ps_num, 'series_sz')
+    series_count = 0
+    for st_counter, (st_uid, (bucket_name, se_dict)) in enumerate(uids.items(), 1):
+        for se_counter, (se_uid, ins) in enumerate(se_dict.items(), 1):
+            ps.queue.put(
+                (
+                    get_one_series_size,
+                    (proj_id, bucket_name, st_uid, se_uid,)
+                )
+            )
+            series_count += 1
+    ps.queue.join()
+    ps.kill_them_all()
+    results = ps.output
+    for (p, b, st, se), sz in results:
+        uids[st][1][se][0] = sz
+    toc = time.time()
+    perf = PerformanceMeasure(series_count, toc - tic, 'series')
+    logger.info('reading series sizes {}'.format(perf))
+    return uids
 
 
 def get_status_str(header, used, free, total):
@@ -1375,7 +1452,7 @@ def main(number_of_processes: int = None,
                 'idc_tcia_mvp_wave0',
                 'idc_tcia_dicom_metadata'),
         )
-    general_dataset_name = 'afshin_results_03_' + in_dicoms.BigQuery.Dataset
+    general_dataset_name = 'afshin_results_01_' + in_dicoms.BigQuery.Dataset
     fx_dicoms = DataInfo(
         Datalet('idc-tcia',      # Bucket
                 'us',
@@ -1412,6 +1489,17 @@ def main(number_of_processes: int = None,
     create_all_tables('{}.{}'.format(
         fx_dicoms.BigQuery.ProjectID, fx_dicoms.BigQuery.Dataset),
         fx_dicoms.BigQuery.CloudRegion, True)
+    # --> this suffices to remove both fix and multiframes buckets
+    delete_bucket_all_or_part(
+        fx_dicoms.Bucket.ProjectID, fx_dicoms.Bucket.Dataset, number_of_processes)
+    create_bucket(
+        fx_dicoms.Bucket.ProjectID,
+        fx_dicoms.Bucket.Dataset,
+        False)
+    create_bucket(
+        mf_dicoms.Bucket.ProjectID,
+        mf_dicoms.Bucket.Dataset,
+        False)
     CreateDicomStore(
         fx_dicoms.DicomStore.ProjectID,
         fx_dicoms.DicomStore.CloudRegion,
@@ -1422,16 +1510,8 @@ def main(number_of_processes: int = None,
         mf_dicoms.DicomStore.CloudRegion,
         mf_dicoms.DicomStore.Dataset,
         mf_dicoms.DicomStore.DataObject)
-    create_bucket(
-        fx_dicoms.Bucket.ProjectID,
-        fx_dicoms.Bucket.Dataset,
-        False)
-    create_bucket(
-        mf_dicoms.Bucket.ProjectID,
-        mf_dicoms.Bucket.Dataset,
-        False)
     max_number = 2 ** 63 - 1
-    # max_number = 70
+    max_number = 10
     if max_number < 2 ** 63 - 1:
         limit_q = 'LIMIT 50000'
     else:
@@ -1478,11 +1558,13 @@ def main(number_of_processes: int = None,
             cln_id = row.GCS_Bucket
             if stuid in uids:
                 if seuid in uids[stuid][1]:
-                    uids[stuid][1][seuid].append(sopuid)
+                    uids[stuid][1][seuid][1].append(sopuid)
                 else:
-                    uids[stuid][1][seuid] = [sopuid]
+                    uids[stuid][1][seuid] = [0, [sopuid]]
             else:
-                uids[stuid] = (cln_id, {seuid: [sopuid]})
+                uids[stuid] = (cln_id, {seuid: [0, [sopuid]]})
+        uids = get_all_saeries_size(
+            in_dicoms.Bucket.ProjectID, uids, number_of_processes)
         number_of_all_studies = min(len(uids), max_number_of_studies)
         max_study_count_in_chunk = 300
         max_series_count_in_chunk = (
@@ -1595,5 +1677,6 @@ def main(number_of_processes: int = None,
 # for ch in chunk:
 #     chunk *= 2
 #     main(th, ch)
-main(88, 1000)
+if __name__ == '__main__':
+    main(88, 1000)
 

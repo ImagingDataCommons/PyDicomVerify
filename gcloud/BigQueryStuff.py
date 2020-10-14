@@ -36,6 +36,7 @@ def query_string(q: str, table_name: str = '', silent: bool = True):
         # if table_name != '':
         if not silent:
             logger.info("running query for '{}".format(table_name))
+        # logger.info(q[:1024])
         client.query(q, job_config=job_config)
         # query_job.result()
     except BaseException as err:

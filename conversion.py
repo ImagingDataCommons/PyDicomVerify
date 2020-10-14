@@ -65,8 +65,8 @@ class ParentChildDicoms:
         self.child_study_instance_uid = child_study_instance_uid
         self.child_series_instance_uid = child_series_instance_uid
         self.child_dicom_file = child_dicom_file_path
+    
     @staticmethod
-
     def GetQueryHeader() -> str:
         header = '''
             INSERT INTO `{0}`.ORIGINATED_FROM
@@ -76,6 +76,7 @@ class ParentChildDicoms:
 
     def GetQuery(self, parent_table_name,
                  child_table_name) -> list:
+        logger = logging.getLogger(__name__)
         whole_query = []
         q = """(
                 {}, --PARENT_TABLE
@@ -84,6 +85,7 @@ class ParentChildDicoms:
                 {} --CHILD_SOP_INSATANCE_UID
                 )
         """
+        str_ = ''
         for i, parent_uid in enumerate(self.parent_sop_instanc_uid):
             whole_query.append(q.format(
                 self.GetValue(parent_table_name),

@@ -362,6 +362,22 @@ class DicomFileInfo:
         self.instance_uid = instance_uid
         self.dicom_ds = dicom_dataset
 
+    def __str__(self):
+        out = 'DicomFileInfo\n{{\n{}\n}}'
+        content = ''
+        content += '\n\t\t {} = {}'.format("project_id", self.project_id)
+        content += '\n\t\t {} = {}'.format("bucket_name", self.bucket_name)
+        content += '\n\t\t {} = {}'.format("blob_address", self.blob_address)
+        content += '\n\t\t {} = {}'.format("file_path", self.file_path)
+        content += '\n\t\t {} = {}'.format("study_uid", self.study_uid)
+        content += '\n\t\t {} = {}'.format("series_uid", self.series_uid)
+        content += '\n\t\t {} = {}'.format("instance_uid", self.instance_uid)
+        content += '\n\t\t {} = {}'.format(
+            "dicom_ds", self.dicom_ds if
+            self.dicom_ds is None else 'Exists but hidden')
+        return out.format(content)
+
+
 
 class PerformanceMeasure:
 

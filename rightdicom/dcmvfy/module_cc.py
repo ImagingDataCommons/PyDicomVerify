@@ -1,4 +1,5 @@
 import pydicom.datadict as Dic
+from pydicom.datadict import tag_for_keyword
 from pydicom.dataelem import(
     # CLASSES
     DataElement,)

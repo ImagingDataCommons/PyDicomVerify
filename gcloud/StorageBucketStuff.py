@@ -19,30 +19,6 @@ def create_bucket(project_id: str, bucket_name: str, replace: bool = False):
     logger.debug("Bucket {} created".format(bucket.name))
 
 
-def empty_bukcet(project_id: str, bucket_name: str,
-                 number_of_threads: int = parallel.MAX_NUMBER_OF_THREADS):
-    blobs = list_blobs(project_id, bucket_name)
-    blob_name_list = []
-    delete_threads = parallel.ThreadPool(
-        number_of_threads, 'delete_thread')
-    if number_of_threads > 1:
-        for i in blobs:
-            delete_threads.queue.put(
-                (
-                    delete_blob,
-                    (
-                        project_id,
-                        bucket_name,
-                        i.name
-                    )
-                )
-            )
-        delete_threads.queue.join()
-        delete_threads.kill_them_all()
-    else:
-        for i in blobs:
-            delete_blob(project_id, bucket_name, i.name)
-
 
 def list_blobs(project_id: str, bucket_name: str, prefix: str = None):
 
@@ -84,7 +60,8 @@ def bucket_metadata(project_id: str, bucket_name: str):
     logger.debug("Location: {}".format(bucket.location))
     logger.debug("Location Type: {}".format(bucket.location_type))
     logger.debug("Cors: {}".format(bucket.cors))
-    logger.debug("Default Event Based Hold: {}".format(bucket.default_event_based_hold)
+    logger.debug("Default Event Based Hold: {}".format(
+        bucket.default_event_based_hold)
     )
     logger.debug("Default KMS Key Name: {}".format(bucket.default_kms_key_name))
     logger.debug("Metageneration: {}".format(bucket.metageneration))
@@ -167,7 +144,7 @@ def delete_bucket(project_id: str, bucket_name: str):
     bucket = storage_client.get_bucket(bucket_obj)
     bucket.delete()
 
-    logger.debug("Bucket {} deleted".format(bucket.name))
+    logger.info("Bucket {} deleted".format(bucket.name))
 
 
 def copy_blob(
@@ -317,3 +294,28 @@ def exists_bucket(project_id: str, bucket_name: str) -> bool:
         return True
     except:
         return False
+
+
+def delete_blob_directly(blob) -> bool:
+    logger = logging.getLogger(__name__)
+    max_retries = 30
+    retries = 0
+    success = False
+    while True:
+        try:
+            blob.delete()
+            logger.debug("Blob {} deleted.".format(blob))
+            success = True
+            break
+        except BaseException as err:
+            if retries >= max_retries:
+                logger.error(
+                    "after {} retries couldn't "
+                    "delete the file\n{}\n{} ".format(
+                        retries, blob, err), exc_info=True)
+                break
+            else:
+                logger.info(
+                    '({})retrying connection for file \n{}'.format(
+                        retries, blob))
+    return success
