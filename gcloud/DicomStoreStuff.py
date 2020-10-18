@@ -1,6 +1,93 @@
 from googleapiclient import discovery
 import json
 import logging
+import os
+# client.projects().locations()
+#     datasets
+#     get
+#     list
+#     list_next
+# client.projects().locations().datasets()
+#     create
+#     deidentify
+#     delete
+#     dicomStores
+#     fhirStores
+#     get
+#     getIamPolicy
+#     hl7V2Stores
+#     list
+#     list_next
+#     operations
+#     patch
+#     setIamPolicy
+#     testIamPermissions
+# client.projects().locations().datasets().dicomStores()
+#     create
+#     deidentify
+#     delete
+#     dicomStores
+#     fhirStores
+#     get
+#     getIamPolicy
+#     hl7V2Stores
+#     list
+#     list_next
+#     operations
+#     patch
+#     setIamPolicy
+#     testIamPermissions
+# client.projects().locations().datasets().dicomStores()
+#     create
+#     deidentify
+#     delete
+#     export
+#     get
+#     getIamPolicy
+#     import_
+#     list
+#     list_next
+#     patch
+#     searchForInstances
+#     searchForSeries
+#     searchForStudies
+#     setIamPolicy
+#     storeInstances
+#     studies
+#     testIamPermissions
+# client.projects().locations().datasets().fhirStores()
+#     create
+#     deidentify
+#     delete
+#     export
+#     fhir
+#     get
+#     getIamPolicy
+#     import_
+#     list
+#     list_next
+#     patch
+#     setIamPolicy
+#     testIamPermissions
+def get_entitiy_path(project_id: str, cloud_region: str = '',
+                     dataset_id: str = '', dicom_store: str = ''):
+    output = ''
+    if project_id != '':
+        output += 'projects/{}'.format(project_id)
+    if cloud_region != '':
+        output += '/locations/{}'.format(cloud_region)
+    if dataset_id != '':
+        output += '/datasets/{}'.format(dataset_id)
+    if dicom_store != '':
+        output += '/dicomStores/{}'.format(dicom_store)
+    return output
+
+
+def decompose_path(full_path: str) -> tuple:
+    parent = os.path.dirname(os.path.dirname(full_path))
+    entity = os.path.basename(full_path)
+    return (parent, entity)
+    
 
 def get_client():
     """Returns an authorized API client by discovering the Healthcare API and
@@ -11,72 +98,99 @@ def get_client():
     service_name = "healthcare"
     return discovery.build(service_name, api_version)
 
+
 def create_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id):
     """Creates a new DICOM store within the parent dataset."""
     logger = logging.getLogger(__name__)
+    if not exists_dataset(project_id, cloud_region, dataset_id):
+        logger.info(
+            "Checked before createion of dicom store, "
+            "parent-dataset {} doesn't exist.".format(dataset_id))
+        create_dataset(project_id, cloud_region, dataset_id)
+    dicom_store_full_name = get_entitiy_path(
+        project_id, cloud_region, dataset_id, dicom_store_id)
+    return create_dicom_store_direct(dicom_store_full_name)
+
+
+def create_dicom_store_direct(dicom_store_full_path: str):
+    """Creates a new DICOM store within the parent dataset."""
+    logger = logging.getLogger(__name__)
     client = get_client()
-    dicom_store_parent = "projects/{}/locations/{}/datasets/{}".format(
-        project_id, cloud_region, dataset_id
-    )
+    dicom_store_parent, dicom_store_id = decompose_path(dicom_store_full_path)
     request = (
         client.projects()
         .locations()
         .datasets()
         .dicomStores()
-        .create(parent=dicom_store_parent, body={}, dicomStoreId=dicom_store_id)
+        .create(
+            parent=dicom_store_parent, body={}, dicomStoreId=dicom_store_id)
     )
     response = request.execute()
     logger.info("Created DICOM store: {}".format(dicom_store_id))
     return response
 
-def create_or_replace_dicom_store(
+def recreate_dicom_store(
         project_id, cloud_region, dataset_id, dicom_store_id):
-    if exists_dicom_store(
-            project_id, cloud_region, dataset_id, dicom_store_id):
-        delete_dicom_store(
-            project_id, cloud_region, dataset_id, dicom_store_id)
+    logger = logging.getLogger(__name__)
+    if exists_dataset(project_id, cloud_region, dataset_id):
+        if exists_dicom_store(
+                project_id, cloud_region, dataset_id, dicom_store_id):
+            delete_dicom_store(
+                project_id, cloud_region, dataset_id, dicom_store_id)
+            logger.info(
+                "dicomstore {} from dicom dataset {} was "
+                "successfully deleted".format(dicom_store_id, dataset_id))
     create_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id)
+
+
+def delete_dicom_store_directly(dicom_store_path_name):
+    """Deletes the specified DICOM store."""
+    logger = logging.getLogger(__name__)
+    client = get_client()
+    request = (
+        client.projects()
+        .locations()
+        .datasets()
+        .dicomStores()
+        .delete(name=dicom_store_path_name)
+    )
+    response = request.execute()
+    logger.info("Deleted DICOM store: {}".format(dicom_store_path_name))
+    return response
 
 
 def delete_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id):
     """Deletes the specified DICOM store."""
     logger = logging.getLogger(__name__)
     client = get_client()
-    dicom_store_parent = "projects/{}/locations/{}/datasets/{}".format(
-        project_id, cloud_region, dataset_id
-    )
-    dicom_store_name = "{}/dicomStores/{}".format(dicom_store_parent, dicom_store_id)
-    request = (
-        client.projects()
-        .locations()
-        .datasets()
-        .dicomStores()
-        .delete(name=dicom_store_name)
-    )
-    response = request.execute()
-    logger.info("Deleted DICOM store: {}".format(dicom_store_id))
-    return response
+    dicom_store_name = get_entitiy_path(
+        project_id, cloud_region, dataset_id, dicom_store_id)
+    return delete_dicom_store_directly(dicom_store_name)
 
-def get_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id):
+
+
+def get_dicom_store_directly(dicom_store_name: str):
     """Gets the specified DICOM store."""
     logger = logging.getLogger(__name__)
     client = get_client()
-    dicom_store_parent = "projects/{}/locations/{}/datasets/{}".format(
-        project_id, cloud_region, dataset_id
-    )
-    dicom_store_name = "{}/dicomStores/{}".format(dicom_store_parent, dicom_store_id)
     dicom_stores = client.projects().locations().datasets().dicomStores()
     dicom_store = dicom_stores.get(name=dicom_store_name).execute()
     logger.info(json.dumps(dicom_store, indent=2))
     return dicom_store
 
-def list_dicom_stores(project_id, cloud_region, dataset_id):
+
+
+def get_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id):
+    """Gets the specified DICOM store."""
+    dicom_store_name = get_entitiy_path(
+        project_id, cloud_region, dataset_id, dicom_store_id)
+    return get_dicom_store_directly(dicom_store_name)
+
+
+def list_dicom_stores_directly(dicom_store_parent: str):
     """Lists the DICOM stores in the given dataset."""
     logger = logging.getLogger(__name__)
     client = get_client()
-    dicom_store_parent = "projects/{}/locations/{}/datasets/{}".format(
-        project_id, cloud_region, dataset_id
-    )
     dicom_stores = (
         client.projects()
         .locations()
@@ -90,25 +204,46 @@ def list_dicom_stores(project_id, cloud_region, dataset_id):
         logger.info(dicom_store)
     return dicom_stores
 
+
+def list_dicom_stores(project_id, cloud_region, dataset_id):
+    """Lists the DICOM stores in the given dataset."""
+    dicom_store_parent = get_entitiy_path(project_id, cloud_region, dataset_id)
+    return list_dicom_stores_directly(dicom_store_parent)
+
+
 def exists_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id):
+    """Lists the DICOM stores in the given dataset."""
+    dicom_store_full_path = get_entitiy_path(
+        project_id, cloud_region, dataset_id, dicom_store_id)
+    try:
+        if not exists_dataset(project_id, cloud_region, dataset_id):
+            return False
+        else:
+            return exists_dicom_store_directly(dicom_store_full_path)
+    except BaseException as err:
+        return False #  Meaning the project doesn't exist 
+
+
+def exists_dicom_store_directly(dicom_store_full_path: str):
     """Lists the DICOM stores in the given dataset."""
     logger = logging.getLogger(__name__)
     client = get_client()
-    dicom_store_parent = "projects/{}/locations/{}/datasets/{}".format(
-        project_id, cloud_region, dataset_id
-    )
-    dicom_stores = (
-        client.projects()
-        .locations()
-        .datasets()
-        .dicomStores()
-        .list(parent=dicom_store_parent)
-        .execute()
-        .get("dicomStores", [])
-    )
-    for dicom_store in dicom_stores:
-        if dicom_store['name'].endswith(dicom_store_id):
-            return True
+    dicom_store_parent, dicom_store_id = decompose_path(dicom_store_full_path)
+    try:
+        dicom_stores = (
+            client.projects()
+            .locations()
+            .datasets()
+            .dicomStores()
+            .list(parent=dicom_store_parent)
+            .execute()
+            .get("dicomStores", [])
+        )
+        for dicom_store in dicom_stores:
+            if dicom_store['name'].endswith(dicom_store_id):
+                return True
+    except BaseException:
+        pass
     return False
 
 def patch_dicom_store(
@@ -249,29 +384,52 @@ def import_dicom_instance(
     logger.info("Imported DICOM instance: {}".format(content_uri))
     return response
 
+
 def create_dataset(project_id, cloud_region, dataset_id):
+    """Creates a dataset."""
+    dataset_parent = get_entitiy_path(project_id, cloud_region)
+    return create_dataset_directly(dataset_parent, dataset_id)
+
+
+def create_dataset_directly(dataset_parent: str, dataset_id: str):
     """Creates a dataset."""
     logger = logging.getLogger(__name__)
     client = get_client()
-    dataset_parent = 'projects/{}/locations/{}'.format(
-        project_id, cloud_region)
     request = client.projects().locations().datasets().create(
         parent=dataset_parent, body={}, datasetId=dataset_id)
     response = request.execute()
     logger.info('Created dataset: {}'.format(dataset_id))
     return response
 
+
+def recreate_dataset(project_id: str, cloud_region: str, dataset_id: str):
+    dataset_parent_fullname = get_entitiy_path(project_id, cloud_region)
+    recreate_dataset_directly(dataset_parent_fullname, dataset_id)
+
+
+def recreate_dataset_directly(dataset_parent_fullname: str, dataset_id: str):
+    if exists_dataset_directly(dataset_parent_fullname, dataset_id):
+        delete_dataset_directly('{}/datasets/{}'.format(
+            dataset_parent_fullname, dataset_id))
+    create_dataset_directly(dataset_parent_fullname, dataset_id)
+
+
 def delete_dataset(project_id, cloud_region, dataset_id):
+    """Deletes a dataset."""
+    dataset_name = get_entitiy_path(project_id, cloud_region, dataset_id)
+    return delete_dataset_directly(dataset_name)
+
+
+def delete_dataset_directly(dataset_name: str):
     """Deletes a dataset."""
     logger = logging.getLogger(__name__)
     client = get_client()
-    dataset_name = 'projects/{}/locations/{}/datasets/{}'.format(
-        project_id, cloud_region, dataset_id)
     request = client.projects().locations().datasets().delete(
         name=dataset_name)
     response = request.execute()
-    logger.info('Deleted dataset: {}'.format(dataset_id))
+    logger.info('Deleted dataset: {}'.format(dataset_name))
     return response
+
 
 def get_dataset(project_id, cloud_region, dataset_id):
     """Gets any metadata associated with a dataset."""
@@ -285,10 +443,12 @@ def get_dataset(project_id, cloud_region, dataset_id):
     logger.info('Time zone: {}'.format(dataset.get('timeZone')))
     return dataset
 
-def list_datasets(project_id, cloud_region):
+
+def list_datasets_and_dicomstores(project_id, cloud_region):
     """Lists the datasets in the project."""
     logger = logging.getLogger(__name__)
     client = get_client()
+    output = []
     dataset_parent = 'projects/{}/locations/{}'.format(
         project_id, cloud_region)
     datasets = client.projects().locations().datasets().list(
@@ -298,14 +458,47 @@ def list_datasets(project_id, cloud_region):
             dataset.get('name'),
             dataset.get('timeZone')
         ))
-    return datasets
+        dicom_stores = (
+            client.projects()
+            .locations()
+            .datasets()
+            .dicomStores()
+            .list(parent=dataset['name'])
+            .execute().get("dicomStores", []))
+        for dstore in dicom_stores:
+            output.append(dstore["name"])
+    output.sort()
+    return output
 
-def exists_dataset(project_id, cloud_region, dataset_id):
+
+def list_datasets(project_id: str, cloud_region: str):
+    """Lists the datasets in the project."""
+    dataset_parent = get_entitiy_path(project_id, cloud_region)
+    return list_datasets_directly(dataset_parent)
+
+
+def list_datasets_directly(dataset_parent: str):
     """Lists the datasets in the project."""
     logger = logging.getLogger(__name__)
     client = get_client()
-    dataset_parent = 'projects/{}/locations/{}'.format(
-        project_id, cloud_region)
+    datasets = client.projects().locations().datasets().list(
+        parent=dataset_parent).execute().get('datasets', [])
+    output = []
+    for dataset in datasets:
+        logger.info('Dataset: {}\nTime zone: {}'.format(
+            dataset.get('name'),
+            dataset.get('timeZone')
+        ))
+        output.append(dataset['name'])
+    return output
+
+
+def exists_dataset_directly(dataset_full_name: str):
+    """Lists the datasets in the project."""
+    logger = logging.getLogger(__name__)
+    client = get_client()
+    dataset_id = os.path.basename(dataset_full_name)
+    dataset_parent = os.path.dirname(os.path.dirname(dataset_full_name))
     datasets = client.projects().locations().datasets().list(
         parent=dataset_parent).execute().get('datasets', [])
     for dataset in datasets:
@@ -314,6 +507,13 @@ def exists_dataset(project_id, cloud_region, dataset_id):
             return True
     logger.info("dataset {} doesn't exists".format(dataset_id))
     return False
+
+
+def exists_dataset(project_id, cloud_region, dataset_id):
+    """Lists the datasets in the project."""
+    dataset_full_name = get_entitiy_path(project_id, cloud_region, dataset_id)
+    return exists_dataset_directly(dataset_full_name)
+
 
 def patch_dataset(project_id, cloud_region, dataset_id, time_zone):
     """Updates dataset metadata."""

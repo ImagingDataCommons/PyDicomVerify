@@ -35,13 +35,13 @@ from dicom_fix_issue_info import (
 from gcloud.BigQueryStuff import (
     # FUNCTIONS
     create_all_tables,
-    create_dataset,
+    create_bq_dataset,
     query_string,
     query_string_with_result,
 )
 from gcloud.DicomStoreStuff import (
     # FUNCTIONS
-    create_or_replace_dicom_store,
+    recreate_dicom_store,
     exists_dataset,
     exists_dicom_store,
     export_dicom_instance_bigquery,
@@ -56,6 +56,7 @@ from gcloud.StorageBucketStuff import (
     delete_bucket,
     exists_bucket,
     delete_blob,
+    get_blob,
 )
 from highdicom.legacy.sop import (
     # CLASSES
@@ -81,6 +82,7 @@ max_number_of_up_down_load_processes = MAX_NUMBER_OF_THREADS
 max_number_of_bq_processes = MAX_NUMBER_OF_THREADS
 max_number_of_frameset_processes = MAX_NUMBER_OF_THREADS
 max_number_of_conversion_processes = MAX_NUMBER_OF_THREADS
+processes_to_monitor = []
 flaw_query_form = '''(
         "{}",-- COLLECTION_NAME
         "{}",-- STUDY_INSTANCE_UID
@@ -187,7 +189,7 @@ def CreateDicomStore(project_id: str,
                      cloud_region: str,
                      dataset_id: str,
                      dicom_store_id: str):
-    create_or_replace_dicom_store(
+    recreate_dicom_store(
             project_id, cloud_region, dataset_id, dicom_store_id)
 
 
@@ -381,7 +383,7 @@ def extract_convert_framesets_for_bunch_of_studies(
                 pr_ch.child_series_instance_uid,
                 pr_ch.child_sop_instance_uid))
     frameset_perf = PerformanceMeasure(
-        number_of_all_framesets, frameset_elapsed_time, '(frameset)')
+        number_of_all_framesets, frameset_elapsed_time, '(frameset)', False)
     mf_perf = PerformanceMeasure(
         number_of_all_converted_mf, conversion_elapsed_time,
         '(multiframe-inst)')
@@ -447,7 +449,7 @@ def fix_bunch_of_studies(inst_infos: List[DicomFileInfo],
     flaw_queries = []
     study_series_dict = {}
 
-    defected_study_series = []
+    defective_study_series = []
     fx_blob_form = '{}/dicom/{{}}/{{}}/{{}}.dcm'.format(
         fx_gc_info.Bucket.DataObject)
     for args, (fix_q, iss_q, org_q, flaw) in fix_processes.output:
@@ -464,11 +466,11 @@ def fix_bunch_of_studies(inst_infos: List[DicomFileInfo],
             single_frames.append(fx_file_info)
         else:
             flaw_queries.append(flaw)
-            defected_study_series.append(
+            defective_study_series.append(
                 (fx_file_info.study_uid, fx_file_info.series_uid))
     study_series_dict, st_count, se_count, inst_count = \
         organiase_file_blob_infos(single_frames)
-    for study, series in defected_study_series:
+    for study, series in defective_study_series:
         logger.info(
             'series \n-\t\t<{}>.<{}>\-\t\t encountered a problem while fi'
             'xing so the conversion is going to be aborted'.format(
@@ -556,7 +558,7 @@ def download_bunch_of_studies(blob_file_pairs: List[DicomFileInfo]) -> tuple:
         downloaded_size += sz
     # Prepare the output
     # ----------------------------------
-    # defected_series = []
+    # defective_series = []
     # flaw_queries = []
     # study_series_dict = {}
     # for bl, success in results:
@@ -565,7 +567,7 @@ def download_bunch_of_studies(blob_file_pairs: List[DicomFileInfo]) -> tuple:
     #             bl.bucket_name, bl.study_uid, bl.series_uid,
     #             bl.instance_uid, 'DOWNLOAD')
     #         )
-    #         defected_series.append((bl.study_uid, bl.series_uid,))
+    #         defective_series.append((bl.study_uid, bl.series_uid,))
     #     else:
     #         if bl.study_uid in study_series_dict:
     #             if bl.series_uid in study_series_dict[bl.study_uid]:
@@ -578,12 +580,12 @@ def download_bunch_of_studies(blob_file_pairs: List[DicomFileInfo]) -> tuple:
     #             study_series_dict[
     #                 bl.study_uid] = {bl.series_uid: [bl]}
     # # I'm going to remove all incomplete series that couldn't download:
-    # for st_uid, se_uid in defected_series:
+    # for st_uid, se_uid in defective_series:
     #     del study_series_dict[st_uid][se_uid]
     # return (study_series_dict, flaw_queries,
     #         PerformanceMeasure(downloaded_size, download_elapsed_time,))
 
-    defected_series = []
+    defective_series = []
     downloaded_blobs = []
     flaw_queries = []
     for bl, success in results:
@@ -592,7 +594,7 @@ def download_bunch_of_studies(blob_file_pairs: List[DicomFileInfo]) -> tuple:
                 bl.bucket_name, bl.study_uid, bl.series_uid,
                 bl.instance_uid, 'DOWNLOAD')
             )
-            defected_series.append((bl.study_uid, bl.series_uid, ))
+            defective_series.append((bl.study_uid, bl.series_uid, ))
         else:
             downloaded_blobs.append(bl)
     return(downloaded_blobs, flaw_queries,
@@ -612,7 +614,7 @@ def fix_conver_one_series(inst_infos: List[DicomFileInfo],
     origin_queries = []
     flaw_queries = []
 
-    defected_study_series = []
+    defective_study_series = []
     upload_blobfile_pairs = []
     fx_blob_form = '{}/dicom/{{}}/{{}}/{{}}.dcm'.format(
         fx_gc_info.Bucket.DataObject)
@@ -638,7 +640,7 @@ def fix_conver_one_series(inst_infos: List[DicomFileInfo],
                 fx_obj.instance_uid)
         else:
             flaw_queries.append(flaw)
-            defected_study_series.append(
+            defective_study_series.append(
                 (fx_obj.study_uid, fx_obj.series_uid))
     # The code is not gonna proceed to conversion if there is any fix issue
     if len(flaw_queries) != 0:
@@ -787,7 +789,7 @@ def download_fix_convert_upload_one_sereis(
     origin_queries = []
     flaw_queries = []
 
-    defected_study_series = []
+    defective_study_series = []
     downloaded_files_size = 0
     fixed_files_size = 0
     mf_files_size = 0
@@ -845,7 +847,7 @@ def download_fix_convert_upload_one_sereis(
                 upload_files_size += os.path.getsize(fx_obj.file_path)
         else:
             flaw_queries.append(flaw)
-            defected_study_series.append(
+            defective_study_series.append(
                 (fx_obj.study_uid, fx_obj.series_uid))
     # The code is not gonna proceed to conversion if there is any fix issue
     if len(flaw_queries) != 0:
@@ -1002,7 +1004,7 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
         proc_num, se_count, max_number_of_fix_processes))
     jobs = []
     q_sz = 0
-    max_q_cap = 4 * proc_num
+    max_q_cap = 4000 * proc_num
     for study_uid, study_contents in study_series_dict.items():
         for series_uid, series_contents in study_contents.items():
             if q_sz % max_q_cap == 0:
@@ -1044,9 +1046,11 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
             uploaded_files_size += mf_sz
     toc = time.time()
     dl_perfs = PerformanceMeasure(downloaded_files_size, toc - tic, 'B')
-    fx_perfs = PerformanceMeasure(inst_count, toc - tic, '(inst)')
-    frset_perfs = PerformanceMeasure(frameset_number, toc - tic, '(inst)')
-    mf_perfs = PerformanceMeasure(multiframe_number, toc - tic, '(inst)')
+    fx_perfs = PerformanceMeasure(inst_count, toc - tic, '(inst)', False)
+    frset_perfs = PerformanceMeasure(
+        frameset_number, toc - tic, '(inst)', False)
+    mf_perfs = PerformanceMeasure(
+        multiframe_number, toc - tic, '(inst)', False)
     ul_perfs = PerformanceMeasure(uploaded_files_size, toc - tic, 'B')
     fx_perfs_sz = PerformanceMeasure(fixed_files_size, toc - tic, 'B')
     mf_perfs_sz = PerformanceMeasure(mf_files_size, toc - tic, 'B')
@@ -1085,14 +1089,14 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
             big_q_processes)
     if len(flaw_queries) != 0:
         BuildQueries(
-            "INSERT INTO `{0}`.DEFECTED VALUES {1};",
+            "INSERT INTO `{0}`.DEFECTIVE VALUES {1};",
             flaw_queries,
             dataset_id, False,
             big_q_processes)
     big_q_processes.queue.join()
     big_q_processes.kill_them_all()
     toc = time.time()
-    big_query_measure = PerformanceMeasure(all_rows, toc - tic, '(row)')
+    big_query_measure = PerformanceMeasure(all_rows, toc - tic, '(row)', False)
     logger.info(
         'Big query tables were populated'
         ' successfully {}'.format(big_query_measure))
@@ -1135,7 +1139,7 @@ def upload_bunch_of_studies(blob_file_pairs: List[DicomFileInfo]) -> list:
                 'UPLOAD')
             )
     return(flaw_queries,
-            PerformanceMeasure(uploaded_size, upload_elapsed_time))
+            PerformanceMeasure(uploaded_size, upload_elapsed_time), 'B')
 
 
 def process_bunche_of_studies(in_folder: str, studies_chunk: List[Tuple],
@@ -1193,7 +1197,7 @@ def process_bunche_of_studies(in_folder: str, studies_chunk: List[Tuple],
                         instance_uid))
     # --> Starting download
     # -------------------------------
-    downloaded_files, defected_queries, download_measure = \
+    downloaded_files, defective_queries, download_measure = \
         download_bunch_of_studies(
             input_blob_file_pairs)
     # --> Fix and convert all  downloaded files
@@ -1262,7 +1266,7 @@ def process_bunche_of_studies(in_folder: str, studies_chunk: List[Tuple],
             big_q_processes)
     if len(flaw_queries) != 0:
         BuildQueries(
-            "INSERT INTO `{0}`.DEFECTED VALUES {1};",
+            "INSERT INTO `{0}`.DEFECTIVE VALUES {1};",
             flaw_queries,
             dataset_id, False,
             big_q_processes)
@@ -1270,7 +1274,7 @@ def process_bunche_of_studies(in_folder: str, studies_chunk: List[Tuple],
     big_q_processes.kill_them_all()
     toc = time.time()
     elapsed_time = timedelta(seconds=toc - tic)
-    big_query_measure = PerformanceMeasure(all_rows, toc - tic)
+    big_query_measure = PerformanceMeasure(all_rows, toc - tic, 'row', False)
     logger.info(
         'Big query tables were populated'
         ' successfully. Time elapse: {}'.format(elapsed_time))
@@ -1323,7 +1327,6 @@ def empty_bucket_contents(proj_id: str, bucket: str,
         ps.queue.join()
         ps.kill_them_all()
         results = ps.output
-        success = False
         not_deleteds = []
         for (pr, buc, bl_n,), suc in results:
             if not suc:
@@ -1341,7 +1344,7 @@ def empty_bucket_contents(proj_id: str, bucket: str,
     else:
         logger.info("emptying was successful")
     toc = time.time()
-    perf = PerformanceMeasure(total_number_of_blobs, toc - tic, '(blob)')
+    perf = PerformanceMeasure(total_number_of_blobs, toc - tic, '(blob)', False)
     logger.info('emptying operation {}'.format(perf))
     return not_deleteds
 
@@ -1357,37 +1360,76 @@ def delete_bucket_all_or_part(proj_id: str, bucket: str,
 
 
 def get_one_series_size(project_id: str, bucket_name: str,
-                        study_uid: str, series_uid: str):
+                        study_uid: str, series_uid: str, inst_uids: list = []):
+    logger = logging.getLogger(__name__)
     prefix = 'dicom/{}/{}/'.format(study_uid, series_uid)
-    blob_list = list_blobs(project_id, bucket_name, prefix)
     size = float(0)
-    for bl in blob_list:
-        size += bl.size
+    # logger.info('getting pp {}'.format(prefix))
+    if len(inst_uids) != 0:
+        for ins in inst_uids:
+            blob_name = prefix + '{}.dcm'.format(ins)
+            bl = get_blob(project_id, bucket_name, blob_name)
+            if bl is not None:
+                size += bl.size
+    else:
+        max_retries = 30
+        retries = 0
+        while retries < max_retries:
+            try:
+                size = float(0)
+                blob_list = list_blobs(project_id, bucket_name, prefix)
+                for bl in blob_list:
+                    size += bl.size
+                break
+            except BaseException as err:
+                retries += 1
+                if retries < max_retries:
+                    time.sleep(5)
+                    logger.info("start retry number {}".format(retries)) 
+                else:
+                    raise
     return size
 
 
-def get_all_saeries_size(proj_id: str, uids: dict, ps_num: int):
+def get_all_saeries_size(proj_id: str, uids: dict, ps_num: int,
+                         partial: bool = False):
     logger = logging.getLogger(__name__)
+    # ps_num = MAX_NUMBER_OF_THREADS
+    logger.info('start getting the size of {} series on {} processes'.format(
+        'part of' if partial else 'all', ps_num
+    ))
     tic = time.time()
-    ps = ProcessPool(ps_num, 'series_sz')
+    ps = ProcessPool(ps_num, 'se_sz')
+    global processes_to_monitor
+    processes_to_monitor = ps
     series_count = 0
     for st_counter, (st_uid, (bucket_name, se_dict)) in enumerate(uids.items(), 1):
         for se_counter, (se_uid, ins) in enumerate(se_dict.items(), 1):
-            ps.queue.put(
-                (
-                    get_one_series_size,
-                    (proj_id, bucket_name, st_uid, se_uid,)
+            if partial:
+                inst_uids = ins[1]
+                ps.queue.put(
+                    (
+                        get_one_series_size,
+                        (proj_id, bucket_name, st_uid, se_uid, inst_uids,)
+                    )
                 )
-            )
+            else:
+                ps.queue.put(
+                    (
+                        get_one_series_size,
+                        (proj_id, bucket_name, st_uid, se_uid, [])
+                    )
+                )
             series_count += 1
     ps.queue.join()
     ps.kill_them_all()
+    processes_to_monitor = []
     results = ps.output
-    for (p, b, st, se), sz in results:
+    for (p, b, st, se, ins), sz in results:
         uids[st][1][se][0] = sz
     toc = time.time()
-    perf = PerformanceMeasure(series_count, toc - tic, 'series')
-    logger.info('reading series sizes {}'.format(perf))
+    perf = PerformanceMeasure(series_count, toc - tic, 'series', False)
+    logger.info('Retrieved all series sizes {}'.format(perf))
     return uids
 
 
@@ -1403,6 +1445,8 @@ def get_status_str(header, used, free, total):
 def log_status():
     logger = logging.getLogger(__name__)
     vr = psutil.virtual_memory()
+    if isinstance(processes_to_monitor, ProcessPool):
+        logger.info(processes_to_monitor.get_status())
     status = get_status_str('RAM', vr.used, vr.free, vr.total)
     logger.info(status)
 
@@ -1452,7 +1496,7 @@ def main(number_of_processes: int = None,
                 'idc_tcia_mvp_wave0',
                 'idc_tcia_dicom_metadata'),
         )
-    general_dataset_name = 'afshin_results_01_' + in_dicoms.BigQuery.Dataset
+    general_dataset_name = 'afshin_results_00_' + in_dicoms.BigQuery.Dataset
     fx_dicoms = DataInfo(
         Datalet('idc-tcia',      # Bucket
                 'us',
@@ -1489,6 +1533,17 @@ def main(number_of_processes: int = None,
     create_all_tables('{}.{}'.format(
         fx_dicoms.BigQuery.ProjectID, fx_dicoms.BigQuery.Dataset),
         fx_dicoms.BigQuery.CloudRegion, True)
+    # --> recreated dicomstores
+    CreateDicomStore(
+        fx_dicoms.DicomStore.ProjectID,
+        fx_dicoms.DicomStore.CloudRegion,
+        fx_dicoms.DicomStore.Dataset,
+        fx_dicoms.DicomStore.DataObject)
+    CreateDicomStore(
+        mf_dicoms.DicomStore.ProjectID,
+        mf_dicoms.DicomStore.CloudRegion,
+        mf_dicoms.DicomStore.Dataset,
+        mf_dicoms.DicomStore.DataObject)
     # --> this suffices to remove both fix and multiframes buckets
     delete_bucket_all_or_part(
         fx_dicoms.Bucket.ProjectID, fx_dicoms.Bucket.Dataset, number_of_processes)
@@ -1500,18 +1555,8 @@ def main(number_of_processes: int = None,
         mf_dicoms.Bucket.ProjectID,
         mf_dicoms.Bucket.Dataset,
         False)
-    CreateDicomStore(
-        fx_dicoms.DicomStore.ProjectID,
-        fx_dicoms.DicomStore.CloudRegion,
-        fx_dicoms.DicomStore.Dataset,
-        fx_dicoms.DicomStore.DataObject)
-    CreateDicomStore(
-        mf_dicoms.DicomStore.ProjectID,
-        mf_dicoms.DicomStore.CloudRegion,
-        mf_dicoms.DicomStore.Dataset,
-        mf_dicoms.DicomStore.DataObject)
     max_number = 2 ** 63 - 1
-    max_number = 10
+    # max_number = 80
     if max_number < 2 ** 63 - 1:
         limit_q = 'LIMIT 50000'
     else:
@@ -1543,6 +1588,8 @@ def main(number_of_processes: int = None,
     #     )
     logger = logging.getLogger(__name__)
     max_number_of_studies = max_number
+    max_number_of_series = max_number
+    max_number_of_intances = max_number
     start_time = time.time()
     studies = query_string_with_result(study_query)
     number_of_all_inst = studies.total_rows
@@ -1550,6 +1597,7 @@ def main(number_of_processes: int = None,
     number_of_inst_processed = 1
     whole_performace = None
     number_of_st_processed = 1
+    vrtual_mem = psutil.virtual_memory()
     if studies is not None:
         for row in studies:
             stuid = row.STUDYINSTANCEUID
@@ -1558,38 +1606,61 @@ def main(number_of_processes: int = None,
             cln_id = row.GCS_Bucket
             if stuid in uids:
                 if seuid in uids[stuid][1]:
+                    if len(uids[stuid][1][seuid][1]) >= max_number_of_intances:
+                        continue
                     uids[stuid][1][seuid][1].append(sopuid)
                 else:
+                    if len(uids[stuid]) >= max_number_of_series:
+                        continue
                     uids[stuid][1][seuid] = [0, [sopuid]]
             else:
+                if len(uids) >= max_number_of_studies:
+                    continue
                 uids[stuid] = (cln_id, {seuid: [0, [sopuid]]})
         uids = get_all_saeries_size(
-            in_dicoms.Bucket.ProjectID, uids, number_of_processes)
+            in_dicoms.Bucket.ProjectID, uids, number_of_processes,
+            max_number < 2 ** 63 - 1)
         number_of_all_studies = min(len(uids), max_number_of_studies)
         max_study_count_in_chunk = 300
         max_series_count_in_chunk = (
-            rough_series_count_in_chunk // number_of_processes) * number_of_processes
+            rough_series_count_in_chunk // number_of_processes
+            ) * number_of_processes
+        max_mem = vrtual_mem.free * 0.5
+
         series_chunk_count = 0
         study_chunk = []
         study_uids = []
+        chunk_memory = 0
         for number_of_studies, (study_uid, sub_study) in enumerate(uids.items(), 1):
-            # if number_of_studies < 3201:
-            #     continue
-            if number_of_studies > max_number_of_studies:
-                break
-            series_chunk_count += len(sub_study[1])
+            if number_of_studies < 3022:
+                continue
             study_uids.append(study_uid)
-            if series_chunk_count > max_series_count_in_chunk:
-                diff = series_chunk_count - max_series_count_in_chunk
-                first_half, second_half = partition_series(sub_study[1], diff)
-            else:
-                first_half = sub_study[1]
-                second_half = {}
+            first_half = {}
+            second_half = {}
+            second_half_sz = 0
+            for se_uid, se_v in sub_study[1].items():
+                chunk_memory += se_v[0]
+                if chunk_memory < max_mem:
+                    first_half[se_uid] = se_v
+                    series_chunk_count += 1
+                else:
+                    second_half[se_uid] = se_v
+                    second_half_sz += se_v[0]
+            chunk_memory -= second_half_sz
+            # if series_chunk_count > max_series_count_in_chunk:
+            #     diff = series_chunk_count - max_series_count_in_chunk
+            #     first_half, second_half = partition_series(sub_study[1], diff)
+            # else:
+            #     first_half = sub_study[1]
+            #     second_half = {}
             study_chunk.append((study_uid, sub_study[0], first_half))
-            if number_of_studies % max_study_count_in_chunk == 0 or\
-                    number_of_studies == len(uids) or \
-                    number_of_studies == max_number_of_studies or \
-                    series_chunk_count > max_series_count_in_chunk:
+            if number_of_studies == len(uids) or \
+                    second_half_sz != 0:
+                logger.info(
+                    'Bunch of studies with {} series and size of {}'.format(
+                        series_chunk_count,
+                        ctools.get_human_readable_string(chunk_memory)
+                        ))
                 try:
                     perf = process_series_parallel(
                         local_tmp_folder,
@@ -1611,7 +1682,8 @@ def main(number_of_processes: int = None,
                 time_point = time.time()
                 time_elapsed = round(time_point - start_time)
                 time_left = round(
-                    number_of_all_inst - number_of_inst_processed) * time_elapsed / float(number_of_inst_processed)
+                    number_of_all_inst - number_of_inst_processed) * \
+                    time_elapsed / float(number_of_inst_processed)
                 header = '{}/{})Study = ({}/{}) instances was fix/'\
                     'convert-ed successfully'.format(
                         number_of_st_processed, number_of_all_studies,
@@ -1635,6 +1707,7 @@ def main(number_of_processes: int = None,
                 study_chunk.append((study_uid, sub_study[0], second_half))
                 study_uids = []
                 series_chunk_count = len(second_half)
+                chunk_memory = second_half_sz
     rm(local_tmp_folder)
     import_dicom_bucket(
         fx_dicoms.DicomStore.ProjectID,

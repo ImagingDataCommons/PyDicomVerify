@@ -50,6 +50,7 @@ Key_file=$(realpath ~/.config/gcloud/service_account_key.json)
 Service_account=207848281915-compute@developer.gserviceaccount.com
 gcloud iam service-accounts keys create $Key_file --iam-account $Service_account 
 export GOOGLE_APPLICATION_CREDENTIALS=$Key_file
+echo 'echo "setting GOOGLE_APPLICATION_CREDENTIALS"' >> "$(realpath ~/.bashrc)"
 echo export GOOGLE_APPLICATION_CREDENTIALS=$Key_file >> "$(realpath ~/.bashrc)"
 #---------------------------------------------------
 sudo apt install xutils-dev

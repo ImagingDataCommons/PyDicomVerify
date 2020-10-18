@@ -24,14 +24,37 @@ def list_blobs(project_id: str, bucket_name: str, prefix: str = None):
 
     """Lists all the blobs in the bucket."""
     # bucket_name = "your-bucket-name"
-
-    storage_client = storage.Client(project_id)
-    bucket_obj = storage_client.bucket(bucket_name, project_id)
-    if prefix is None:
-        blobs = storage_client.list_blobs(bucket_obj)
-    else:
-        blobs = storage_client.list_blobs(
-            bucket_obj, prefix=prefix, delimiter='/')
+    logger = logging.getLogger(__name__)
+    max_retries = 30
+    retries = 0
+    blobs = []
+    while retries < max_retries:
+        try:
+            logger.debug("Before building client object")
+            storage_client = storage.Client(project_id)
+            logger.debug(
+                "After building clietn object and before "
+                "construction a bucket object")
+            bucket_obj = storage_client.bucket(bucket_name, project_id)
+            logger.debug(
+                "After construction a bucket object and"
+                " before retrieving blob list")
+            if prefix is None:
+                blobs = storage_client.list_blobs(bucket_obj, timeout=5)
+            else:
+                blobs = storage_client.list_blobs(
+                    bucket_obj, prefix=prefix, delimiter='/', timeout=5)
+            break
+        except Exception as err:
+            retries += 1
+            if retries % 5 == 0 and retries < max_retries:
+                logger.info("Couldn't load blobs, retry number {}".format(
+                    retries))
+            else:
+                logger.error(err, exc_info=True)
+                logger.debug(
+                    "Couln't retrieve blob list after {} retries".format(
+                        retries)) 
     return blobs
 
 
@@ -176,6 +199,32 @@ def copy_blob(
     )
 
 
+def get_blob(project_id: str, bucket_name: str, blob_name) -> bool:
+    """ retrieves a blob from the bucket."""
+    logger = logging.getLogger(__name__)
+    # bucket_name = "your-bucket-name"
+    # blob_name = "your-object-name"
+    retries = 0
+    max_retries = 30
+    bl = None
+    while retries < max_retries:
+        try:
+            storage_client = storage.Client(project_id,)
+            bucket = storage_client.bucket(bucket_name, project_id)
+            bl = bucket.get_blob(blob_name, timeout=5)
+            break
+        except BaseException as err:
+            retries += 1
+            if retries < max_retries:
+                if retries % 10 == 0:
+                    logger.info(
+                        "couldn't get the blob. retry number {}".format(
+                            retries))
+            else:
+                logger.error(err, exc_info=True)
+    return bl
+
+
 def delete_blob(project_id: str, bucket_name: str, blob_name) -> bool:
     logger = logging.getLogger(__name__)
     """Deletes a blob from the bucket."""
@@ -203,9 +252,10 @@ def delete_blob(project_id: str, bucket_name: str, blob_name) -> bool:
                         retries, blob_name, err), exc_info=True)
                 break
             else:
-                logger.info(
-                    '({})retrying connection for file \n{}'.format(
-                        retries, blob_name))
+                if retries % 10 == 0:
+                    logger.info(
+                        '({})retrying connection for file \n{}'.format(
+                            retries, blob_name))
     return success
 
 
@@ -244,9 +294,10 @@ def download_blob(project_id: str, bucket_name: str,
                         retries, destination_file_name, err), exc_info=True)
                 break
             else:
-                logger.info(
-                    '({})retrying connection for file \n{}'.format(
-                        retries, destination_file_name))
+                if retries % 10 == 0:
+                    logger.info(
+                        '({})retrying connection for file \n{}'.format(
+                            retries, destination_file_name))
     return success
 
 
@@ -280,9 +331,10 @@ def upload_blob(project_id: str, bucket_name: str,
                         retries, source_file_name, err), exc_info=True)
                 break
             else:
-                logger.info(
-                    '({})retrying connection for file \n{}'.format(
-                        retries, source_file_name))
+                if retries % 5 == 0:
+                    logger.info(
+                        '({})retrying connection for file \n{}'.format(
+                            retries, source_file_name))
     return success
 
 

@@ -19,6 +19,7 @@ from multiprocessing import (
     Process,
     Queue,
     cpu_count,
+    Lock,
 )
 from random import (
     # VARIABLES
@@ -258,12 +259,13 @@ class ThreadPool:
 
 class WorkerProcess(Process):
 
-    def __init__(self, queue: JoinableQueue, res_queue: Queue,
-                  **kwarg):
+    def __init__(self, queue: JoinableQueue, res_queue: Queue, lock: Lock,
+                 **kwarg):
         Process.__init__(self, **kwarg)
         self.output = res_queue
         self._queue = queue
         self._kill = False
+        self._lock = lock
 
     def run(self):
         logger = logging.getLogger(__name__)
@@ -271,19 +273,43 @@ class WorkerProcess(Process):
         n = 0
         while True:
             n += 1
-            toc = time.time()
+            # toc = time.time()
             # if (toc - tic) > time_interval_for_log:
             #     tic = toc
             #     logger.info(
             #         "new task out of {} in queue".format(
             #             self._queue.qsize()+1))
+            # with self._lock:
+                # if qsz < 2000 and qsz > 0:
+                #     logger.info(
+                #         "before task out of {} in queue".format(qsz))
+
             (work_fun, args) = self._queue.get()
+            qsz = self._queue.qsize() 
+            # with self._lock:
+            if qsz % 1000 == 0 and qsz > 0:
+                logger.info(
+                    "after task out of {} in queue".format(qsz))
+
             if work_fun is None or args is None:
                 self._queue.task_done()
                 break
             try:
+                # if qsz<2000 and qsz > 0:
+                #     # logging.getLogger().setLevel(logging.DEBUG)
+                #     logger.info(
+                #         "before calling fun {} in queue".format(qsz))
+                # else:
+                    # logging.getLogger().setLevel(logging.INFO)
                 out = work_fun(*args)
+                # if qsz<2000 and qsz > 0:
+                #     # print('{} print_after funcion call {}'.format(self.name, qsz))
+                #     logger.info(
+                #         "after function return {} in queue".format(qsz))
                 self.output.put((args, out,))
+                # if qsz<2000 and qsz > 0:
+                #     logger.info(
+                #         "after output baking {} in queue".format(qsz))
             except BaseException as err:
                 arg_labels = inspect.getfullargspec(work_fun)
                 msg = str(err)
@@ -293,12 +319,14 @@ class WorkerProcess(Process):
                     work_fun.__name__)
                 for arg_l, arg in zip(arg_labels[0], args):
                     if isinstance(arg, tuple) or isinstance(arg, list):
-                        arg = arg[0]
+                        if len(arg) > 0:
+                            arg = arg[0]
                     msg += ('\n\t\t\t{} = {}'.format(arg_l, arg))
                 logger.error(msg, exc_info=True)
-
-            self._queue.task_done()
-        logger.debug('returning from the run')
+            finally:
+                self._queue.task_done()
+        # logging.getLogger().setLevel(logging.INFO)
+        logger.info('returning from the run')
         return
 
     def kill(self):
@@ -318,6 +346,7 @@ class ProcessPool:
         self._res_queue = Queue()
         self._process_pool = []
         self.output = []
+        self._lock = Lock()
         for i in range(max_number_of_processs):
             self._process_pool.append(self._create_pr(
                 '{}{:02d}'.format(process_name_prifix, i)
@@ -325,8 +354,8 @@ class ProcessPool:
 
     def _create_pr(self, th_name) -> WorkerProcess:
         t = WorkerProcess(
-            self._queue, self._res_queue, name=th_name)
-        # t.daemon = True
+            self._queue, self._res_queue, self._lock, name=th_name)
+        t.daemon = True
         t.start()
         return t
 
@@ -362,6 +391,17 @@ class ProcessPool:
         #             ' I will terminate it')
         #         t.terminate()
         # logger.debug('processs all closed')
+    def get_status(self) -> str:
+        stat = ''
+        input_qsz = self._queue.qsize() 
+        output_qsz = self._res_queue.qsize() 
+        stat += ("{} processes with inputs ({}) and outputs({})\n".format(
+            len(self._process_pool), input_qsz, output_qsz))
+        for ps in self._process_pool:
+            name = ps.name
+            st = 'alive' if ps.is_alive() else 'dead'
+            stat += ('\t\tps {} is {}\n'.format(name, st))
+        return stat
 
 
 class MultiProcessingHandler(logging.Handler):
