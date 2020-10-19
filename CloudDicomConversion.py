@@ -66,6 +66,7 @@ from pydicom.uid import (
     # FUNCTIONS
     generate_uid,
 )
+from pydicom.charset import python_encoding
 from rightdicom.dcmfix.fix_all import (
     # FUNCTIONS
     fix_dicom,
@@ -92,23 +93,33 @@ flaw_query_form = '''(
             )
             '''
 # Logger setup --------------------------------------------------------
-with open('log_config.json') as json_file:
-    logger_config_dict = json.load(json_file)
-dt_string = datetime.now().strftime("[%d-%m-%Y][%H-%M-%S]")
-file_name = './Logs/log{}.log'.format(dt_string)
+def namer(name=''):
+    dt_string = datetime.now().strftime("[%d-%m-%Y][%H-%M-%S]")
+    pid = os.getpid()
+    file_name = './Logs/log{}pid{:05d}.log'.format(dt_string, pid)
+    return file_name
+
+
+file_name = namer()
 folder = os.path.dirname(file_name)
 if not os.path.exists(folder):
     os.makedirs(folder)
+with open('log_config.json') as json_file:
+    logger_config_dict = json.load(json_file)
 logger_config_dict["handlers"]['file']['filename'] = file_name
-with open('log_config.json', 'w') as json_file:
-    json.dump(logger_config_dict, json_file, indent=4)
+# with open('log_config.json', 'w') as json_file:
+#     json.dump(logger_config_dict, json_file, indent=4)
 logging.config.dictConfig(logger_config_dict)
+hs = logging.RootLogger.root.handlers
+for h in hs:
+    if h.name == 'file':
+        h.namer = namer
 install_mp_handler()
 logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.CRITICAL)
 # -----------------------------------------------------------------------
 
 
-def VER(file: str, log: list):
+def VER(file: str, log: list, char_set: str = 'ascii'):
     file_name = os.path.basename(file)
     if file_name.endswith('.dcm'):
         file_name = file_name[:-4]
@@ -119,19 +130,21 @@ def VER(file: str, log: list):
         if dcm_verify is None:
             print("Error: install dciodvfy into system path")
             assert(False)
-    ctools.RunExe([dcm_verify, '-filename', file], '', '', errlog = log)
+    ctools.RunExe([dcm_verify, '-filename', file], '', '', errlog = log,
+                  char_encoding=char_set)
     # my_code_output = verify_dicom(file, False, '')
 
 
 def FixFile(dicom_file: str, dicom_fixed_file: str,
             log_fix: list, log_david_pre: list, log_david_post: list):
     ds = pydicom.read_file(dicom_file)
+    char_set = DicomFileInfo.get_chaset_val_from_dataset(ds)
     # log_mine = []
-    VER(dicom_file, log_david_pre)
+    VER(dicom_file, log_david_pre, char_set=char_set)
     fix_dicom(ds, log_fix)
     # fix_report = PrintLog(log_fix)
     pydicom.write_file(dicom_fixed_file, ds)
-    VER(dicom_fixed_file, log_david_post)
+    VER(dicom_fixed_file, log_david_post, char_set=char_set)
     return ds
 
 
@@ -794,6 +807,7 @@ def download_fix_convert_upload_one_sereis(
     fixed_files_size = 0
     mf_files_size = 0
     upload_files_size = 0
+    in_series_dir = os.path.dirname(inst_infos[0].file_path)
     fx_blob_form = '{}/dicom/{{}}/{{}}/{{}}.dcm'.format(
         fx_gc_info.Bucket.DataObject)
     for obj in inst_infos:
@@ -809,6 +823,7 @@ def download_fix_convert_upload_one_sereis(
                     obj.series_uid, obj.instance_uid,
                     'DOWNLOAD')
                 )
+            rm((in_series_dir,), True)
             return([], [], [], flaw_queries, 0, 0,
                     downloaded_files_size, fixed_files_size,
                     mf_files_size, upload_files_size)
@@ -850,7 +865,9 @@ def download_fix_convert_upload_one_sereis(
             defective_study_series.append(
                 (fx_obj.study_uid, fx_obj.series_uid))
     # The code is not gonna proceed to conversion if there is any fix issue
+    fx_series_dir = os.path.dirname(single_frames[0].file_path)
     if len(flaw_queries) != 0:
+        rm((in_series_dir, fx_series_dir), True)
         return([], [], [], flaw_queries, 0, 0,
                 downloaded_files_size, fixed_files_size,
                 mf_files_size, upload_files_size)
@@ -860,8 +877,6 @@ def download_fix_convert_upload_one_sereis(
     (fsets, mf_series_uid, mf_series_dir) = frameset_for_one_series(
         single_frames,
         study_folder)
-    fx_series_dir = os.path.dirname(single_frames[0].file_path)
-    in_series_dir = os.path.dirname(inst_infos[0].file_path)
     number_of_all_converted_mf = 0
     if len(fsets) == 0:
         for file_blob in single_frames:
@@ -871,6 +886,7 @@ def download_fix_convert_upload_one_sereis(
             flaw_queries.append(f_query)
     else:
         mf_study_uid = single_frames[0].study_uid
+        char_set = DicomFileInfo.get_chaset_val_from_dataset(single_frames[0])
         for fset in fsets:
             # remove ds from single frome for multi_processing purpose
             for bl_f in single_frames:
@@ -899,7 +915,7 @@ def download_fix_convert_upload_one_sereis(
                 origin_queries.extend(
                     pr_ch.GetQuery(fx_table_name, mf_table_name))
                 multiframe_log = []
-                VER(pr_ch.child_dicom_file, multiframe_log)
+                VER(pr_ch.child_dicom_file, multiframe_log, char_set=char_set)
                 mf_issues = IssueCollection(
                     multiframe_log[1:], mf_table_name,
                     pr_ch.child_study_instance_uid,
@@ -924,7 +940,7 @@ def download_fix_convert_upload_one_sereis(
                 else:
                     upload_files_size += os.path.getsize(pr_ch.child_dicom_file)
     # Now I can remove the series:
-    rm((in_series_dir, fx_series_dir, mf_series_dir), False)
+    rm((in_series_dir, fx_series_dir, mf_series_dir), True)
     return(fix_queries, issue_queries, origin_queries, flaw_queries,
             len(fsets), number_of_all_converted_mf,
             downloaded_files_size, fixed_files_size,
@@ -1303,15 +1319,19 @@ def empty_bucket_contents(proj_id: str, bucket: str,
                           ps_num: int, prefix: str = None):
     logger = logging.getLogger(__name__)
     blob_list = list_blobs(proj_id, bucket, prefix)
-    ps = ProcessPool(ps_num, 'empty_bucket')
     max_retries = 2
     retries = 0
     tic = time.time()
     blob_list = list(blob_list)
     total_number_of_blobs = len(blob_list)
+    if total_number_of_blobs == 0:
+        logger.info(
+            'The bucket is already empty')
+        return []
     logger.info(
         'Started emptying bucket with {} contents'.format(
             total_number_of_blobs))
+    ps = ProcessPool(min(ps_num, total_number_of_blobs), 'empty_bucket')
     while retries < max_retries:
         for bl in blob_list:
             if isinstance(bl, str):
@@ -1360,7 +1380,8 @@ def delete_bucket_all_or_part(proj_id: str, bucket: str,
 
 
 def get_one_series_size(project_id: str, bucket_name: str,
-                        study_uid: str, series_uid: str, inst_uids: list = []):
+                        study_uid: str, series_uid: str,
+                        inst_uids: list = []) -> None:
     logger = logging.getLogger(__name__)
     prefix = 'dicom/{}/{}/'.format(study_uid, series_uid)
     size = float(0)
@@ -1384,10 +1405,12 @@ def get_one_series_size(project_id: str, bucket_name: str,
             except BaseException as err:
                 retries += 1
                 if retries < max_retries:
-                    time.sleep(5)
+                    pause_time = 60
+                    logger.info("pausing for {} sec ...".format(pause_time))
+                    time.sleep(pause_time)
                     logger.info("start retry number {}".format(retries)) 
                 else:
-                    raise
+                    raise err
     return size
 
 
@@ -1425,8 +1448,12 @@ def get_all_saeries_size(proj_id: str, uids: dict, ps_num: int,
     ps.kill_them_all()
     processes_to_monitor = []
     results = ps.output
+    z_count = 0
     for (p, b, st, se, ins), sz in results:
-        uids[st][1][se][0] = sz
+        if sz == 0:
+            c_count += 1
+        else:
+            uids[st][1][se][0] = sz
     toc = time.time()
     perf = PerformanceMeasure(series_count, toc - tic, 'series', False)
     logger.info('Retrieved all series sizes {}'.format(perf))
@@ -1448,6 +1475,9 @@ def log_status():
     if isinstance(processes_to_monitor, ProcessPool):
         logger.info(processes_to_monitor.get_status())
     status = get_status_str('RAM', vr.used, vr.free, vr.total)
+    logger.info(status)
+    hdd = psutil.disk_usage('/')
+    status = get_status_str('HardDisk', hdd.used, hdd.free, hdd.total)
     logger.info(status)
 
 
@@ -1481,7 +1511,7 @@ def main(number_of_processes: int = None,
     home = os.path.expanduser("~")
     pid = os.getpid()
     local_tmp_folder = os.path.join(home, "Tmp-{:05d}".format(pid))
-    status_logger = Periodic(log_status, None, 60)
+    status_logger = Periodic(log_status, None, 1)
     status_logger.start()
     in_dicoms = DataInfo(
         Datalet('idc-tcia',      # Bucket
@@ -1496,7 +1526,7 @@ def main(number_of_processes: int = None,
                 'idc_tcia_mvp_wave0',
                 'idc_tcia_dicom_metadata'),
         )
-    general_dataset_name = 'afshin_results_00_' + in_dicoms.BigQuery.Dataset
+    general_dataset_name = 'afshin_results_02_' + in_dicoms.BigQuery.Dataset
     fx_dicoms = DataInfo(
         Datalet('idc-tcia',      # Bucket
                 'us',
@@ -1556,7 +1586,7 @@ def main(number_of_processes: int = None,
         mf_dicoms.Bucket.Dataset,
         False)
     max_number = 2 ** 63 - 1
-    # max_number = 80
+    max_number = 50
     if max_number < 2 ** 63 - 1:
         limit_q = 'LIMIT 50000'
     else:
@@ -1598,6 +1628,7 @@ def main(number_of_processes: int = None,
     whole_performace = None
     number_of_st_processed = 1
     vrtual_mem = psutil.virtual_memory()
+    hdd_mem = psutil.disk_usage('/')
     if studies is not None:
         for row in studies:
             stuid = row.STUDYINSTANCEUID
@@ -1625,15 +1656,15 @@ def main(number_of_processes: int = None,
         max_series_count_in_chunk = (
             rough_series_count_in_chunk // number_of_processes
             ) * number_of_processes
-        max_mem = vrtual_mem.free * 0.5
+        max_mem = vrtual_mem.free * 0.2
 
         series_chunk_count = 0
         study_chunk = []
         study_uids = []
         chunk_memory = 0
         for number_of_studies, (study_uid, sub_study) in enumerate(uids.items(), 1):
-            if number_of_studies < 3022:
-                continue
+            # if number_of_studies < 3022:
+            #     continue
             study_uids.append(study_uid)
             first_half = {}
             second_half = {}
@@ -1657,7 +1688,7 @@ def main(number_of_processes: int = None,
             if number_of_studies == len(uids) or \
                     second_half_sz != 0:
                 logger.info(
-                    'Bunch of studies with {} series and size of {}'.format(
+                    'Bunch of studies with {} series and size of {}B'.format(
                         series_chunk_count,
                         ctools.get_human_readable_string(chunk_memory)
                         ))

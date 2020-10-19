@@ -12,10 +12,12 @@
             "stream": "ext://sys.stdout"
         },
         "file": {
-            "class": "logging.FileHandler",
+            "class": "logging.handlers.RotatingFileHandler",
+            "maxBytes": 2000000,
             "formatter": "date_time",
+            "backupCount": 200,
             "mode": "w",
-            "filename": "./Logs/log[18-10-2020][01-29-50].log"
+            "filename": "./Logs/log.log"
         }
     },
     "loggers": {

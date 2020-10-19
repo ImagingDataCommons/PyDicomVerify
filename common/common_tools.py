@@ -43,8 +43,9 @@ def RecursiveFind(address, approvedlist, current_depth:int, max_depth = 0,
                 approvedlist.append(filename)
 
 
-def RunExe(arg_list, stderr_file, stdout_file, outlog = None,
-           errlog = None, env_vars = None, log=[]):
+def RunExe(arg_list, stderr_file, stdout_file, outlog=None,
+           errlog=None, env_vars=None, log=[],
+           char_encoding: str = 'ascii'):
     # print(str(arg_list))
     out_text = ""
     for a in arg_list:
@@ -71,15 +72,18 @@ def RunExe(arg_list, stderr_file, stdout_file, outlog = None,
         stderr = subprocess.PIPE, env=curr_env)
     _error = proc.stderr
     if len(stderr_file) != 0:
-        WriteStringToFile(stderr_file, _error.decode("ascii"))
-        # print( _error.decode("ascii"))
+        WriteStringToFile(
+            stderr_file, _error.decode(char_encoding, 'backslashreplace'))
     _output = proc.stdout
     if len(stdout_file) != 0:
-        WriteStringToFile(stdout_file, _output.decode("ascii"))
+        WriteStringToFile(
+            stdout_file, _output.decode(char_encoding, 'backslashreplace'))
     if outlog is not None:
-        outlog.extend(re.split("\n",  _output.decode("ascii")))
+        outlog.extend(
+            re.split("\n",  _output.decode(char_encoding, 'backslashreplace')))
     if errlog is not None:
-        errlog.extend(re.split("\n",  _error.decode("ascii")))
+        errlog.extend(
+            re.split("\n",  _error.decode(char_encoding, 'backslashreplace')))
     return proc.returncode
 
 

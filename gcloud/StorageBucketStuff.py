@@ -2,6 +2,7 @@ from google.cloud import storage
 import inspect
 import sys, os
 import logging
+import time
 import common.common_tools as ct
 import common.parallelization as parallel
 from requests.exceptions import RequestException
@@ -241,10 +242,10 @@ def delete_blob(project_id: str, bucket_name: str, blob_name) -> bool:
     while True:
         try:
             blob.delete()
-            logger.debug("Blob {} deleted.".format(blob_name))
             success = True
             break
         except BaseException as err:
+            retries += 1
             if retries >= max_retries:
                 logger.error(
                     "after {} retries couldn't "
@@ -253,6 +254,7 @@ def delete_blob(project_id: str, bucket_name: str, blob_name) -> bool:
                 break
             else:
                 if retries % 10 == 0:
+                    time.sleep(1)
                     logger.info(
                         '({})retrying connection for file \n{}'.format(
                             retries, blob_name))

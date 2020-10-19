@@ -7,6 +7,7 @@ from typing import List
 import common.common_tools as ct
 from datetime import timedelta
 from pydicom import Dataset
+from pydicom.charset import python_encoding
 
 git_url = 'https://github.com/afshinmessiah/PyDicomVerify/{}'
 repo = git.Repo(search_parent_directories=True)
@@ -361,6 +362,7 @@ class DicomFileInfo:
         self.series_uid = series_uid
         self.instance_uid = instance_uid
         self.dicom_ds = dicom_dataset
+        
 
     def __str__(self):
         out = 'DicomFileInfo\n{{\n{}\n}}'
@@ -376,6 +378,17 @@ class DicomFileInfo:
             "dicom_ds", self.dicom_ds if
             self.dicom_ds is None else 'Exists but hidden')
         return out.format(content)
+
+
+    @staticmethod
+    def get_chaset_val_from_dataset(ds: Dataset = None) -> str:
+        python_char_set = 'ascii'
+        if isinstance(ds, Dataset) and ds is not None:
+            if "SpecificCharacterSet" in ds:
+                dicom_char_set = ds.SpecificCharacterSet
+                if dicom_char_set in python_encoding:
+                    python_char_set = python_encoding[dicom_char_set]
+        return python_char_set
 
 
 

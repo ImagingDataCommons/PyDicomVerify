@@ -289,7 +289,7 @@ class WorkerProcess(Process):
             # with self._lock:
             if qsz % 1000 == 0 and qsz > 0:
                 logger.info(
-                    "after task out of {} in queue".format(qsz))
+                    "picked a task out of {} remaining in queue".format(qsz))
 
             if work_fun is None or args is None:
                 self._queue.task_done()
@@ -321,7 +321,10 @@ class WorkerProcess(Process):
                     if isinstance(arg, tuple) or isinstance(arg, list):
                         if len(arg) > 0:
                             arg = arg[0]
-                    msg += ('\n\t\t\t{} = {}'.format(arg_l, arg))
+                    if isinstance(arg, str):
+                        msg += ('\n\t\t\t{} = "{}"'.format(arg_l, arg))
+                    else:
+                        msg += ('\n\t\t\t{} = {}'.format(arg_l, arg))
                 logger.error(msg, exc_info=True)
             finally:
                 self._queue.task_done()
@@ -371,10 +374,25 @@ class ProcessPool:
             self._queue.put((None, None))
         logger.debug('collecting all output data from processs')
         self._res_queue.put(None)
-        result = self._res_queue.get()
-        while result is not None:
-            self.output.append(result)
+        output_count = self._res_queue.qsize()
+        # result = self._res_queue.get()
+        collected = 1
+        number_of_none_outputs = 0
+        none_indeces = []
+        while collected < output_count:
             result = self._res_queue.get()
+            collected += 1
+            if result is None:
+                number_of_none_outputs += 1
+                none_indeces.append(collected - 1)
+            else:
+                self.output.append(result)
+        logger.info(
+            'from all {} ouputs {} were collected {} '
+            'of them were None. None indeces: {}'.format(
+                output_count, len(self.output),
+                number_of_none_outputs, none_indeces)
+            )
         logger.debug('data were collected waiting for processses to join')
         for p in self._process_pool:
             p.terminate()
