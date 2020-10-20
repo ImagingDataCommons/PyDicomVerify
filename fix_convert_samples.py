@@ -52,7 +52,10 @@ LOGGING_CONFIG = {
 logging.config.dictConfig(LOGGING_CONFIG)
 log = logging.getLogger(__name__)
 log.debug("Logging is configured.")
-
+anatomic_attribs = ["ImageLaterality" ,
+"BodyPartExamined",
+"FrameAnatomySequence",
+"AnatomicRegionSequence",]
 
 def download_parallel(project_id: str, bucket_name: str, st_uid: str,
                       se_uid: str, destination_dir: str,
