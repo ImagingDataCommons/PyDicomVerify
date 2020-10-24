@@ -2,6 +2,7 @@ import json
 import logging
 import logging.config
 import os
+import re
 import psutil
 import pydicom
 import shutil
@@ -38,6 +39,7 @@ from gcloud.BigQueryStuff import (
     create_bq_dataset,
     query_string,
     query_string_with_result,
+    delete_table,
 )
 from gcloud.DicomStoreStuff import (
     # FUNCTIONS
@@ -76,6 +78,7 @@ from typing import (
     List,
     Tuple,
 )
+from multiprocessing import Manager
 # ---------------- Global Vars --------------------------:
 max_number_of_study_processes = 1
 max_number_of_fix_processes = MAX_NUMBER_OF_THREADS
@@ -93,10 +96,19 @@ flaw_query_form = '''(
             )
             '''
 # Logger setup --------------------------------------------------------
+global lock
 def namer(name=''):
-    dt_string = datetime.now().strftime("[%d-%m-%Y][%H-%M-%S]")
     pid = os.getpid()
-    file_name = './Logs/log{}pid{:05d}.log'.format(dt_string, pid)
+    if name == '':
+        dt_string = datetime.now().strftime("[%d-%m-%Y][%H-%M-%S]")
+        file_name = './Logs/log{}pid{:05d}.log'.format(dt_string, pid)
+    else:
+        dt_string = datetime.now().strftime("[%d-%m-%Y][%H-%M-%S.%f]")
+        base = os.path.basename(name)
+        dir_ = os.path.dirname(name)
+        prev_file_name = re.sub(r'\.log.*', '', base)
+        file_name = os.path.join(
+            dir_, '{}_ended_at_{}.log'.format(prev_file_name, dt_string))
     return file_name
 
 
@@ -114,7 +126,7 @@ hs = logging.RootLogger.root.handlers
 for h in hs:
     if h.name == 'file':
         h.namer = namer
-install_mp_handler()
+# install_mp_handler()
 logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.CRITICAL)
 # -----------------------------------------------------------------------
 
@@ -169,7 +181,7 @@ def BuildQueries(header: str, qs: list, dataset_id: str,
         else:
             n += 1
             out_q.append(header.format(dataset_id, elem_q))
-            elem_q = ''
+            elem_q = q # for the next round
             rn = 0
             if processes is None:
                 query_string(out_q[-1], '')
@@ -196,14 +208,6 @@ def BuildQueries(header: str, qs: list, dataset_id: str,
         return out_q
     else:
         return []
-
-
-def CreateDicomStore(project_id: str,
-                     cloud_region: str,
-                     dataset_id: str,
-                     dicom_store_id: str):
-    recreate_dicom_store(
-            project_id, cloud_region, dataset_id, dicom_store_id)
 
 
 def fix_one_instance(inst_info: DicomFileInfo,
@@ -431,7 +435,7 @@ def download_fix_convert_upload_one_sereis(
         fx_local_study_path: str,
         mf_local_study_path: str,
         in_gc_info, fx_gc_info, mf_gc_info):
-    if len(inst_infos) <= 1:
+    if len(inst_infos) == 0:
         return([], [], [], [], 0, 0, 0, 0, 0, 0)
     in_table_name = in_gc_info.BigQuery.GetBigQueryStyleAddress(False)
     fx_table_name = fx_gc_info.BigQuery.GetBigQueryStyleAddress(False)
@@ -566,7 +570,7 @@ def download_fix_convert_upload_one_sereis(
                         mf_gc_info.Bucket.DataObject,
                         pr_ch.child_study_instance_uid,
                         pr_ch.child_series_instance_uid,
-                        pr_ch.child_series_instance_uid)
+                        pr_ch.child_sop_instance_uid)
                 success = upload_blob(
                     mf_gc_info.Bucket.ProjectID,
                     mf_gc_info.Bucket.Dataset,
@@ -581,6 +585,7 @@ def download_fix_convert_upload_one_sereis(
                     upload_files_size += os.path.getsize(pr_ch.child_dicom_file)
     # Now I can remove the series:
     rm((in_series_dir, fx_series_dir, mf_series_dir), False)
+    logging.info('fixed = {}, converted = {} orig = {}'.format(len(inst_infos), number_of_all_converted_mf, len(origin_queries)))
     return(fix_queries, issue_queries, origin_queries, flaw_queries,
             len(fsets), number_of_all_converted_mf,
             downloaded_files_size, fixed_files_size,
@@ -743,6 +748,13 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
             origin_queries,
             dataset_id, False,
             big_q_processes)
+        for iq, qqq in enumerate(origin_queries, 1):
+            if iq == 1:
+                append = False
+            else:
+                append = True
+            ctools.WriteStringToFile(
+                './gitexcluded_qqq.txt', '{} -> {}'.format(iq, qqq), append)
     if len(flaw_queries) != 0:
         BuildQueries(
             "INSERT INTO `{0}`.DEFECTIVE VALUES {1};",
@@ -775,14 +787,21 @@ def rm(folders, log: bool = True):
                 logging.info("FOLDER {} DOESN'T EXIST TO BE ROMOVED".format(a))
 
 
+
+
 def empty_bucket_contents(proj_id: str, bucket: str,
                           ps_num: int, prefix: str = None):
     logger = logging.getLogger(__name__)
-    blob_list = list_blobs(proj_id, bucket, prefix)
     max_retries = 2
     retries = 0
     tic = time.time()
-    blob_list = list(blob_list)
+    def get_blobs_and_list_them(proj_id, bucket, prefix):
+        blobs = list_blobs(proj_id, bucket, prefix)
+        return list(blobs)
+    blob_list = ctools.retry_if_failes(
+        get_blobs_and_list_them, (proj_id, bucket, prefix,), wait_in_sec=10,
+        give_message=True,
+        messaging_intervals=10)
     total_number_of_blobs = len(blob_list)
     if total_number_of_blobs == 0:
         logger.info(
@@ -834,7 +853,7 @@ def delete_bucket_all_or_part(proj_id: str, bucket: str,
     if not exists_bucket(proj_id, bucket):
         return True
     not_deleteds = empty_bucket_contents(proj_id, bucket, ps_num, prefix)
-    if len(not_deleteds) == 0 and prefix is None:
+    if len(not_deleteds) > 256 and prefix is None:
         delete_bucket(proj_id, bucket)           
     return len(not_deleteds) == 0
 
@@ -874,7 +893,7 @@ def get_one_series_size(project_id: str, bucket_name: str,
     return size
 
 
-def get_all_saeries_size(proj_id: str, uids: dict, ps_num: int,
+def get_all_series_size(proj_id: str, uids: dict, ps_num: int,
                          partial: bool = False):
     logger = logging.getLogger(__name__)
     # ps_num = MAX_NUMBER_OF_THREADS
@@ -971,8 +990,6 @@ def main(number_of_processes: int = None,
     home = os.path.expanduser("~")
     pid = os.getpid()
     local_tmp_folder = os.path.join(home, "Tmp-{:05d}".format(pid))
-    status_logger = Periodic(log_status, None, 60)
-    status_logger.start()
     in_dicoms = DataInfo(
         Datalet('idc-tcia',      # Bucket
                 'us',
@@ -1023,20 +1040,14 @@ def main(number_of_processes: int = None,
     create_all_tables('{}.{}'.format(
         fx_dicoms.BigQuery.ProjectID, fx_dicoms.BigQuery.Dataset),
         fx_dicoms.BigQuery.CloudRegion, True)
-    # --> recreated dicomstores
-    CreateDicomStore(
-        fx_dicoms.DicomStore.ProjectID,
-        fx_dicoms.DicomStore.CloudRegion,
-        fx_dicoms.DicomStore.Dataset,
-        fx_dicoms.DicomStore.DataObject)
-    CreateDicomStore(
-        mf_dicoms.DicomStore.ProjectID,
-        mf_dicoms.DicomStore.CloudRegion,
-        mf_dicoms.DicomStore.Dataset,
-        mf_dicoms.DicomStore.DataObject)
     # --> this suffices to remove both fix and multiframes buckets
-    delete_bucket_all_or_part(
+    success = delete_bucket_all_or_part(
         fx_dicoms.Bucket.ProjectID, fx_dicoms.Bucket.Dataset, number_of_processes)
+    if not success:
+        logger.info(
+            "Couldn't delete the bucket successfully."
+            " The process is going to be aborted")
+        return
     create_bucket(
         fx_dicoms.Bucket.ProjectID,
         fx_dicoms.Bucket.Dataset,
@@ -1108,7 +1119,7 @@ def main(number_of_processes: int = None,
                 if len(uids) >= max_number_of_studies:
                     continue
                 uids[stuid] = (cln_id, {seuid: [0, [sopuid]]})
-        uids = get_all_saeries_size(
+        uids = get_all_series_size(
             in_dicoms.Bucket.ProjectID, uids, number_of_processes,
             max_number < 2 ** 63 - 1)
         number_of_all_studies = min(len(uids), max_number_of_studies)
@@ -1200,6 +1211,26 @@ def main(number_of_processes: int = None,
                 series_chunk_count = len(second_half)
                 chunk_memory = second_half_sz
     rm(local_tmp_folder)
+    # --> recreated dicomstores
+    recreate_dicom_store(
+        fx_dicoms.DicomStore.ProjectID,
+        fx_dicoms.DicomStore.CloudRegion,
+        fx_dicoms.DicomStore.Dataset,
+        fx_dicoms.DicomStore.DataObject)
+    recreate_dicom_store(
+        mf_dicoms.DicomStore.ProjectID,
+        mf_dicoms.DicomStore.CloudRegion,
+        mf_dicoms.DicomStore.Dataset,
+        mf_dicoms.DicomStore.DataObject)
+    delete_table(
+        fx_dicoms.BigQuery.ProjectID,
+        fx_dicoms.BigQuery.Dataset,
+        fx_dicoms.BigQuery.DataObject)
+    delete_table(
+        mf_dicoms.BigQuery.ProjectID,
+        mf_dicoms.BigQuery.Dataset,
+        mf_dicoms.BigQuery.DataObject)
+    # --> import/export dicom data
     import_dicom_bucket(
         fx_dicoms.DicomStore.ProjectID,
         fx_dicoms.DicomStore.CloudRegion,
@@ -1242,5 +1273,9 @@ def main(number_of_processes: int = None,
 #     chunk *= 2
 #     main(th, ch)
 if __name__ == '__main__':
-    main(88, 1000)
-
+    status_logger = Periodic(log_status, None, 60)
+    status_logger.start()
+    try:
+        main(88, 1000)
+    finally:
+        status_logger.kill_timer()

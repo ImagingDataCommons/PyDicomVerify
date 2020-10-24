@@ -166,7 +166,7 @@ def delete_bucket(project_id: str, bucket_name: str):
 
     bucket_obj = storage_client.bucket(bucket_name, project_id)
     bucket = storage_client.get_bucket(bucket_obj)
-    bucket.delete()
+    bucket.delete(force=True)
 
     logger.info("Bucket {} deleted".format(bucket.name))
 
@@ -236,29 +236,8 @@ def delete_blob(project_id: str, bucket_name: str, blob_name) -> bool:
 
     bucket = storage_client.bucket(bucket_name, project_id)
     blob = bucket.blob(blob_name)
-    max_retries = 30
-    retries = 0
-    success = False
-    while True:
-        try:
-            blob.delete()
-            success = True
-            break
-        except BaseException as err:
-            retries += 1
-            if retries >= max_retries:
-                logger.error(
-                    "after {} retries couldn't "
-                    "delete the file\n{}\n{} ".format(
-                        retries, blob_name, err), exc_info=True)
-                break
-            else:
-                if retries % 10 == 0:
-                    time.sleep(1)
-                    logger.info(
-                        '({})retrying connection for file \n{}'.format(
-                            retries, blob_name))
-    return success
+    ct.retry_if_failes(blob.delete, None, 30, 10, True, 10)
+    return True
 
 
 

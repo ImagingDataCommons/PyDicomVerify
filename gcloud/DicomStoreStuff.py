@@ -2,6 +2,10 @@ from googleapiclient import discovery
 import json
 import logging
 import os
+import time
+from datetime import timedelta
+import common.common_tools as ct
+
 # client.projects().locations()
 #     datasets
 #     get
@@ -69,7 +73,7 @@ import os
 #     patch
 #     setIamPolicy
 #     testIamPermissions
-def get_entitiy_path(project_id: str, cloud_region: str = '',
+def get_entity_path(project_id: str, cloud_region: str = '',
                      dataset_id: str = '', dicom_store: str = ''):
     output = ''
     if project_id != '':
@@ -107,7 +111,7 @@ def create_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id):
             "Checked before createion of dicom store, "
             "parent-dataset {} doesn't exist.".format(dataset_id))
         create_dataset(project_id, cloud_region, dataset_id)
-    dicom_store_full_name = get_entitiy_path(
+    dicom_store_full_name = get_entity_path(
         project_id, cloud_region, dataset_id, dicom_store_id)
     return create_dicom_store_direct(dicom_store_full_name)
 
@@ -127,6 +131,7 @@ def create_dicom_store_direct(dicom_store_full_path: str):
     )
     response = request.execute()
     logger.info("Created DICOM store: {}".format(dicom_store_id))
+    logger.info('Response for create function {}'.format(response))
     return response
 
 def recreate_dicom_store(
@@ -156,6 +161,7 @@ def delete_dicom_store_directly(dicom_store_path_name):
     )
     response = request.execute()
     logger.info("Deleted DICOM store: {}".format(dicom_store_path_name))
+    logger.info('Response for delete function {}'.format(response))
     return response
 
 
@@ -163,7 +169,7 @@ def delete_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id):
     """Deletes the specified DICOM store."""
     logger = logging.getLogger(__name__)
     client = get_client()
-    dicom_store_name = get_entitiy_path(
+    dicom_store_name = get_entity_path(
         project_id, cloud_region, dataset_id, dicom_store_id)
     return delete_dicom_store_directly(dicom_store_name)
 
@@ -182,7 +188,7 @@ def get_dicom_store_directly(dicom_store_name: str):
 
 def get_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id):
     """Gets the specified DICOM store."""
-    dicom_store_name = get_entitiy_path(
+    dicom_store_name = get_entity_path(
         project_id, cloud_region, dataset_id, dicom_store_id)
     return get_dicom_store_directly(dicom_store_name)
 
@@ -207,13 +213,13 @@ def list_dicom_stores_directly(dicom_store_parent: str):
 
 def list_dicom_stores(project_id, cloud_region, dataset_id):
     """Lists the DICOM stores in the given dataset."""
-    dicom_store_parent = get_entitiy_path(project_id, cloud_region, dataset_id)
+    dicom_store_parent = get_entity_path(project_id, cloud_region, dataset_id)
     return list_dicom_stores_directly(dicom_store_parent)
 
 
 def exists_dicom_store(project_id, cloud_region, dataset_id, dicom_store_id):
     """Lists the DICOM stores in the given dataset."""
-    dicom_store_full_path = get_entitiy_path(
+    dicom_store_full_path = get_entity_path(
         project_id, cloud_region, dataset_id, dicom_store_id)
     try:
         if not exists_dataset(project_id, cloud_region, dataset_id):
@@ -277,15 +283,15 @@ def patch_dicom_store(
     return response
 
 
-def export_dicom_instance_bigquery(
-    dicomstore_project_id,
-    dicomstore_cloud_region,
-    dicomstore_dataset_id,
-    dicom_store_id,
-    bigquery_project_id,
-    bigquery_dataset_id,
-    bigquery_table_id
-):
+def export_dicom_instance_bigquery(dicomstore_project_id,
+                                   dicomstore_cloud_region,
+                                   dicomstore_dataset_id,
+                                   dicom_store_id,
+                                   bigquery_project_id,
+                                   bigquery_dataset_id,
+                                   bigquery_table_id
+                                ):
+    logger = logging.getLogger(__name__)
     client = get_client()
     dicom_store_parent = "projects/{}/locations/{}/datasets/{}".format(
         dicomstore_project_id, dicomstore_cloud_region, dicomstore_dataset_id
@@ -306,12 +312,50 @@ def export_dicom_instance_bigquery(
         .export(name=dicom_store_name, body=body)
     )
     response = request.execute()
-    # logger.info("Exported DICOM instances to bigquery: bq://{}".format(uri_prefix))
-    return response
+    n = 0
+    request = (client.projects().
+               locations().
+               datasets().
+               operations().
+               get(name=response['name']))
+    request_interval = 10
+    tic = time.time()
+    while True:
+        time.sleep(request_interval)
+        n += 1
+        toc = time.time()
+        time_elapsed = toc - tic
+        logger.info(
+            'waiting for bucket export operation to '
+            'finish -> elapsed time: {}'.format(
+                timedelta(seconds=time_elapsed)))
+        res = request.execute()
+        if 'done' in res:
+            logger.debug(ct.dict2str(res, 1, '\t'))
+            if res['done'] == True:
+                break
+        # r = ct.dict2str(res, 1, '    ')
+        # logger.info("-->{}) {}".format(n, r))
+    success: bool = False
+    if 'response' in res:
+        logger.info(
+            "DICOM instance {} exported successfully to storage "
+            "bucket {}".format(dicom_store_id, uri_prefix))
+    elif 'error' in res:
+        logger.info(
+            'DICOM instance {} failed to be exported -> error {}'.format(
+                dicom_store_id, ct.dict2str(res['error'], 1, '\t'))
+        )
+    else:
+        logger.info('The DICOM instance {} export operation finished'
+                    ' but its not clear it was successful'.format(
+                        dicom_store_id))
+    return success
 
-def export_dicom_instance(
-    project_id, cloud_region, dataset_id, dicom_store_id, uri_prefix
-):
+
+def export_dicom_instance(project_id,
+                          cloud_region, dataset_id,
+                          dicom_store_id, uri_prefix):
     """Export data to a Google Cloud Storage bucket by copying
     it from the DICOM store."""
     logger = logging.getLogger(__name__)
@@ -319,7 +363,8 @@ def export_dicom_instance(
     dicom_store_parent = "projects/{}/locations/{}/datasets/{}".format(
         project_id, cloud_region, dataset_id
     )
-    dicom_store_name = "{}/dicomStores/{}".format(dicom_store_parent, dicom_store_id)
+    dicom_store_name = "{}/dicomStores/{}".format(
+        dicom_store_parent, dicom_store_id)
     body = {"gcsDestination": {"uriPrefix": "gs://{}".format(uri_prefix)}}
     request = (
         client.projects()
@@ -329,25 +374,65 @@ def export_dicom_instance(
         .export(name=dicom_store_name, body=body)
     )
     response = request.execute()
-    logger.info("Exported DICOM instances to bucket: gs://{}".format(uri_prefix))
-    return response
+    n = 0
+    request = (client.projects().
+               locations().
+               datasets().
+               operations().
+               get(name=response['name']))
+    request_interval = 10
+    tic = time.time()
+    while True:
+        time.sleep(request_interval)
+        n += 1
+        toc = time.time()
+        time_elapsed = toc - tic
+        logger.info(
+            'waiting for bucket export operation to '
+            'finish -> elapsed time: {}'.format(
+                timedelta(seconds=time_elapsed)))
+        res = request.execute()
+        if 'done' in res:
+            logger.debug(ct.dict2str(res, 1, '\t'))
+            if res['done'] == True:
+                break
+        # r = ct.dict2str(res, 1, '    ')
+        # logger.info("-->{}) {}".format(n, r))
+    success: bool = False
+    if 'response' in res:
+        logger.info(
+            "DICOM instance {} exported successfully to storage "
+            "bucket {}".format(dicom_store_id, uri_prefix))
+    elif 'error' in res:
+        logger.info(
+            'DICOM instance {} failed to be exported -> error {}'.format(
+                dicom_store_id, ct.dict2str(res['error'], 1, '\t'))
+        )
+    else:
+        logger.info('The DICOM instance {} export operation finished'
+                    ' but its not clear it was successful'.format(
+                        dicom_store_id))
+    return success
 
 def import_dicom_bucket(
-    dicom_dataset_project_id, 
-    dicom_dataset_cloud_region, 
-    dicom_dataset_id, dicom_store_id, 
-    bucket_project_id,
-    bucket_name,
-    sub_bucket_name=None
-    ):
+        dicom_dataset_project_id, 
+        dicom_dataset_cloud_region, 
+        dicom_dataset_id, dicom_store_id, 
+        bucket_project_id,
+        bucket_name,
+        sub_bucket_name=None
+        ):
     logger = logging.getLogger(__name__)
     client = get_client()
     dicom_store_parent = "projects/{}/locations/{}/datasets/{}".format(
         dicom_dataset_project_id, dicom_dataset_cloud_region, dicom_dataset_id
     )
-    dicom_store_name = "{}/dicomStores/{}".format(dicom_store_parent, dicom_store_id)
-    sub_bucket = '' if sub_bucket_name is None else '{}/'.format(sub_bucket_name)
-    body = {"gcsSource": {"uri": "gs://{}/{}**.dcm".format(bucket_name, sub_bucket_name)}}
+    dicom_store_name = "{}/dicomStores/{}".format(
+        dicom_store_parent, dicom_store_id)
+    sub_bucket = '' if sub_bucket_name is None else '{}/'.format(
+        sub_bucket_name)
+    body = {"gcsSource": {"uri": "gs://{}/{}**.dcm".format(
+        bucket_name, sub_bucket_name)}}
     request = (
         client.projects()
         .locations()
@@ -356,13 +441,48 @@ def import_dicom_bucket(
         .import_(name=dicom_store_name, body=body)
     )
     response = request.execute()
-    logger.info("Imported DICOM instance: {}".format(bucket_name))
-    return response
+    n = 0
+    request = (client.projects().
+               locations().
+               datasets().
+               operations().
+               get(name=response['name']))
+    request_interval = 10
+    tic = time.time()
+    while True:
+        time.sleep(request_interval)
+        n += 1
+        toc = time.time()
+        time_elapsed = toc - tic
+        logger.info(
+            'waiting for bucket import operation to '
+            'finish -> elapsed time: {}'.format(
+                timedelta(seconds=time_elapsed)))
+        res = request.execute()
+        if 'done' in res:
+            logger.debug(ct.dict2str(res, 1, '\t'))
+            if res['done'] == True:
+                break
+        # r = ct.dict2str(res, 1, '    ')
+        # logger.info("-->{}) {}".format(n, r))
+    success: bool = False
+    if 'response' in res:
+        logger.info(
+            "DICOM bucket {} imported successfully to dicom store {}".format(
+                bucket_name, dicom_store_name))
+    elif 'error' in res:
+        logger.info(
+            'DICOM bucket {} failed to be imported -> error {}'.format(
+                bucket_name, ct.dict2str(res['error'], 1, '\t'))
+        )
+    else:
+        logger.info('The DICOM bucket {} import operation finished'
+                    ' but its not clear it was successful'.format(bucket_name))
+    return success
 
 
 def import_dicom_instance(
-    project_id, cloud_region, dataset_id, dicom_store_id, content_uri
-):
+        project_id, cloud_region, dataset_id, dicom_store_id, content_uri):
     """Import data into the DICOM store by copying it from the specified
     source.
     """
@@ -371,7 +491,8 @@ def import_dicom_instance(
     dicom_store_parent = "projects/{}/locations/{}/datasets/{}".format(
         project_id, cloud_region, dataset_id
     )
-    dicom_store_name = "{}/dicomStores/{}".format(dicom_store_parent, dicom_store_id)
+    dicom_store_name = "{}/dicomStores/{}".format(
+        dicom_store_parent, dicom_store_id)
     body = {"gcsSource": {"uri": "gs://{}".format(content_uri)}}
     request = (
         client.projects()
@@ -381,13 +502,53 @@ def import_dicom_instance(
         .import_(name=dicom_store_name, body=body)
     )
     response = request.execute()
-    logger.info("Imported DICOM instance: {}".format(content_uri))
-    return response
+    n = 0
+    request = (client.projects().
+               locations().
+               datasets().
+               operations().
+               get(name=response['name']))
+    request_interval = 10
+    tic = time.time()
+    while True:
+        time.sleep(request_interval)
+        n += 1
+        toc = time.time()
+        time_elapsed = toc - tic
+        logger.info(
+            'waiting for bucket import operation to '
+            'finish -> elapsed time: {}'.format(
+                timedelta(seconds=time_elapsed)))
+        res = request.execute()
+        if 'done' in res:
+            logger.debug(ct.dict2str(res, 1, '\t'))
+            if res['done'] == True:
+                break
+        # r = ct.dict2str(res, 1, '    ')
+        # logger.info("-->{}) {}".format(n, r))
+    success: bool = False
+    if 'response' in res:
+        logger.info(
+            "DICOM instance {} imported successfully to dicom store {}".format(
+                body, dicom_store_name))
+        success = True
+    elif 'error' in res:
+        logger.info(
+            'DICOM instance {} failed to be imported to'
+            'dicom store {}-> error {}'.format(
+                body, dicom_store_name, ct.dict2str(res['error'], 1, '\t'))
+        )
+        success = False
+    else:
+        logger.info('The DICOM instance {} import operation finished'
+                    ' but its not clear it was successful'.format(body))
+        success = False
+    return success
 
 
 def create_dataset(project_id, cloud_region, dataset_id):
     """Creates a dataset."""
-    dataset_parent = get_entitiy_path(project_id, cloud_region)
+    dataset_parent = get_entity_path(project_id, cloud_region)
     return create_dataset_directly(dataset_parent, dataset_id)
 
 
@@ -399,11 +560,12 @@ def create_dataset_directly(dataset_parent: str, dataset_id: str):
         parent=dataset_parent, body={}, datasetId=dataset_id)
     response = request.execute()
     logger.info('Created dataset: {}'.format(dataset_id))
+    logger.info('Response for create dataset function {}'.format(response))
     return response
 
 
 def recreate_dataset(project_id: str, cloud_region: str, dataset_id: str):
-    dataset_parent_fullname = get_entitiy_path(project_id, cloud_region)
+    dataset_parent_fullname = get_entity_path(project_id, cloud_region)
     recreate_dataset_directly(dataset_parent_fullname, dataset_id)
 
 
@@ -416,7 +578,7 @@ def recreate_dataset_directly(dataset_parent_fullname: str, dataset_id: str):
 
 def delete_dataset(project_id, cloud_region, dataset_id):
     """Deletes a dataset."""
-    dataset_name = get_entitiy_path(project_id, cloud_region, dataset_id)
+    dataset_name = get_entity_path(project_id, cloud_region, dataset_id)
     return delete_dataset_directly(dataset_name)
 
 
@@ -428,6 +590,7 @@ def delete_dataset_directly(dataset_name: str):
         name=dataset_name)
     response = request.execute()
     logger.info('Deleted dataset: {}'.format(dataset_name))
+    logger.info('Response for delete function {}'.format(response))
     return response
 
 
@@ -473,7 +636,7 @@ def list_datasets_and_dicomstores(project_id, cloud_region):
 
 def list_datasets(project_id: str, cloud_region: str):
     """Lists the datasets in the project."""
-    dataset_parent = get_entitiy_path(project_id, cloud_region)
+    dataset_parent = get_entity_path(project_id, cloud_region)
     return list_datasets_directly(dataset_parent)
 
 
@@ -503,15 +666,15 @@ def exists_dataset_directly(dataset_full_name: str):
         parent=dataset_parent).execute().get('datasets', [])
     for dataset in datasets:
         if dataset['name'].endswith(dataset_id):
-            logger.info('dataset {} exists'.format(dataset_id))
+            logger.debug('dataset {} exists'.format(dataset_id))
             return True
-    logger.info("dataset {} doesn't exists".format(dataset_id))
+    logger.debug("dataset {} doesn't exists".format(dataset_id))
     return False
 
 
 def exists_dataset(project_id, cloud_region, dataset_id):
     """Lists the datasets in the project."""
-    dataset_full_name = get_entitiy_path(project_id, cloud_region, dataset_id)
+    dataset_full_name = get_entity_path(project_id, cloud_region, dataset_id)
     return exists_dataset_directly(dataset_full_name)
 
 

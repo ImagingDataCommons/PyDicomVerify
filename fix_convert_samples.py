@@ -20,6 +20,7 @@ from rightdicom.dcmvfy.verify import(
     # FUNCTIONS
     verify_dicom,
 )
+from gcloud.BigQueryStuff import *
 LOGGING_CONFIG = {
     'version': 1,
     'disable_existing_loggers': True,
@@ -35,6 +36,13 @@ LOGGING_CONFIG = {
             'class': 'logging.StreamHandler',
             'stream': 'ext://sys.stdout',  # Default is stderr
         },
+        'file': {
+            'level': 'DEBUG',
+            'formatter': 'standard',
+            'class': 'logging.FileHandler',
+            'filename': './Logs/sampling_log.log',  # Default is stderr
+            "mode": "w",
+        },
     },
     'loggers': {
         'xxx': {  # root logger
@@ -44,8 +52,8 @@ LOGGING_CONFIG = {
         }
     },
     'root': {  # root logger
-            'handlers': ['default'],
-            'level': 'DEBUG',
+            'handlers': ['default', 'file'],
+            'level': 'INFO',
             'propagate': False
         }
 }
@@ -139,13 +147,58 @@ def FixFile(dicom_file: str, dicom_fixed_file: str,
     # VER(dicom_fixed_file, log_david_post)
     return ds
 
+
+def GetSeries(keyword: str, value: str):
+    if isinstance(value, str):
+        value = '"{}"'.format(value)
+    study_query = """
+                WITH DICOMS AS (
+                SELECT STUDYINSTANCEUID, SERIESINSTANCEUID, SOPINSTANCEUID
+                FROM {}
+                WHERE
+                    (SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.2" OR
+                    SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.4" OR
+                    SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.128") AND
+                    {} = {}
+                    )
+                    SELECT DICOMS.STUDYINSTANCEUID,
+                        DICOMS.SERIESINSTANCEUID,
+                        DICOMS.SOPINSTANCEUID,
+                        COLLECTION_TABLE.GCS_Bucket,
+                    FROM DICOMS JOIN
+                        {} AS
+                        COLLECTION_TABLE ON
+                        COLLECTION_TABLE.SOPINSTANCEUID = DICOMS.SOPINSTANCEUID
+    """.format(
+        '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata`',
+        keyword, value,
+        '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_auxilliary_metadata`')
+    
+    studies = query_string_with_result(study_query)
+    stuid = None
+    seuid = None
+    sopuid = None
+    cln_id = None
+    if studies is not None:
+        for row in studies:
+            stuid = row.STUDYINSTANCEUID
+            seuid = row.SERIESINSTANCEUID
+            sopuid = row.SOPINSTANCEUID
+            cln_id = row.GCS_Bucket
+            break
+    return (stuid, seuid, sopuid, cln_id)
+
+
 project_id = 'idc-tcia'
-bucket_name = 'idc-tcia-tcga-blca'
-study_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.292170230498352399648594035286'
-series_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.316228581410299389630475076825'
-instance_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.161670751003027974162100121182'
 in_folders = ['/home/akbarzadehm/Tmp/in']
 out_folders = '/home/akbarzadehm/Tmp/out'
+series_uid = '1.3.6.1.4.1.14519.5.2.1.2783.4001.332860843169980730178622575497'
+study_uid, series_uid, instance_uid, bucket_name = GetSeries(
+    'SeriesInstanceUID', series_uid)
+# bucket_name = 'idc-tcia-tcga-blca'
+# study_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.292170230498352399648594035286'
+# series_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.316228581410299389630475076825'
+# instance_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.161670751003027974162100121182'
 
 log = []
 log_ver = []

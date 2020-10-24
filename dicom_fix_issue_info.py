@@ -417,7 +417,10 @@ class PerformanceMeasure:
         else:
             time = self.time_in_sec
         e_t = timedelta(seconds=time)
-        sz = ct.get_human_readable_string(self.size, self.binary)
+        if self.suffix == '(inst)':
+            sz = str(self.size)
+        else:
+            sz = ct.get_human_readable_string(self.size, self.binary)
         speed = 0 if self.time_in_sec == 0 else (self.size / self.time_in_sec)
         rate = ct.get_human_readable_string(speed)
         output = '{1}{0:8.8s} in {2:24.24s} ({3}{4:12.12s})'.format(
@@ -465,7 +468,7 @@ class ProcessPerformance:
         self.frameset += other.frameset
         self.bigquery += other.bigquery
         return self
-    
+
     @property
     def entire_time(self):
         return (self.download.time_in_sec +

@@ -289,27 +289,15 @@ class WorkerProcess(Process):
             # with self._lock:
             if qsz % 1000 == 0 and qsz > 0:
                 logger.info(
-                    "picked a task out of {} remaining in queue".format(qsz))
+                    "picked a task ({}) out of {} remaining in queue".format(
+                        work_fun.__name__, qsz))
 
             if work_fun is None or args is None:
                 self._queue.task_done()
                 break
             try:
-                # if qsz<2000 and qsz > 0:
-                #     # logging.getLogger().setLevel(logging.DEBUG)
-                #     logger.info(
-                #         "before calling fun {} in queue".format(qsz))
-                # else:
-                    # logging.getLogger().setLevel(logging.INFO)
                 out = work_fun(*args)
-                # if qsz<2000 and qsz > 0:
-                #     # print('{} print_after funcion call {}'.format(self.name, qsz))
-                #     logger.info(
-                #         "after function return {} in queue".format(qsz))
                 self.output.put((args, out,))
-                # if qsz<2000 and qsz > 0:
-                #     logger.info(
-                #         "after output baking {} in queue".format(qsz))
             except BaseException as err:
                 arg_labels = inspect.getfullargspec(work_fun)
                 msg = str(err)
@@ -329,7 +317,7 @@ class WorkerProcess(Process):
             finally:
                 self._queue.task_done()
         # logging.getLogger().setLevel(logging.INFO)
-        logger.info('returning from the run')
+        logger.debug('returning from the run')
         return
 
     def kill(self):
@@ -371,17 +359,23 @@ class ProcessPool:
         logger.debug('closing all processs')
         for t in self._process_pool:
             # I'm putting none to push queue out of block
-            self._queue.put((None, None))
+            self._queue.put((None, None))        
         logger.debug('collecting all output data from processs')
         self._res_queue.put(None)
         output_count = self._res_queue.qsize()
         # result = self._res_queue.get()
-        collected = 1
+        collected = 0
         number_of_none_outputs = 0
         none_indeces = []
-        while collected < output_count:
-            result = self._res_queue.get()
-            collected += 1
+        while True:
+            try:
+                result = self._res_queue.get_nowait()
+                collected += 1
+            except queue.Empty:
+                if collected < output_count:
+                    continue
+                else:
+                    break
             if result is None:
                 number_of_none_outputs += 1
                 none_indeces.append(collected - 1)
@@ -394,25 +388,24 @@ class ProcessPool:
                 number_of_none_outputs, none_indeces)
             )
         logger.debug('data were collected waiting for processses to join')
-        for p in self._process_pool:
-            p.terminate()
-        # for t in self._process_pool:
-        #     t.join(.01)
-        # logger.debug('Processses joined successfully -  now closing them all')
-        # for t in self._process_pool:
-        #     try:
-        #         t.close()
-        #     except ValueError as err:
-        #         logger.debug(err, exc_info=True)
-        #         logger.info(
-        #             'Closing the process was not seuccessful.'
-        #             ' I will terminate it')
-        #         t.terminate()
-        # logger.debug('processs all closed')
+        for t in self._process_pool:
+            t.join(5)
+        logger.debug('Processses joined successfully -  now closing them all')
+        for t in self._process_pool:
+            try:
+                t.close()
+            except ValueError as err:
+                logger.error(err, exc_info=True)
+                logger.info(
+                    'Closing the process was not seuccessful.'
+                    ' I will terminate it')
+                t.terminate()
+        logger.debug('processs all closed')
+
     def get_status(self) -> str:
         stat = ''
-        input_qsz = self._queue.qsize() 
-        output_qsz = self._res_queue.qsize() 
+        input_qsz = self._queue.qsize()
+        output_qsz = self._res_queue.qsize()
         stat += ("{} processes with inputs ({}) and outputs({})\n".format(
             len(self._process_pool), input_qsz, output_qsz))
         for ps in self._process_pool:
@@ -430,11 +423,9 @@ class MultiProcessingHandler(logging.Handler):
         if sub_handler is None:
             sub_handler = logging.StreamHandler()
         self.sub_handler = sub_handler
-
         self.setLevel(self.sub_handler.level)
         self.setFormatter(self.sub_handler.formatter)
         self.filters = self.sub_handler.filters
-
         self.queue = multiprocessing.Queue(-1)
         self._is_closed = False
         # The thread handles receiving records asynchronously.
@@ -451,7 +442,6 @@ class MultiProcessingHandler(logging.Handler):
             try:
                 if self._is_closed and self.queue.empty():
                     break
-
                 record = self.queue.get(timeout=0.2)
                 self.sub_handler.emit(record)
             except (KeyboardInterrupt, SystemExit):
@@ -460,7 +450,7 @@ class MultiProcessingHandler(logging.Handler):
                 break
             except queue.Empty:
                 pass  # This periodically checks if the logger is closed.
-            except:
+            except BaseException as err:
                 traceback.print_exc(file=sys.stderr)
 
         self.queue.close()

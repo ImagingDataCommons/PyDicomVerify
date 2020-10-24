@@ -1,11 +1,13 @@
 import logging
 import numpy
+import inspect
 import os
 import pydicom
 import pydicom.filebase
 import re
 import subprocess
 import traceback
+import time
 from datetime import (
     # CLASSES
     timedelta,
@@ -158,20 +160,19 @@ def ShowProgress(progress, time_elapsed = None, time_left = None,
 
 
 class IndentAdapter(logging.LoggerAdapter):
-    @staticmethod
 
+    @staticmethod
     def indent():
         indentation_level = len(traceback.extract_stack())
         return indentation_level-4  # Remove logging infrastructure frames
 
-
     def process(self, msg, kwargs):
         ind_str = '{{: <{}}}'.format(self.indent() * 4)
         return '{i} {m}'.format(
-            i = ind_str.format(self.indent()), m = msg), kwargs
+            i = ind_str.format(self.indent()), m=msg), kwargs
 
 
-def get_human_readable_string(input_: float, binary: bool=True) -> str:
+def get_human_readable_string(input_: float, binary: bool = True) -> str:
     input_suffix = ['f', 'p', 'n', 'µ', 'm', ' ', 'K', 'M', 'G', 'T', 'P', 'E']
     # 1024^5 = 1125899906842624
     if binary:
@@ -200,3 +201,70 @@ def get_human_readable_string(input_: float, binary: bool=True) -> str:
         input_str = '{:06.2f} {}'.format(
             bin_[-1], suff)
     return input_str
+
+
+def dict2str(input_, indent=1, indent_char='\t'):
+    if indent <= 1:
+        output = '{{\n{}\n}}'
+    else:
+        ind = indent_char * (indent - 1)
+        if len(input_) == 0:
+            return '{}'
+        else:     
+            output = '{2}\n{1}\n{0}{3}'.format(ind, '{}', '{{', '}}')
+    content = ''
+    indents = indent_char * indent
+    line_ = '{}{{}}: {{}}'.format(indents)
+    for i, (key, val) in enumerate(input_.items(), 1):
+        if isinstance(val, dict):
+            element = line_.format(key, dict2str(val, indent + 1))
+        else:
+            element = line_.format(key, val)
+        if i != 1:
+            content += '\n' + element
+        else:
+            content += element
+
+    return output.format(content)
+
+
+def retry_if_failes(function, args, max_retries: int = 30,
+                    wait_in_sec: int = None,
+                    give_message: bool = True, messaging_intervals: int = 10):
+    logger = logging.getLogger(__name__)
+    retries = 0
+    while retries < max_retries:
+        try:
+            if args is not None:
+                output = function(*args)
+            else:
+                output = function()
+            break
+        except BaseException as err:
+            retries += 1
+            if retries < max_retries:
+                if wait_in_sec is not None and wait_in_sec > 0:
+                    logger.info(
+                        'waiting for {} seconds to call {} ...'.format(
+                            wait_in_sec, function.__name__))
+                    time.sleep(wait_in_sec)
+                if give_message and retries % messaging_intervals == 0:
+                    arg_msg = ''
+                    arg_msg += 'Retyining number {} after {} seconds\n\t ->'\
+                               ' Function {} list of arguments:'.format(
+                                    retries, wait_in_sec, function.__name__)
+                    arg_labels = inspect.getfullargspec(function)
+                    for arg_l, arg in zip(arg_labels[0], args):
+                        if isinstance(arg, tuple) or isinstance(arg, list):
+                            if len(arg) > 0:
+                                arg = arg[0]
+                        if isinstance(arg, str):
+                            arg_msg += ('\n\t\t\t{} = "{}"'.format(arg_l, arg))
+                        else:
+                            if isinstance(arg, dict):
+                                arg = dict2str(arg)
+                            arg_msg += ('\n\t\t\t{} = {}'.format(arg_l, arg))
+                    logger.info(arg_msg.format(retries))
+            else:
+                raise err
+    return output

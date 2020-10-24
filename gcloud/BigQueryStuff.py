@@ -3,10 +3,23 @@ import logging
 
 
 def delete_bq_dataset(dataset_id):
+    logger = logging.getLogger(__name__)
     client = bigquery.Client()
-    client.delete_dataset(
-        dataset_id, delete_contents=True, not_found_ok=True
-    )
+    client.delete_dataset(dataset_id, delete_contents=True)
+    if bq_dataset_exists(dataset_id):
+        logger.info(
+            'Bigquery dataset {} was not deleted successfully'.format(
+                dataset_id))
+    else:
+        logger.info(
+            'Bigquery dataset {} was deleted successfully'.format(
+                dataset_id))
+
+
+def delete_table(proj_id: str, bq_dataset_id: str, table_name: str):
+    table_id = '{}.{}.{}'.format(proj_id, bq_dataset_id, table_name)
+    client = bigquery.Client(project=proj_id)
+    client.delete_table(table_id, not_found_ok=True)
 
 
 def list_bq_dataset_names(proj_id: str, ):
@@ -33,10 +46,10 @@ def bq_dataset_exists(dataset_id) -> bool:
     client = bigquery.Client()
     try:
         client.get_dataset(dataset_id)  # Make an API request.
-        logger.info("Dataset {} already exists".format(dataset_id))
+        logger.debug("Bigquery dataset {} already exists".format(dataset_id))
         return True
     except BaseException:
-        logger.info("Dataset {} is not found".format(dataset_id))
+        logger.debug("Bigquery dataset {} is not found".format(dataset_id))
         return False
 
 
@@ -73,7 +86,7 @@ def query_string_with_result(q: str):
 
 def create_all_tables(dataset_id: str, dataset_region: str,
                       rmove_if_exists: bool = False):
-    if bq_dataset_exists(dataset_id):
+    if bq_dataset_exists(dataset_id) and rmove_if_exists:
         delete_bq_dataset(dataset_id)
     create_bq_dataset(dataset_id, dataset_region)
     schema_originated_from = [
@@ -84,7 +97,7 @@ def create_all_tables(dataset_id: str, dataset_region: str,
     ]
     schema_issue = [
         bigquery.SchemaField("DCM_TABLE_NAME", "STRING", mode="REQUIRED"),
-        bigquery.SchemaField("DCM_SOPInstanceUID", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("SOPInstanceUID", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("ISSUE_MSG", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("MESSAGE", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("TYPE", "STRING", mode="REQUIRED"),
@@ -93,7 +106,7 @@ def create_all_tables(dataset_id: str, dataset_region: str,
         bigquery.SchemaField("TAG", "INT64", mode="NULLABLE"),
     ]
     schema_fix = [
-        bigquery.SchemaField("DCM_SOPInstanceUID", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("SOPInstanceUID", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("SHORT_ISSUE", "STRING", mode="NULLABLE"),
         bigquery.SchemaField("ISSUE", "STRING", mode="REQUIRED"),
         bigquery.SchemaField("FIX", "STRING", mode="REQUIRED"),
