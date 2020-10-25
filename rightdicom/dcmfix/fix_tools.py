@@ -194,7 +194,7 @@ def subfix_checkandfixBasicCodeSeq(seqelem:DataElement, log:list) -> bool:
             fixed = True
         if bit_code == 0x100:
             if hasCodingSchemeDesignator:
-                item["CodingSchemeDesignator"] = '99LOCAL'
+                item["CodingSchemeDesignator"].value = '99LOCAL'
                 msg.fix = "The value for CodingSchemeDesignator in "\
                         "item {} of {} was modified to 99LOCAL".format(
                         i, seqelem.keyword

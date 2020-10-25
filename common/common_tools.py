@@ -1,19 +1,17 @@
-import pydicom.filebase
-import logging, traceback
+import logging
+import numpy
+import inspect
+import os
 import pydicom
-import re, os, numpy
+import pydicom.filebase
+import re
 import subprocess
-from datetime import(
+import traceback
+import time
+from datetime import (
     # CLASSES
-    time,
     timedelta,
-    # VARIABLES
-    time,
-    time,
-    time,
-    timedelta,
-    timedelta,
-    timedelta,)
+)
 
 
 def Find(address, max_depth = 0, cond_function = os.path.isfile,
@@ -47,8 +45,9 @@ def RecursiveFind(address, approvedlist, current_depth:int, max_depth = 0,
                 approvedlist.append(filename)
 
 
-def RunExe(arg_list, stderr_file, stdout_file, outlog = None,
-           errlog = None, env_vars = None, log=[]):
+def RunExe(arg_list, stderr_file, stdout_file, outlog=None,
+           errlog=None, env_vars=None, log=[],
+           char_encoding: str = 'ascii'):
     # print(str(arg_list))
     out_text = ""
     for a in arg_list:
@@ -75,15 +74,18 @@ def RunExe(arg_list, stderr_file, stdout_file, outlog = None,
         stderr = subprocess.PIPE, env=curr_env)
     _error = proc.stderr
     if len(stderr_file) != 0:
-        WriteStringToFile(stderr_file, _error.decode("ascii"))
-        # print( _error.decode("ascii"))
+        WriteStringToFile(
+            stderr_file, _error.decode(char_encoding, 'backslashreplace'))
     _output = proc.stdout
     if len(stdout_file) != 0:
-        WriteStringToFile(stdout_file, _output.decode("ascii"))
+        WriteStringToFile(
+            stdout_file, _output.decode(char_encoding, 'backslashreplace'))
     if outlog is not None:
-        outlog.extend(re.split("\n",  _output.decode("ascii")))
+        outlog.extend(
+            re.split("\n",  _output.decode(char_encoding, 'backslashreplace')))
     if errlog is not None:
-        errlog.extend(re.split("\n",  _error.decode("ascii")))
+        errlog.extend(
+            re.split("\n",  _error.decode(char_encoding, 'backslashreplace')))
     return proc.returncode
 
 
@@ -158,22 +160,25 @@ def ShowProgress(progress, time_elapsed = None, time_left = None,
 
 
 class IndentAdapter(logging.LoggerAdapter):
-    @staticmethod
 
+    @staticmethod
     def indent():
         indentation_level = len(traceback.extract_stack())
         return indentation_level-4  # Remove logging infrastructure frames
 
-
     def process(self, msg, kwargs):
         ind_str = '{{: <{}}}'.format(self.indent() * 4)
         return '{i} {m}'.format(
-            i = ind_str.format(self.indent()), m = msg), kwargs
+            i = ind_str.format(self.indent()), m=msg), kwargs
 
 
-def get_human_readable_string(input_: float, binary: bool=True) -> str:
+def get_human_readable_string(input_: float, binary: bool = True) -> str:
     input_suffix = ['f', 'p', 'n', 'µ', 'm', ' ', 'K', 'M', 'G', 'T', 'P', 'E']
-    input_ *= 1e15
+    # 1024^5 = 1125899906842624
+    if binary:
+        input_ *= 1125899906842624
+    else:
+        input_ *= 1e15
     if input_ < 1:
         return '{:6.2e} {}'.format(input_, input_suffix[0])
     if not isinstance(input_, int):
@@ -196,3 +201,70 @@ def get_human_readable_string(input_: float, binary: bool=True) -> str:
         input_str = '{:06.2f} {}'.format(
             bin_[-1], suff)
     return input_str
+
+
+def dict2str(input_, indent=1, indent_char='\t'):
+    if indent <= 1:
+        output = '{{\n{}\n}}'
+    else:
+        ind = indent_char * (indent - 1)
+        if len(input_) == 0:
+            return '{}'
+        else:     
+            output = '{2}\n{1}\n{0}{3}'.format(ind, '{}', '{{', '}}')
+    content = ''
+    indents = indent_char * indent
+    line_ = '{}{{}}: {{}}'.format(indents)
+    for i, (key, val) in enumerate(input_.items(), 1):
+        if isinstance(val, dict):
+            element = line_.format(key, dict2str(val, indent + 1))
+        else:
+            element = line_.format(key, val)
+        if i != 1:
+            content += '\n' + element
+        else:
+            content += element
+
+    return output.format(content)
+
+
+def retry_if_failes(function, args, max_retries: int = 30,
+                    wait_in_sec: int = None,
+                    give_message: bool = True, messaging_intervals: int = 10):
+    logger = logging.getLogger(__name__)
+    retries = 0
+    while retries < max_retries:
+        try:
+            if args is not None:
+                output = function(*args)
+            else:
+                output = function()
+            break
+        except BaseException as err:
+            retries += 1
+            if retries < max_retries:
+                if wait_in_sec is not None and wait_in_sec > 0:
+                    logger.info(
+                        'waiting for {} seconds to call {} ...'.format(
+                            wait_in_sec, function.__name__))
+                    time.sleep(wait_in_sec)
+                if give_message and retries % messaging_intervals == 0:
+                    arg_msg = ''
+                    arg_msg += 'Retyining number {} after {} seconds\n\t ->'\
+                               ' Function {} list of arguments:'.format(
+                                    retries, wait_in_sec, function.__name__)
+                    arg_labels = inspect.getfullargspec(function)
+                    for arg_l, arg in zip(arg_labels[0], args):
+                        if isinstance(arg, tuple) or isinstance(arg, list):
+                            if len(arg) > 0:
+                                arg = arg[0]
+                        if isinstance(arg, str):
+                            arg_msg += ('\n\t\t\t{} = "{}"'.format(arg_l, arg))
+                        else:
+                            if isinstance(arg, dict):
+                                arg = dict2str(arg)
+                            arg_msg += ('\n\t\t\t{} = {}'.format(arg_l, arg))
+                    logger.info(arg_msg.format(retries))
+            else:
+                raise err
+    return output

@@ -7,6 +7,7 @@ from typing import List
 import common.common_tools as ct
 from datetime import timedelta
 from pydicom import Dataset
+from pydicom.charset import python_encoding
 
 git_url = 'https://github.com/afshinmessiah/PyDicomVerify/{}'
 repo = git.Repo(search_parent_directories=True)
@@ -361,14 +362,44 @@ class DicomFileInfo:
         self.series_uid = series_uid
         self.instance_uid = instance_uid
         self.dicom_ds = dicom_dataset
+        
+
+    def __str__(self):
+        out = 'DicomFileInfo\n{{\n{}\n}}'
+        content = ''
+        content += '\n\t\t {} = {}'.format("project_id", self.project_id)
+        content += '\n\t\t {} = {}'.format("bucket_name", self.bucket_name)
+        content += '\n\t\t {} = {}'.format("blob_address", self.blob_address)
+        content += '\n\t\t {} = {}'.format("file_path", self.file_path)
+        content += '\n\t\t {} = {}'.format("study_uid", self.study_uid)
+        content += '\n\t\t {} = {}'.format("series_uid", self.series_uid)
+        content += '\n\t\t {} = {}'.format("instance_uid", self.instance_uid)
+        content += '\n\t\t {} = {}'.format(
+            "dicom_ds", self.dicom_ds if
+            self.dicom_ds is None else 'Exists but hidden')
+        return out.format(content)
+
+
+    @staticmethod
+    def get_chaset_val_from_dataset(ds: Dataset = None) -> str:
+        python_char_set = 'ascii'
+        if isinstance(ds, Dataset) and ds is not None:
+            if "SpecificCharacterSet" in ds:
+                dicom_char_set = ds.SpecificCharacterSet
+                if dicom_char_set in python_encoding:
+                    python_char_set = python_encoding[dicom_char_set]
+        return python_char_set
+
 
 
 class PerformanceMeasure:
 
-    def __init__(self, size_: float, time_in_sec: int, suffix: str=''):
+    def __init__(self, size_: float, time_in_sec: int,
+                 suffix: str='', binary: bool=True):
         self.size = size_
         self.time_in_sec = time_in_sec
         self.suffix = suffix
+        self.binary = binary
 
     def __add__(self, other):
         sz = self.size + other.size
@@ -386,7 +417,10 @@ class PerformanceMeasure:
         else:
             time = self.time_in_sec
         e_t = timedelta(seconds=time)
-        sz = ct.get_human_readable_string(self.size)
+        if self.suffix == '(inst)':
+            sz = str(self.size)
+        else:
+            sz = ct.get_human_readable_string(self.size, self.binary)
         speed = 0 if self.time_in_sec == 0 else (self.size / self.time_in_sec)
         rate = ct.get_human_readable_string(speed)
         output = '{1}{0:8.8s} in {2:24.24s} ({3}{4:12.12s})'.format(
@@ -434,7 +468,7 @@ class ProcessPerformance:
         self.frameset += other.frameset
         self.bigquery += other.bigquery
         return self
-    
+
     @property
     def entire_time(self):
         return (self.download.time_in_sec +

@@ -2,7 +2,7 @@
     "version": 1,
     "formatters": {
         "date_time": {
-            "format": "%(asctime)s-<%(levelname)-3.3s> %(processName)s[%(process)05d][%(threadName)-10.10s] %(module)-16.16s...py[%(lineno)04d] -> %(funcName)-16.16s- %(message)s"
+            "format": "%(asctime)s-<%(levelname)-3.3s> %(processName)-10.10s[%(process)05d][%(threadName)-10.10s] %(module)-16.16s...py[%(lineno)04d] -> %(funcName)-16.16s- %(message)s"
         }
     },
     "handlers": {
@@ -12,10 +12,12 @@
             "stream": "ext://sys.stdout"
         },
         "file": {
-            "class": "logging.FileHandler",
+            "class": "logging.handlers.RotatingFileHandler",
+            "maxBytes": 2000000,
             "formatter": "date_time",
+            "backupCount": 200,
             "mode": "w",
-            "filename": "./Logs/log[11-10-2020][13-09-23].log"
+            "filename": "./Logs/log.log"
         }
     },
     "loggers": {

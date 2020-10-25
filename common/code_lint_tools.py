@@ -5,7 +5,7 @@ import os
 from common import common_tools as ctools
 
 
-def edit_code(code:str):
+def edit_code(code: str):
     operators1 = r'==|!=|>=|<=|\+=|-=|\*=|->|//|\*\*'
     operators2 = r'\+|\*|=|>|<'
     patterns = [
@@ -173,11 +173,11 @@ def refine_imports(filename):
         header += hl + '\n' 
     # ---------------------------------------------
     header_as = []
-    as_modules = []
+    # as_modules = []
     for line, module in as_:
-        if module in as_modules:
+        if module in imp_modules:
             continue
-        as_modules.append(module)
+        imp_modules.append(module)
         if contains_word_with_dot(module, stripped_content):
             header_as.append(line)
     header_as.sort()
@@ -194,6 +194,7 @@ def refine_imports(filename):
         module = importlib.import_module(module_str)
         header_from += '\n' + import_all_from_file(
             module, destination_file_content = stripped_content,
+            already_imported=imp_modules,
             print_ = False)
     header += header_from
     header = re.sub(r'\n{2,}', r'\n', header)
@@ -203,6 +204,7 @@ def refine_imports(filename):
 
 def import_all_from_file(module: str, module_name: str = '',
                          destination_file_content: str = '',
+                         already_imported: list = [],
                          print_: bool=True):
     if type(module) == str:
         # if the input is file name
@@ -226,7 +228,8 @@ def import_all_from_file(module: str, module_name: str = '',
                     if not contains_wholeword(
                         sm, destination_file_content):
                         continue
-                if sm not in sub_modules['SUBMODULES']:
+                if sm not in sub_modules['SUBMODULES'] and \
+                        sm not in already_imported:
                     sub_modules['SUBMODULES'].append(sm)
             sub_modules['SUBMODULES'].sort
             mod_str = module_content_2str(module_name, sub_modules)
@@ -237,12 +240,13 @@ def import_all_from_file(module: str, module_name: str = '',
             pass
     content = ctools.Txt2StrList(filename)
     content = get_rid_of_str(content)
-    #ctools.WriteStringToFile('/Users/afshin/Documents/work/VerifyDicom/gitexcluded_text_test.py', content)
-    reg_ptrn = {'FUNCTIONS':r'^\bdef\b\s+([\w]+)',
-                'CLASSES':r'^\bclass\b\s+([\w]+)',
+    #ctools.WriteStringToFile('/Users/afshin/Documents/work/VerifyDicom/gitexcluded_text_test.py', content)            
+    reg_ptrn = {'CLASSES':r'^\bclass\b\s+([\w]+)',
+                'FUNCTIONS':r'^\bdef\b\s+([\w]+)',
                 'VARIABLES':r'^(?!def|class|import|from)(\b\w+\b)'}
     # rmove all imports from file conents:
     mod_content = {}
+    all_sub_modules = already_imported
     for label, ptrn in reg_ptrn.items():
         ms = re.finditer(ptrn, content, flags=re.MULTILINE)
         for m in ms:
@@ -253,11 +257,13 @@ def import_all_from_file(module: str, module_name: str = '',
                 if not contains_wholeword(
                     name, destination_file_content):
                     continue
-            if label in mod_content:
-                if name not in mod_content[label]:
-                    mod_content[label].append(name)
-            else:
-                mod_content[label] = [name]
+            if name not in all_sub_modules:
+                all_sub_modules.append(name)
+                if label in mod_content:
+                    if name not in mod_content[label]:
+                        mod_content[label].append(name)
+                else:
+                    mod_content[label] = [name]
     if len(mod_content) != 0:
         mod_str = module_content_2str(module_name, mod_content)
     else:
