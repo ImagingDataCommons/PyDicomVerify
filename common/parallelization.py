@@ -285,13 +285,17 @@ class WorkerProcess(Process):
                 #         "before task out of {} in queue".format(qsz))
 
             (work_fun, args) = self._queue.get()
-            qsz = self._queue.qsize() 
-            # with self._lock:
-            if qsz % 1000 == 0 and qsz > 0:
-                logger.info(
-                    "picked a task ({}) out of {} remaining in queue".format(
-                        work_fun.__name__, qsz))
-
+            if sys.platform == "linux" or sys.platform == "linux2" or\
+                    sys.platform == "win32":
+                qsz = self._queue.qsize()
+                # with self._lock:
+                if qsz % 1000 == 0 and qsz > 0:
+                    logger.info(
+                        "picked a task ({}) out of {} "
+                        "remaining in queue".format(
+                            work_fun.__name__, qsz))
+            else:
+                qsz = None
             if work_fun is None or args is None:
                 self._queue.task_done()
                 break
@@ -317,6 +321,8 @@ class WorkerProcess(Process):
             finally:
                 self._queue.task_done()
         # logging.getLogger().setLevel(logging.INFO)
+        self.output.close() # will stop the thread running the queeu anf flush
+        self.output.join_thread()
         logger.debug('returning from the run')
         return
 
@@ -362,7 +368,12 @@ class ProcessPool:
             self._queue.put((None, None))        
         logger.debug('collecting all output data from processs')
         self._res_queue.put(None)
-        output_count = self._res_queue.qsize()
+        if sys.platform == "linux" or sys.platform == "linux2" or\
+                    sys.platform == "win32":
+                output_count = self._res_queue.qsize()
+        else:
+            output_count = None
+        
         # result = self._res_queue.get()
         collected = 0
         number_of_none_outputs = 0
@@ -372,8 +383,11 @@ class ProcessPool:
                 result = self._res_queue.get_nowait()
                 collected += 1
             except queue.Empty:
-                if collected < output_count:
-                    continue
+                if output_count is not None:
+                    if collected < output_count:
+                        continue
+                    else:
+                        break
                 else:
                     break
             if result is None:

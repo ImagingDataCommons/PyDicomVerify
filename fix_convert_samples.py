@@ -7,6 +7,7 @@ import common.common_tools as ctools
 import common.parallelization as pl
 import conversion as convtool
 from pydicom.charset import python_encoding
+from multiprocessing import freeze_support
 from gcloud.StorageBucketStuff import(
     # FUNCTIONS
     download_blob,
@@ -188,64 +189,66 @@ def GetSeries(keyword: str, value: str):
             break
     return (stuid, seuid, sopuid, cln_id)
 
+if __name__ == '__main__':
+    freeze_support()
+    project_id = 'idc-tcia'
+    in_folders = ['../Tmp/in']
+    out_folders = '../Tmp/out'
+    out_folders = os.path.realpath(out_folders)
+    series_uid = '1.3.6.1.4.1.14519.5.2.1.2783.4001.332860843169980730178622575497'
+    # study_uid, series_uid, instance_uid, bucket_name = GetSeries(
+    #     'SeriesInstanceUID', series_uid)
+    bucket_name = 'idc-tcia-tcga-blca'
+    study_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.292170230498352399648594035286'
+    series_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.316228581410299389630475076825'
+    instance_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.161670751003027974162100121182'
 
-project_id = 'idc-tcia'
-in_folders = ['/home/akbarzadehm/Tmp/in']
-out_folders = '/home/akbarzadehm/Tmp/out'
-series_uid = '1.3.6.1.4.1.14519.5.2.1.2783.4001.332860843169980730178622575497'
-study_uid, series_uid, instance_uid, bucket_name = GetSeries(
-    'SeriesInstanceUID', series_uid)
-# bucket_name = 'idc-tcia-tcga-blca'
-# study_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.292170230498352399648594035286'
-# series_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.316228581410299389630475076825'
-# instance_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.161670751003027974162100121182'
-
-log = []
-log_ver = []
-fix_: bool = True
-download_ : bool = False
-for i in range(0, len(in_folders)):
-    in_folder = in_folders[i]
-    if download_:
-        download_parallel(
-            project_id, bucket_name, study_uid, series_uid, in_folder, 88)
-    out_folder = os.path.join(out_folders, str(i + 1))
-    if os.path.exists(out_folder):
-        shutil.rmtree(out_folder)
-    os.makedirs(out_folder)
-    fix_folder = os.path.join(out_folder, 'fixed')
-    if not os.path.exists(fix_folder):
-        os.makedirs(fix_folder)
-    in_files = ctools.Find(
-        in_folder, max_depth = 1, cond_function=ctools.is_dicom)
-    if fix_:
-        for i, ff in enumerate(in_files):
-            fx_log = []
-            base = os.path.basename(ff)
-            if i % 10 == 0:
-                print('{}/{}) {}'.format(i, len(in_files), base))
-            ds = FixFile(ff, os.path.join(fix_folder, base), fx_log, [], [])
-            if "SpecificCharacterSet" in ds:
-                dicom_char_set = ds.SpecificCharacterSet
-                if dicom_char_set in python_encoding:
-                    python_char_set = python_encoding[dicom_char_set]
-                else:
-                    python_char_set = 'ascii'
-            # try:
-            fx_files = ctools.Find(fix_folder, max_depth=1,
-                                            cond_function=ctools.is_dicom)
-    else:
-        fx_files = in_files
-        fix_folder = in_folder
-    SOPClassList = convtool.ConvertByHighDicomNew(fix_folder, out_folder, log)
-    for n, f in enumerate(SOPClassList, 0):
-        output_file_pattern = "hd{:03d}.dcm"
-        new_name = os.path.join(out_folder, output_file_pattern.format(n))
-        os.rename(f.child_dicom_file, new_name)
-    files = ctools.Find(out_folder, 1, lambda x: x.endswith('.dcm'))
-    (v_file_pre, m_file_pre) = VER(
-        fx_files[0], out_folder, log_ver, char_set=python_char_set)
-    print(fx_files[0])
-    for f in files:
+    log = []
+    log_ver = []
+    fix_: bool = True
+    download_ : bool = True
+    for i in range(0, len(in_folders)):
+        in_folder = os.path.realpath(in_folders[i])
+        if download_:
+            download_parallel(
+                project_id, bucket_name, study_uid, series_uid, in_folder, 88)
+        out_folder = os.path.join(out_folders, str(i + 1))
+        if os.path.exists(out_folder):
+            shutil.rmtree(out_folder)
+        os.makedirs(out_folder)
+        fix_folder = os.path.join(out_folder, 'fixed')
+        if not os.path.exists(fix_folder):
+            os.makedirs(fix_folder)
+        in_files = ctools.Find(
+            in_folder, max_depth = 1, cond_function=ctools.is_dicom)
+        if fix_:
+            for i, ff in enumerate(in_files):
+                fx_log = []
+                base = os.path.basename(ff)
+                if i % 10 == 0:
+                    print('{}/{}) {}'.format(i, len(in_files), base))
+                ds = FixFile(ff, os.path.join(fix_folder, base), fx_log, [], [])
+                if "SpecificCharacterSet" in ds:
+                    dicom_char_set = ds.SpecificCharacterSet
+                    if dicom_char_set in python_encoding:
+                        python_char_set = python_encoding[dicom_char_set]
+                    else:
+                        python_char_set = 'ascii'
+                # try:
+                fx_files = ctools.Find(fix_folder, max_depth=1,
+                                                cond_function=ctools.is_dicom)
+        else:
+            fx_files = in_files
+            fix_folder = in_folder
+        SOPClassList = convtool.ConvertByHighDicomNew(fix_folder, out_folder, log)
+        for n, f in enumerate(SOPClassList, 0):
+            output_file_pattern = "hd{:03d}.dcm"
+            new_name = os.path.join(out_folder, output_file_pattern.format(n))
+            os.rename(f.child_dicom_file, new_name)
+        files = ctools.Find(out_folder, 1, lambda x: x.endswith('.dcm'))
         (v_file_pre, m_file_pre) = VER(
-            f, out_folder, log_ver, char_set=python_char_set)
+            fx_files[0], out_folder, log_ver, char_set=python_char_set)
+        print(fx_files[0])
+        for f in files:
+            (v_file_pre, m_file_pre) = VER(
+                f, out_folder, log_ver, char_set=python_char_set)
