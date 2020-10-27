@@ -70,6 +70,7 @@ from pydicom.uid import (
 )
 from pydicom.charset import python_encoding
 from rightdicom.dcmfix.study_dependent_patches import *
+from rightdicom.dcmfix.anatomy import *
 from rightdicom.dcmfix.fix_all import (
     # FUNCTIONS
     fix_dicom,
@@ -157,11 +158,9 @@ def FixFile(dicom_file: str, dicom_fixed_file: str,
     char_set = DicomFileInfo.get_chaset_val_from_dataset(ds)
     # log_mine = []
     VER(dicom_file, log_david_pre, char_set=char_set)
-    bodypart_examined_vlaue = \
-        None if st_uid not in bpe_dict else bpe_dict[st_uid]
-    anatomic_region_seq_vlaue = \
-        None if st_uid not in ars_dict else ars_dict[st_uid]
-    add_anatomy(ds, bodypart_examined_vlaue, anatomic_region_seq_vlaue, log_fix)
+    anatomy_val = (None, (None, None, None)) if st_uid not in anatomy_info \
+        else anatomy_info[st_uid]
+    add_anatomy(ds, anatomy_val[0], anatomy_val[1], log_fix)
     fix_dicom(ds, log_fix)
     # fix_report = PrintLog(log_fix)
     pydicom.write_file(dicom_fixed_file, ds)
@@ -1120,10 +1119,8 @@ def main(number_of_processes: int = None,
                         CodingSchemeDesignator ORDER BY T2.StudyInstanceUID
     """.format('`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata`')
     anatomies = query_string_with_result(anatomy_query)
-    global bpe_dict
-    global ars_dict
-    bpe_dict = {}
-    ars_dict = {}
+    global anatomy_info
+    anatomy_info = {}
     for row in anatomies:
         bpe_st_uid = row.BodyPartExamined_STUDYUID
         ars_st_uid = row.AnatomicRegionSequence_STUDYUID
@@ -1131,16 +1128,9 @@ def main(number_of_processes: int = None,
         code_value = row.CodeValue
         code_meaning = row.CodeMeaning
         coding_scheme_designator = row.CodingSchemeDesignator
-        if bpe_st_uid is not None and bpe_st_uid not in bpe_dict:
-            if bpe is not None:
-                bpe_dict[bpe_st_uid] = bpe
-        if ars_st_uid is not None and ars_st_uid not in ars_dict:
-            if code_meaning is not None:
-                ars_dict[ars_st_uid] = (
-                    code_value, code_meaning, coding_scheme_designator)
-
-
-
+        if bpe_st_uid is not None and bpe_st_uid not in anatomy_info:
+            anatomy_info[bpe_st_uid] = CorrectAnatomicInfo(
+                    bpe, (code_value, code_meaning, coding_scheme_designator))
     uids: dict = {}
     # q_dataset_uid = '{}.{}.{}'.format(
     #     in_dicoms.BigQuery.ProjectID,

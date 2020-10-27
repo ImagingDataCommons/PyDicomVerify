@@ -8,6 +8,7 @@ import common.parallelization as pl
 import conversion as convtool
 from pydicom.charset import python_encoding
 from multiprocessing import freeze_support
+from rightdicom.dcmfix.study_dependent_patches import *
 from gcloud.StorageBucketStuff import(
     # FUNCTIONS
     download_blob,
@@ -140,6 +141,10 @@ def VER(file: str, out_folder: str, log: list, write_meta=False,
 def FixFile(dicom_file: str, dicom_fixed_file: str,
             log_fix: list, log_david_pre: list, log_david_post: list):
     ds = pydicom.read_file(dicom_file)
+    st_uid = ds.StudyInstanceUID
+    anatomy_val = (None, (None, None, None)) if st_uid not in anatomy_info \
+        else anatomy_info[st_uid]
+    add_anatomy(ds, anatomy_val[0], anatomy_val[1], log_fix)
     # log_mine = []
     # VER(dicom_file, log_david_pre)
     fix_dicom(ds, log_fix)
@@ -189,24 +194,67 @@ def GetSeries(keyword: str, value: str):
             break
     return (stuid, seuid, sopuid, cln_id)
 
+
 if __name__ == '__main__':
     freeze_support()
     project_id = 'idc-tcia'
     in_folders = ['../Tmp/in']
     out_folders = '../Tmp/out'
     out_folders = os.path.realpath(out_folders)
-    series_uid = '1.3.6.1.4.1.14519.5.2.1.2783.4001.332860843169980730178622575497'
-    # study_uid, series_uid, instance_uid, bucket_name = GetSeries(
-    #     'SeriesInstanceUID', series_uid)
-    bucket_name = 'idc-tcia-tcga-blca'
-    study_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.292170230498352399648594035286'
-    series_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.316228581410299389630475076825'
-    instance_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.161670751003027974162100121182'
+    series_uid = '1.3.6.1.4.1.14519.5.2.1.8666.4009.269349589873109825076737592473'
+    study_uid, series_uid, instance_uid, bucket_name = GetSeries(
+        'SeriesInstanceUID', series_uid)
+    # bucket_name = 'idc-tcia-tcga-blca'
+    # study_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.292170230498352399648594035286'
+    # series_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.316228581410299389630475076825'
+    # instance_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.161670751003027974162100121182'
 
     log = []
     log_ver = []
     fix_: bool = True
-    download_ : bool = True
+    download_ : bool = False
+    anatomy_query = """
+        WITH 
+        T1 AS (
+        SELECT StudyInstanceUID,
+            X.CODEVALUE AS CodeValue,
+            X.CodeMeaning AS CodeMeaning,
+            X.CodingSchemeDesignator AS CodingSchemeDesignator
+            FROM {0} CROSS JOIN UNNEST(AnatomicRegionSequence) AS X
+        ), 
+        T2 AS (
+        SELECT SRC.StudyInstanceUID,
+            SRC.BodyPartExamined 
+            FROM {0} AS SRC 
+            GROUP BY StudyInstanceUID, BodyPartExamined
+            )
+        SELECT T2.StudyInstanceUID as BodyPartExamined_STUDYUID,
+            T1.StudyInstanceUID as AnatomicRegionSequence_STUDYUID,
+            BodyPartExamined ,
+            CodeValue, 
+            CodeMeaning,
+            CodingSchemeDesignator FROM T1 FULL OUTER JOIN T2 ON T1.StudyInstanceUID=T2.StudyInstanceUID 
+            WHERE NOT (BodyPartExamined IS NULL AND CodeValue IS NULL) 
+            GROUP BY T2.StudyInstanceUID, 
+                        T1.StudyInstanceUID, 
+                        BodyPartExamined , 
+                        CodeValue, 
+                        CodeMeaning, 
+                        CodingSchemeDesignator ORDER BY T2.StudyInstanceUID
+    """.format('`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata`')
+    anatomies = query_string_with_result(anatomy_query)
+    global anatomy_info
+    anatomy_info = {}
+    for row in anatomies:
+        bpe_st_uid = row.BodyPartExamined_STUDYUID
+        ars_st_uid = row.AnatomicRegionSequence_STUDYUID
+        bpe = row.BodyPartExamined
+        code_value = row.CodeValue
+        code_meaning = row.CodeMeaning
+        coding_scheme_designator = row.CodingSchemeDesignator
+        if bpe_st_uid is not None and bpe_st_uid not in anatomy_info:
+            anatomy_info[bpe_st_uid] = CorrectAnatomicInfo(
+                    bpe, (code_value, code_meaning, coding_scheme_designator))
     for i in range(0, len(in_folders)):
         in_folder = os.path.realpath(in_folders[i])
         if download_:

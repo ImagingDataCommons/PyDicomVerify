@@ -9,4 +9,5 @@ __all__ = [
     "sctsrt",
     "specific_patches",
     "study_dependent_patches",
+    "anatomy",
 ]

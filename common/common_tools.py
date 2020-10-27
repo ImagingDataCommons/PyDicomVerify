@@ -254,17 +254,20 @@ def retry_if_failes(function, args, max_retries: int = 30,
                                ' Function {} list of arguments:'.format(
                                     retries, wait_in_sec, function.__name__)
                     arg_labels = inspect.getfullargspec(function)
-                    for arg_l, arg in zip(arg_labels[0], args):
-                        if isinstance(arg, tuple) or isinstance(arg, list):
-                            if len(arg) > 0:
-                                arg = arg[0]
-                        if isinstance(arg, str):
-                            arg_msg += ('\n\t\t\t{} = "{}"'.format(arg_l, arg))
-                        else:
-                            if isinstance(arg, dict):
-                                arg = dict2str(arg)
-                            arg_msg += ('\n\t\t\t{} = {}'.format(arg_l, arg))
-                    logger.info(arg_msg.format(retries))
+                    if arg_labels is not None:
+                        for arg_l, arg in zip(arg_labels[0], args):
+                            if isinstance(arg, tuple) or isinstance(arg, list):
+                                if len(arg) > 0:
+                                    arg = arg[0]
+                            if isinstance(arg, str):
+                                arg_msg += ('\n\t\t\t{} = "{}"'.format(arg_l, arg))
+                            else:
+                                if isinstance(arg, dict):
+                                    arg = dict2str(arg)
+                                arg_msg += ('\n\t\t\t{} = {}'.format(arg_l, arg))
+                    else:
+                        arg_msg += "No argumnets()"
+                    logger.info(arg_msg)
             else:
                 raise err
     return output
