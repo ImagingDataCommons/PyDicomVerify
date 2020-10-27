@@ -8,4 +8,5 @@ __all__ = [
     "prior_patches",
     "sctsrt",
     "specific_patches",
+    "study_dependent_patches",
 ]

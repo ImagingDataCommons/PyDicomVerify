@@ -69,6 +69,7 @@ from pydicom.uid import (
     generate_uid,
 )
 from pydicom.charset import python_encoding
+from rightdicom.dcmfix.study_dependent_patches import *
 from rightdicom.dcmfix.fix_all import (
     # FUNCTIONS
     fix_dicom,
@@ -87,6 +88,9 @@ max_number_of_bq_processes = MAX_NUMBER_OF_THREADS
 max_number_of_frameset_processes = MAX_NUMBER_OF_THREADS
 max_number_of_conversion_processes = MAX_NUMBER_OF_THREADS
 processes_to_monitor = []
+bpe_dict = {}
+ars_dict = {}
+
 flaw_query_form = '''(
         "{}",-- COLLECTION_NAME
         "{}",-- STUDY_INSTANCE_UID
@@ -96,7 +100,6 @@ flaw_query_form = '''(
             )
             '''
 # Logger setup --------------------------------------------------------
-global lock
 def namer(name=''):
     pid = os.getpid()
     if name == '':
@@ -150,9 +153,15 @@ def VER(file: str, log: list, char_set: str = 'ascii'):
 def FixFile(dicom_file: str, dicom_fixed_file: str,
             log_fix: list, log_david_pre: list, log_david_post: list):
     ds = pydicom.read_file(dicom_file)
+    st_uid = ds["StudyInstanceUID"].value
     char_set = DicomFileInfo.get_chaset_val_from_dataset(ds)
     # log_mine = []
     VER(dicom_file, log_david_pre, char_set=char_set)
+    bodypart_examined_vlaue = \
+        None if st_uid not in bpe_dict else bpe_dict[st_uid]
+    anatomic_region_seq_vlaue = \
+        None if st_uid not in ars_dict else ars_dict[st_uid]
+    add_anatomy(ds, bodypart_examined_vlaue, anatomic_region_seq_vlaue, log_fix)
     fix_dicom(ds, log_fix)
     # fix_report = PrintLog(log_fix)
     pydicom.write_file(dicom_fixed_file, ds)
@@ -788,7 +797,6 @@ def rm(folders, log: bool = True):
 
 
 
-
 def empty_bucket_contents(proj_id: str, bucket: str,
                           ps_num: int, prefix: str = None):
     logger = logging.getLogger(__name__)
@@ -1003,7 +1011,7 @@ def main(number_of_processes: int = None,
                 'idc_tcia_mvp_wave0',
                 'idc_tcia_dicom_metadata'),
         )
-    general_dataset_name = 'afshin_results_02_' + in_dicoms.BigQuery.Dataset
+    general_dataset_name = 'afshin_results_00_' + in_dicoms.BigQuery.Dataset
     fx_dicoms = DataInfo(
         Datalet('idc-tcia',      # Bucket
                 'us',
@@ -1062,6 +1070,7 @@ def main(number_of_processes: int = None,
         limit_q = 'LIMIT 50000'
     else:
         limit_q = ''
+    # with t1 as (select studyinstanceuid, x.CodeValue as CodeValue, x.CodeMeaning as CodeMeaning, x.codingSchemeDesignator as codingSchemeDesignator from `idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata` CROSS JOIN UNNEST(anatomicregionsequence) as x), t2 as (select src.studyinstanceuid, src.BodyPartExamined from `idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata` as src group by studyinstanceuid, Bodypartexamined) select t2.Studyinstanceuid, t1.Studyinstanceuid, Bodypartexamined , CodeValue, CodeMeaning, CodingSchemeDesignator from t1 full outer join t2 on t1.studyinstanceuid=t2.studyinstanceuid where not (Bodypartexamined is null and codevalue is null) group by t2.Studyinstanceuid, t1.Studyinstanceuid, Bodypartexamined , CodeValue, CodeMeaning, CodingSchemeDesignator order by t2.studyinstanceuid
     study_query = """
                 WITH DICOMS AS (
                 SELECT STUDYINSTANCEUID, SERIESINSTANCEUID, SOPINSTANCEUID
@@ -1081,6 +1090,57 @@ def main(number_of_processes: int = None,
                         COLLECTION_TABLE.SOPINSTANCEUID = DICOMS.SOPINSTANCEUID
     """.format(in_dicoms.BigQuery.GetBigQueryStyleAddress(), limit_q,
                BigQueryInputCollectionInfo.GetBigQueryStyleAddress())
+    anatomy_query = """
+        WITH 
+        T1 AS (
+        SELECT StudyInstanceUID,
+            X.CODEVALUE AS CodeValue,
+            X.CodeMeaning AS CodeMeaning,
+            X.CodingSchemeDesignator AS CodingSchemeDesignator
+            FROM {0} CROSS JOIN UNNEST(AnatomicRegionSequence) AS X
+        ), 
+        T2 AS (
+        SELECT SRC.StudyInstanceUID,
+            SRC.BodyPartExamined 
+            FROM {0} AS SRC 
+            GROUP BY StudyInstanceUID, BodyPartExamined
+            )
+        SELECT T2.StudyInstanceUID as BodyPartExamined_STUDYUID,
+            T1.StudyInstanceUID as AnatomicRegionSequence_STUDYUID,
+            BodyPartExamined ,
+            CodeValue, 
+            CodeMeaning,
+            CodingSchemeDesignator FROM T1 FULL OUTER JOIN T2 ON T1.StudyInstanceUID=T2.StudyInstanceUID 
+            WHERE NOT (BodyPartExamined IS NULL AND CodeValue IS NULL) 
+            GROUP BY T2.StudyInstanceUID, 
+                        T1.StudyInstanceUID, 
+                        BodyPartExamined , 
+                        CodeValue, 
+                        CodeMeaning, 
+                        CodingSchemeDesignator ORDER BY T2.StudyInstanceUID
+    """.format('`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata`')
+    anatomies = query_string_with_result(anatomy_query)
+    global bpe_dict
+    global ars_dict
+    bpe_dict = {}
+    ars_dict = {}
+    for row in anatomies:
+        bpe_st_uid = row.BodyPartExamined_STUDYUID
+        ars_st_uid = row.AnatomicRegionSequence_STUDYUID
+        bpe = row.BodyPartExamined
+        code_value = row.CodeValue
+        code_meaning = row.CodeMeaning
+        coding_scheme_designator = row.CodingSchemeDesignator
+        if bpe_st_uid is not None and bpe_st_uid not in bpe_dict:
+            if bpe is not None:
+                bpe_dict[bpe_st_uid] = bpe
+        if ars_st_uid is not None and ars_st_uid not in ars_dict:
+            if code_meaning is not None:
+                ars_dict[ars_st_uid] = (
+                    code_value, code_meaning, coding_scheme_designator)
+
+
+
     uids: dict = {}
     # q_dataset_uid = '{}.{}.{}'.format(
     #     in_dicoms.BigQuery.ProjectID,

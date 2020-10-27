@@ -472,3 +472,16 @@ def ReplaceRegex(regexp_find, replace, text, extend = [0, 0], group=0):
     else:
         return_text = text
     return return_text
+
+
+def CodeSeqItemGenerator(code_value: str, code_meaning: str,
+                     coding_shceme_designator: str) -> Dataset:
+    output = Dataset()
+    cv = Dictionary.tag_for_keyword('CodeValue')
+    cm = Dictionary.tag_for_keyword('CodeMeaning')
+    cs = Dictionary.tag_for_keyword('CodeSchemeDesignator')
+    output[cv] = DataElement(cv, Dictionary.dictionary_VR(cv), code_value)
+    output[cm] = DataElement(cm, Dictionary.dictionary_VR(cm), code_meaning)
+    output[cs] = DataElement(
+        cs, Dictionary.dictionary_VR(cs), coding_shceme_designator)
+    return output
