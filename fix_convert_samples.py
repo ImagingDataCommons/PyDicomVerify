@@ -23,6 +23,26 @@ from rightdicom.dcmvfy.verify import(
     verify_dicom,
 )
 from gcloud.BigQueryStuff import *
+class code_item:
+    def __init__(self, 
+                 value=None, meaning: str = None,
+                 scheme_designator:str = None):
+        self.value = value
+        self.meaning = meaning
+        self.scheme_designator = scheme_designator
+
+    def __str__(self):
+        indent = '    '
+        out = '{0}CodeValue = {1}\n{0}CodeMenaing = {2}\n{0}'\
+            'CodingSchemeDesignator = {3}'.format(
+                indent, self.value, self.meaning, self.scheme_designator
+            )
+        return out
+
+
+
+
+
 LOGGING_CONFIG = {
     'version': 1,
     'disable_existing_loggers': True,
@@ -138,13 +158,40 @@ def VER(file: str, out_folder: str, log: list, write_meta=False,
     return(vfy_file, meta_file)
 
 
+def get_anatomy_info(anatomy_info):
+    if anatomy_info is not None:
+        bpe = list(anatomy_info[0])
+        if len(bpe) == 1:
+            bpe = bpe[0]
+        else:
+            bpe = None
+        ars = anatomy_info[1]
+        del ars[str(code_item())]
+        if len(ars) == 1:
+            ars = list(ars.values())[0]
+            ars = (ars.value, ars.meaning, ars.scheme_designator)
+        else:
+            ars = (None, None, None)
+    return (bpe, ars)
+
+
 def FixFile(dicom_file: str, dicom_fixed_file: str,
             log_fix: list, log_david_pre: list, log_david_post: list):
     ds = pydicom.read_file(dicom_file)
     st_uid = ds.StudyInstanceUID
-    anatomy_val = (None, (None, None, None)) if st_uid not in anatomy_info \
-        else anatomy_info[st_uid]
-    add_anatomy(ds, anatomy_val[0], anatomy_val[1], log_fix)
+    st_anatomy_info = None
+    cl_anatomy_info = None
+    for cln, cln_an in anatomy_info.items():
+        # if len(cln_an[0][0]) > 1:
+        #     print(cln_an[0])
+        cl_anatomy_info = cln_an[0]
+        if st_uid in cln_an[1]:
+            st_anatomy_info = cln_an[1][st_uid]
+    if st_anatomy_info is not None:
+        bpe, ars = get_anatomy_info(st_anatomy_info)
+    if bpe is None and ars[0] is None:
+        bpe, ars = get_anatomy_info(cl_anatomy_info)
+    add_anatomy(ds, bpe, ars, log_fix)
     # log_mine = []
     # VER(dicom_file, log_david_pre)
     fix_dicom(ds, log_fix)
@@ -214,47 +261,114 @@ if __name__ == '__main__':
     fix_: bool = True
     download_ : bool = False
     anatomy_query = """
-        WITH 
-        T1 AS (
-        SELECT StudyInstanceUID,
+WITH 
+    T1 AS (
+        SELECT 
+            StudyInstanceUID,
             X.CODEVALUE AS CodeValue,
             X.CodeMeaning AS CodeMeaning,
             X.CodingSchemeDesignator AS CodingSchemeDesignator
-            FROM {0} CROSS JOIN UNNEST(AnatomicRegionSequence) AS X
-        ), 
-        T2 AS (
-        SELECT SRC.StudyInstanceUID,
+        FROM {0} 
+            CROSS JOIN UNNEST(AnatomicRegionSequence) AS X
+    ), 
+    T2 AS (
+        SELECT 
+            SRC.StudyInstanceUID,
             SRC.BodyPartExamined 
-            FROM {0} AS SRC 
-            GROUP BY StudyInstanceUID, BodyPartExamined
-            )
-        SELECT T2.StudyInstanceUID as BodyPartExamined_STUDYUID,
+        FROM {0} AS SRC 
+        GROUP BY StudyInstanceUID, BodyPartExamined
+        ),
+    ST AS (
+        SELECT  AUX.GCS_BUCKET AS COLLECTIONNAME, DCM.STUDYINSTANCEUID 
+        FROM {0} AS DCM 
+            INNER JOIN {1} AS AUX 
+            ON AUX.SOPINSTANCEUID=DCM.SOPINSTANCEUID 
+        GROUP BY AUX.GCS_BUCKET, DCM.STUDYINSTANCEUID ),
+    ANATOMY AS (
+        SELECT 
+            T2.StudyInstanceUID as BodyPartExamined_STUDYUID,
             T1.StudyInstanceUID as AnatomicRegionSequence_STUDYUID,
             BodyPartExamined ,
             CodeValue, 
             CodeMeaning,
-            CodingSchemeDesignator FROM T1 FULL OUTER JOIN T2 ON T1.StudyInstanceUID=T2.StudyInstanceUID 
-            WHERE NOT (BodyPartExamined IS NULL AND CodeValue IS NULL) 
-            GROUP BY T2.StudyInstanceUID, 
-                        T1.StudyInstanceUID, 
-                        BodyPartExamined , 
-                        CodeValue, 
-                        CodeMeaning, 
-                        CodingSchemeDesignator ORDER BY T2.StudyInstanceUID
-    """.format('`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata`')
+            CodingSchemeDesignator 
+        FROM T1 FULL OUTER JOIN T2 ON T1.StudyInstanceUID=T2.StudyInstanceUID 
+        GROUP BY 
+            T2.StudyInstanceUID, 
+            T1.StudyInstanceUID, 
+            BodyPartExamined , 
+            CodeValue, 
+            CodeMeaning, 
+            CodingSchemeDesignator 
+        ORDER BY T2.StudyInstanceUID)
+SELECT 
+    COLLECTIONNAME,
+    STUDYINSTANCEUID,
+    BodyPartExamined ,
+    CodeValue, 
+    CodeMeaning,
+    CodingSchemeDesignator, 
+FROM ANATOMY FULL OUTER JOIN ST ON (ST.STUDYINSTANCEUID = ANATOMY.BodyPartExamined_STUDYUID)
+GROUP BY 
+    COLLECTIONNAME,
+    STUDYINSTANCEUID,
+    BodyPartExamined ,
+    CodeValue, 
+    CodeMeaning,
+    CodingSchemeDesignator
+ORDER BY 
+    COLLECTIONNAME,
+    STUDYINSTANCEUID,
+    BodyPartExamined ,
+    CodeValue, 
+    CodeMeaning,
+    CodingSchemeDesignator
+    """.format('`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata`',
+    '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_auxilliary_metadata`'
+    )
     anatomies = query_string_with_result(anatomy_query)
     global anatomy_info
     anatomy_info = {}
     for row in anatomies:
-        bpe_st_uid = row.BodyPartExamined_STUDYUID
-        ars_st_uid = row.AnatomicRegionSequence_STUDYUID
+        st_uid = row.STUDYINSTANCEUID
+        cln_name = row.COLLECTIONNAME
         bpe = row.BodyPartExamined
-        code_value = row.CodeValue
-        code_meaning = row.CodeMeaning
-        coding_scheme_designator = row.CodingSchemeDesignator
-        if bpe_st_uid is not None and bpe_st_uid not in anatomy_info:
-            anatomy_info[bpe_st_uid] = CorrectAnatomicInfo(
-                    bpe, (code_value, code_meaning, coding_scheme_designator))
+        if bpe is not None:
+            bpe = bpe.upper()
+            bpe = re.sub(r'[^3-4A-Z]','', bpe)
+            bpe = bpe[0] + re.sub(r'[^A-Z]', '', bpe[1:])
+            if bpe not in BodyPartExamined2SCT:
+                bpe = get_closest_body_part_examined(bpe)
+                
+        coding = code_item(
+            row.CodeValue,
+            row.CodeMeaning,
+            row.CodingSchemeDesignator)
+        if cln_name in anatomy_info:
+            if bpe is not None:
+                anatomy_info[cln_name][0][0].add(bpe)
+            anatomy_info[cln_name][0][1][str(coding)] = coding
+            studies = anatomy_info[cln_name][1]
+            if st_uid in studies:
+                if bpe is not None:
+                    studies[st_uid][0].add(bpe)
+                studies[st_uid][1][str(coding)] = coding
+            else:
+                studies[st_uid] = (
+                    set((bpe,)) if bpe is not None else set(),
+                    {str(coding): coding} )
+        else:
+            anatomy_info[cln_name] = (
+                (
+                    set((bpe,)) if bpe is not None else set(),
+                    {str(coding): coding} 
+                ),
+                {
+                    st_uid: (
+                    set((bpe,)) if bpe is not None else set(),
+                    {str(coding): coding})
+                }  
+            ) 
     for i in range(0, len(in_folders)):
         in_folder = os.path.realpath(in_folders[i])
         if download_:

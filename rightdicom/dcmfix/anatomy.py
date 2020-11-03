@@ -1,3 +1,26 @@
+import re
+
+def get_closest_body_part_examined(bpe: str):
+    bpe = bpe.upper()
+    bpe = re.sub(r'[^3-4A-Z]','', bpe)
+    bpe = bpe[0] + re.sub(r'[^A-Z]', '', bpe[1:])
+    output = ''
+    bpes = list(BodyPartExamined2SCT)
+    if bpe not in bpes:
+        for bpe_el in bpes:
+            if re.search(bpe, bpe_el) is not None:
+                if len(bpe_el) < len(output) or output == '':
+                    output = bpe_el
+    if output == '':
+        for bpe_el in bpes:
+            if re.search(bpe_el, bpe) is not None:
+                if len(bpe_el) > len(output):
+                    output = bpe_el
+    if output == '':
+        output = None
+    return output
+
+
 BodyPartExamined2SCT = {
     '3RDVENTRICLE': (49841001, 'Third ventricle', 'SCT',),
     '4THVENTRICLE': (35918002, 'Fourth ventricle', 'SCT',),
@@ -920,3 +943,897 @@ SRT2BodyPartExamined ={
     'T-F1320': 'RENALA',
     'T-F1810': 'CHESTABDOMEN',
 }
+class    DisplayableAnatomicConcept:
+    def __init__(self, conceptUniqueIdentifier: str,
+                 conceptIdentifier: str,
+                 pairedStructure: bool,
+                 codingSchemeDesignator: str,
+                 legacyCodingSchemeDesignator: str,
+                 codingSchemeVersion: str,
+                 codeValue: str, codeMeaning: str,
+                 codeStringEquivalent: str,
+                 synonynms: list = [],
+                 shortcutMenuEntry: list = [],
+                 fullyQualifiedMenuEntry: list = []
+                 ):
+        self.ConceptUniqueIdentifier = conceptUniqueIdentifier
+        self.ConceptIdentifier = conceptIdentifier
+        self.PairedStructure = pairedStructure
+        self.CodingSchemeDesignator = codingSchemeDesignator
+        self.LegacyCodingSchemeDesignator = legacyCodingSchemeDesignator
+        self.CodingSchemeVersion = codingSchemeVersion
+        self.CodeValue = codeValue
+        self.CodeMeaning = codeMeaning
+        self.CodeStringEquivalent = codeStringEquivalent
+        self.Synonynms = [] if synonynms is None else synonynms
+        self.ShortcutMenuEntry = shortcutMenuEntry
+        self.FullyQualifiedMenuEntry = fullyQualifiedMenuEntry
+
+    def __str__(self):
+        line = '{} = {}'
+        out = ''
+        out += line.format(
+            "ConceptUniqueIdentifier", self.ConceptUniqueIdentifier) + "\n"
+        out += line.format(
+            "ConceptIdentifier", self.ConceptIdentifier) + "\n"
+        out += line.format(
+            "PairedStructure", self.PairedStructure) + "\n"
+        out += line.format(
+            "CodingSchemeDesignator", self.CodingSchemeDesignator) + "\n"
+        out += line.format(
+            "LegacyCodingSchemeDesignator", self.LegacyCodingSchemeDesignator) + "\n"
+        out += line.format(
+            "CodingSchemeVersion", self.CodingSchemeVersion) + "\n"
+        out += line.format(
+            "CodeValue", self.CodeValue) + "\n"
+        out += line.format(
+            "CodeMeaning", self.CodeMeaning) + "\n"
+        out += line.format(
+            "CodeStringEquivalent", self.CodeStringEquivalent) + "\n"
+        out += line.format(
+            "Synonynms", self.Synonynms) + "\n"
+        out += line.format(
+            "ShortcutMenuEntry", self.ShortcutMenuEntry) + "\n"
+        out += line.format(
+            "FullyQualifiedMenuEntry", self.FullyQualifiedMenuEntry) + "\n"
+        return out
+
+badLateralityOrViewOrAnatomyPhraseTriggers = [
+    "History","Hx of"
+    ]
+badAnatomyWords = [
+    "research", # contains "ear""and", # expedient way to remove conjunction
+    "head first", # sometimes occurs in protocols"feet first",
+    "entra di piedi","axials", # don't want LS to be confused as lumbar spine
+    "sagittals","coronals",
+    "locator", # else TOR matches chest"tracker"
+    ]
+anatomicConceptEntries = [
+    # combined entries ...
+    DisplayableAnatomicConcept(
+        "C1508499","416949008", False,#unpaired
+        "SRT", "SNM3", None, "R-FAB57", "Abdomen and Pelvis", "ABDOMENPELVIS",
+        [
+            "Abdomen Pelvis", # without conjunctions"Abdo Pelvis", # various abbreviations
+            "Abd Pelvis","Abd Pelv",
+            "Abd Pel","AbdoPelv",
+            "brzuch miednica"#PL
+        ],
+        ["Abdomen and Pelvis"], ["Abdomen and Pelvis"]),
+    DisplayableAnatomicConcept(
+        "C1442171","416550000", False,#unpaired
+        "SRT", "SNM3", None, "R-FAB55", "Chest and Abdomen", "CHESTABDOMEN",
+        [
+            "Chest Abdomen", # without conjunctions"Chest Abdo", # various abbreviations
+            "Chest Abd","Thorax Abdomen",
+            "Thorax Abdo","Thorax Abd",
+            "Chest Liver", # not ideal match, but sometimes seem in protocols"Thorax Liver",
+            "torace addome","Klatka brzuch"#PL
+        ],
+        ["Chest and Abdomen"], ["Chest and Abdomen"]),
+    DisplayableAnatomicConcept(
+        "C1562547","416775004", False,#unpaired
+        "SRT", "SNM3", None, "R-FAB56", "Chest, Abdomen and Pelvis", "CHESTABDPELVIS",
+        [
+            "Chest Abdomen Pelvis", # without conjunctions"Chest Abdo Pelvis", # various abbreviations
+            "Chest Abdo Pelv","Chest Abdo Pel",
+            "Chest Abd Pelvis","Chest Abd Pelv",
+            "Chest Abd Pel","Chest AbdoPelv",
+            "Chest Abdomen Pelv","Chest Abdomen Pel",
+            "Thorax Abdomen Pelvis","Thorax Abdo Pelvis",
+            "Thorax Abdo Pelv","Thorax Abdo Pel",
+            "Thorax Abd Pelvis","Thorax Abd Pelv",
+            "Thorax Abd Pel","Thorax AbdoPelv",
+            "Thorax Abdomen Pelv","Thorax Abdomen Pel",
+            "Thoraco Abdomino Pelvien","Torax Abdomen Pelvis",
+            "Th Abd Pel","C A P",
+            "CAP","T A P",
+            "TAP","Klatka brzuch miednica",#PL
+            ""],
+        ["Chest, Abdomen and Pelvis"], ["Chest, Abdomen and Pelvis"]),
+    DisplayableAnatomicConcept(
+        "C0460004","774007", False,#unpaired
+        "SRT", "SNM3", None, "T-D1000", "Head and Neck", "HEADNECK",
+        ["Head Neck"], # without conjunctions
+        ["Head and Neck"], ["Head and Neck"]),
+    DisplayableAnatomicConcept(
+        "C1562459","417437006", False,#unpaired
+        "SRT", "SNM3", None, "R-FAB52", "Neck and Chest", "NECKCHEST",
+        [
+            "Neck Chest", # without conjunctions"Neck Thorax",
+            "Collo Tor"
+        ],
+        ["Neck and Chest"], ["Neck and Chest"]),
+    DisplayableAnatomicConcept(
+        "C1562378","416152001", False,#unpaired
+        "SRT", "SNM3", None, "R-FAB53", "Neck, Chest and Abdomen", "NECKCHESTABDOMEN",
+        [
+            "Neck Chest Abdomen", # without conjunctions"Neck Chest Abdo", # various abbreviations
+            "Neck Chest Abd","Neck Thorax Abdomen",
+            "Neck Thorax Abdo","Neck Thorax Abd",
+            "Collo Tor Addo"],
+        ["Neck, Chest and Abdomen"], ["Neck, Chest and Abdomen"]),
+    DisplayableAnatomicConcept(
+        "C1562776","416319003", False,#unpaired
+        "SRT", "SNM3", None, "R-FAB54", "Neck, Chest, Abdomen and Pelvis", "NECKCHESTABDPELV",
+        [
+            "Neck Chest Abdomen Pelvis", # without conjunctions"Neck Chest Abdo Pelvis", # various abbreviations
+            "Neck Chest Abd Pelvis","Neck Chest Abdo Pelv",
+            "Neck Chest Abdo Pel","Neck Chest Abd Pelv",
+            "Neck Chest Abd Pel","Neck Thorax Abdomen Pelvis",
+            "Neck Thorax Abdo Pelvis","Neck Thorax Abd Pelvis",
+            "Neck Thorax Abdo Pelv","Neck Thorax Abdo Pel",
+            "Neck Thorax Abd Pelv","Neck Thorax Abd Pel"
+        ],
+        ["Neck, Chest, Abdomen and Pelvis"],
+        ["Neck, Chest, Abdomen and Pelvis"]),
+    DisplayableAnatomicConcept(
+        "C1508520","LP33902-5", False,#unpaired
+        "LN", None, None, "LP33902-5", "Aortic Arch and Carotid Artery", None,
+        [
+            "Aortic Arch Carotid Artery", # without conjunctions"Aortic Arch and Carotid Arteries",
+            "Aortic Arch Carotid Arteries"
+        ],
+        ["Aortic Arch and Carotid Artery"], ["Aortic Arch and Carotid Artery"]),
+    # single part entries ...
+    DisplayableAnatomicConcept(
+        "C0000726","113345001", False,#unpaired
+        "SRT", "SNM3", None, "T-D4000", "Abdomen", "ABDOMEN",
+        [
+            "Abdominal","BØICHO",#CZ
+            "bruco",#CZ"Buik",#NL
+            "Vatsa",#FI"Ventre",#FR
+            "Addome",#IT"Abdome",#PT
+            "はら",#JP"心窩部",#JP
+            "胴",#JP"腹",#JP
+            "腹部",#JP"ЖИВОТ",#RU
+            "Buk",#NL"Pilvo",#LT
+            "Addo","brzuch"#PL
+        ],
+        ["Abdomen"], ["Abdomen"]),
+    DisplayableAnatomicConcept(
+        "C0001625","23451007", True ,#paired
+        "SRT", "SNM3", None, "T-B3000", "Adrenal gland", "ADRENAL",["Adrenal"],
+        ["Adrenal gland"], ["Adrenal gland"]),
+    DisplayableAnatomicConcept(
+        "C0042425","67109009", False,#unpaired
+        "SRT", "SNM3", None, "T-64700", "Ampulla of Vater", None, None,
+        ["Ampulla of Vater"], ["Ampulla of Vater"]
+        ),
+    DisplayableAnatomicConcept("C0003087","70258002", True ,#paired
+        "SRT", "SNM3", None, "T-15750", "Ankle joint", "ANKLE",
+        [
+            "Ankle","Tobillo",#ES
+            "Knöchel",#DE"Enkel",#NL
+            "Cheville",#FR"Tornozelo",#PT
+            "αστράγαλος",#GR"足首",#JP
+            "발목",#KR"лодыжка"#RU
+        ],
+        ["Ankle joint"], ["Ankle joint"]),
+    DisplayableAnatomicConcept(
+        "C0003483","15825003", False,#unpaired
+        "SRT", "SNM3", None, "T-42000", "Aorta", "AORTA", None,
+        ["Aorta"], ["Aorta"]),
+    DisplayableAnatomicConcept("C0545736","LP33868-8", False,#unpaired
+        "LN", None, None, "LP33868-8", "Aorta and femoral artery", None, None,
+        ["Aorta and femoral artery"], ["Aorta and femoral artery"]
+        ),
+    DisplayableAnatomicConcept("C0003489","57034009", False,#unpaired
+        "SRT", "SNM3", None, "T-42300", "Aortic Arch", None, None,
+        ["Aortic Arch"], ["Aortic Arch"]),
+    DisplayableAnatomicConcept("C1508529","LP33903-3", False,#unpaired
+        "LN", None, None, "LP33903-3",
+        "Aortic arch and subclavian artery", None, None,
+        ["Aortic arch and subclavian artery"],
+        ["Aortic arch and subclavian artery"]),
+    DisplayableAnatomicConcept("C0446516","40983000", True ,#paired
+        "SRT", "SNM3", None, "T-D8200", "Arm", "ARM",
+        None, ["Arm"], ["Arm"]
+        ),# D1-50666 "Arteriovenous fistula" is in the SNOMED US extension
+    DisplayableAnatomicConcept(
+        "C0003855","439470001", False,#unpaired
+        "SRT", "SNM3", None, "D1-50666", "Arteriovenous fistula",
+        None, None, ["Arteriovenous fistula"], ["Arteriovenous fistula"]
+        ),
+    DisplayableAnatomicConcept("C0004454","34797008", True ,#paired
+        "SRT", "SNM3", None, "T-D8100", "Axilla", "AXILLA", None,
+        ["Axilla"], ["Axilla"]),
+    DisplayableAnatomicConcept("C1995000","77568009", False,#unpaired
+        "SRT", "SNM3", None, "T-D2100", "Back", "BACK", None,
+        ["Back"], ["Back"]),
+    DisplayableAnatomicConcept("C0005400","28273000", False,#unpaired
+        "SRT", "SNM3", None, "T-60610", "Bile duct", None, None,
+        ["Bile duct"], ["Bile duct"]),
+    DisplayableAnatomicConcept("C0005682","89837001", False,#unpaired
+        "SRT", "SNM3", None, "T-74000", "Bladder", "BLADDER", None,
+        ["Bladder"], ["Bladder"]),
+    DisplayableAnatomicConcept("C0006087","17137000", True ,#paired
+        "SRT", "SNM3", None, "T-47160", "Brachial artery", None, None,
+        ["Brachial artery"], ["Brachial artery"]),
+    DisplayableAnatomicConcept("C0006104","12738006", False,#unpaired
+        "SRT", "SNM3", None, "T-A0100", "Brain", "BRAIN", None,
+        ["Brain"], ["Brain"]),
+    DisplayableAnatomicConcept("C0006141","76752008", True ,#paired
+        "SRT", "SNM3", None, "T-04000", "Breast", "BREAST", None,
+        ["Breast"], ["Breast"]),
+    DisplayableAnatomicConcept("C0006255","955009", True ,#paired
+        "SRT", "SNM3", None, "T-26000", "Bronchus", "BRONCHUS", None,
+        ["Bronchus"], ["Bronchus"]),
+    DisplayableAnatomicConcept("C0006497","46862004", True ,#paired
+        "SRT", "SNM3", None, "T-D2600", "Buttock", "BUTTOCK", None,
+        ["Buttock"], ["Buttock"]),
+    DisplayableAnatomicConcept("C0006655","80144004", True ,#paired
+        "SRT", "SNM3", None, "T-12770", "Calcaneus", "CALCANEUS", None,
+        ["Calcaneus"], ["Calcaneus"]),
+    DisplayableAnatomicConcept("C0230445","53840002", True ,#paired
+        "SRT", "SNM3", None, "T-D9440", "Calf of leg", "CALF",["Calf"],
+        ["Calf of leg"], ["Calf of leg"]),
+    DisplayableAnatomicConcept(
+        "C0007272","69105007", True ,#paired
+        "SRT", "SNM3", None, "T-45010", "Carotid Artery", "CAROTID",["Carotid"],
+        ["Carotid Artery"], ["Carotid Artery"]),
+    DisplayableAnatomicConcept(
+        "C1268981","180924008", False,#unpaired
+        "SRT", "SNM3", None, "T-A600A", "Cerebellum", "CEREBELLUM", None,
+        ["Cerebellum"], ["Cerebellum"]),
+    DisplayableAnatomicConcept("C0728985","122494005", False,#unpaired
+        "SRT", "SNM3", None, "T-11501", "Cervical spine", "CSPINE",
+        [
+            "CS","CWK",#NL
+            "CWZ",#NL"HWS",#DE
+            "H Rygg",#SE"Cspine",
+            "C spine","Spine Cervical",
+            "Cervical","Cervic",#abbrev
+            "Kaelalülid",#EE"KRÈNÍ OBRATLE",#CZ
+            "Halswervels",#NL"Vertebrae cervicalis",#NL
+            "Wervel hals",#NL"Kaulanikamat",#FI
+            "Rachis cervical",#FR"Vertèbre cervicale",#FR
+            "Vertèbres cervicales",#FR"COLONNE CERVICALE",#FR
+            "CERVICALE",#FR"Halswirbel",#DE
+            "Vertebrae cervicales",#DE"Vertebre cervicali",#IT
+            "頚椎",#JP"頸椎",#JP
+            "Vértebras Cervicais",#PT"ШЕЙНЫЕ ПОЗВОНКИ",#RU
+            "columna cervical",#ES"columna cerv",#ES abbrev
+            "columna espinal cervical",#ES"columna vertebral cervical",#ES
+            "vértebras cervicales",#ES"Cervikalkotor",#SE
+            "Halskotor",#SE"Halsrygg",#SE
+            "Cervicale wervelzuil",#BE"C chrbtica"#SK
+        ],
+        ["Cervical spine"], ["Cervical spine"]),
+    DisplayableAnatomicConcept(
+        "C0729373","297171002", False,#unpaired
+        "SRT", "SRT", None, "T-D00F7", "Cervico-thoracic spine", "CTSPINE",
+        [
+            "CTSPINE","Cervico-thoracic",
+        "Cervicothoracic"],
+        ["Cervico-thoracic spine"], ["Cervico-thoracic spine"]),
+    DisplayableAnatomicConcept(
+        "C0007874","71252005", False,#unpaired
+        "SRT", "SNM3", None, "T-83200", "Cervix", "CERVIX", None, ["Cervix"], ["Cervix"]),
+    DisplayableAnatomicConcept("C0007966","60819002", True ,#paired
+        "SRT", "SNM3", None, "T-D1206", "Cheek", "CHEEK", None, ["Cheek"], ["Cheek"]),
+    DisplayableAnatomicConcept("C0817096","51185008", False,#unpaired
+        "SRT", "SNM3", None, "T-D3000", "Chest", "CHEST",
+        [
+            "Thorax","Rindkere",#EE
+            "HRUDNÍK",#CZ"hrudník",#CZ
+            "Borst",#NL"Rintakehä",#FI
+            "Poitrine",#FR"Potter",#FR ?? - seen in examples
+            "Torse",#FR"Brustkorb",#DE
+            "Torace",#IT"Peito",#PT
+            "ГРУДНАЯ КЛЕТКА",#RU"ГРУДЬ",#RU
+            "pecho",#ES"torácico",#ES
+            "Bröstkorg",#SE"Torax",#SE,PT,ES
+            "hrudnнk",#SK"hrudn",#SK abbrev
+            "mellkas",#HU"Krūtinės ląsta",#LT
+            "Tor","Klatka"#PL
+        ],
+        ["Chest"], ["Chest"]),
+    DisplayableAnatomicConcept(
+        "C1284333","362047009", False,#unpaired
+        "SRT", "SNM3", None, "T-45526", "Circle of Willis", "CIRCLEOFWILLIS",
+        None, ["Circle of Willis"], ["Circle of Willis"]),
+    DisplayableAnatomicConcept("C0008913","51299004", True ,#paired
+        "SRT", "SNM3", None, "T-12310", "Clavicle", "CLAVICLE", None,
+        ["Clavicle"], ["Clavicle"]),
+    DisplayableAnatomicConcept("C0009194","64688005", False,#unpaired
+        "SRT", "SNM3", None, "T-11BF0", "Coccyx", "COCCYX", None,
+        ["Coccyx"], ["Coccyx"]),
+    DisplayableAnatomicConcept("C0009368","71854001", False,#unpaired
+        "SRT", "SNM3", None, "T-59300", "Colon", "COLON", None,
+        ["Colon"], ["Colon"]),
+    DisplayableAnatomicConcept("C1268346","110797007", False,#unpaired
+        "SRT", "SNM3", None, "T-DD080", "Colon and rectum", None, None,
+        ["Colon and rectum"], ["Colon and rectum"]),
+    DisplayableAnatomicConcept("C0010031","28726007", True ,#paired
+        "SRT", "SNM3", None, "T-AA200", "Cornea", "CORNEA", None,
+        ["Cornea"], ["Cornea"]),
+    DisplayableAnatomicConcept("C0205042","41801008", False,#unpaired
+        "SRT", "SNM3", None, "T-43000", "Coronary artery", "CORONARYARTERY",
+        ["Coronary"], ["Coronary artery"], ["Coronary artery"]),
+    DisplayableAnatomicConcept(
+        "C0011980","5798000", False,#unpaired
+        "SRT", "SNM3", None, "T-D3400", "Diaphragm", None, None,
+        ["Diaphragm"], ["Diaphragm"]),
+    DisplayableAnatomicConcept("C0013303","38848004", False,#unpaired
+        "SRT", "SNM3", None, "T-58200", "Duodenum", "DUODENUM", None,
+        ["Duodenum"], ["Duodenum"]),
+    DisplayableAnatomicConcept("C0521421","1910005", True ,#paired
+        "SRT", "SNM3", None, "T-AB000", "Ear", "EAR", None, ["Ear"], ["Ear"]),
+    DisplayableAnatomicConcept("C1305417","76248009", True ,#paired
+        "SRT", "SNM3", None, "T-D8300", "Elbow", "ELBOW",
+        [
+            "Ellbogen",#DE"Coude",#FR
+        "Küünar",#EE"Armbåge",#SE
+        "Codo",#ES"Cotovelo"#PT
+        ],
+        ["Elbow"], ["Elbow"]),
+    DisplayableAnatomicConcept(
+        "C0229960","38266002", False,#unpaired
+        "SRT", "SNM3", None, "T-D0010", "Entire body", "WHOLEBODY",
+        [
+            "Entire body","Whole body",
+        "Mid body" # not quite right, but nothing better 
+        ],
+        ["Entire body"], ["Entire body"]),
+    DisplayableAnatomicConcept(
+        "C0014876","32849002", False,#unpaired
+        "SRT", "SNM3", None, "T-56000", "Esophagus", "ESOPHAGUS", None,
+        ["Esophagus"], ["Esophagus"]),
+    DisplayableAnatomicConcept("C0015385","66019005", True ,#paired
+        "SRT", "SNM3", None, "T-D0300", "Extremity", "EXTREMITY",
+        [
+            "Extremety",#Agfa CR spelling mistake"Extremidad"#ES
+        ],
+        ["Extremity"], ["Extremity"]),
+    DisplayableAnatomicConcept(
+        "C0015392","81745001", True ,#paired
+        "SRT", "SNM3", None, "T-AA000", "Eye", "EYE", None, ["Eye"], ["Eye"]),
+    DisplayableAnatomicConcept("C0015426","80243003", True ,#paired
+        "SRT", "SNM3", None, "T-AA810", "Eyelid", "EYELID", None, ["Eyelid"],
+        ["Eyelid"]
+        ),# not face ... gets confused with frontal view (FR,NL) ...    
+    DisplayableAnatomicConcept(
+        "C0015450","89545001", True ,#paired
+        "SRT", "SNM3", None, "T-D1200", "Face", "FACE", None,
+        ["Face"], ["Face"]),
+    DisplayableAnatomicConcept("C0015801","7657000", True ,#paired
+        "SRT", "SNM3", None, "T-47400", "Femoral artery", None, None,
+        ["Femoral artery"], ["Femoral artery"]),
+    DisplayableAnatomicConcept("C0015811","71341001", True ,#paired
+        "SRT", "SNM3", None, "T-12710", "Femur", "FEMUR", None,
+        ["Femur"], ["Femur"]),
+    DisplayableAnatomicConcept("C0524584","55460000", True ,#paired
+        "SRT", "SNM3", None, "T-F5201", "Fetus", None, None,
+        ["Fetus"], ["Fetus"]),
+    DisplayableAnatomicConcept("C0016129","7569003", True ,#paired
+        "SRT", "SNM3", None, "T-D8800", "Finger", "FINGER", None,
+        ["Finger"], ["Finger"]),
+    DisplayableAnatomicConcept("C0016504","56459004", True ,#paired
+        "SRT", "SNM3", None, "T-D9700", "Foot", "FOOT",
+        [
+            "Pied",#FR"Pie",#ES
+            "Voet",#NL"Fuß",#DE
+            "πόδι",#GR"Piede",#IT
+            #"pé"*#*PT*#*,*#* Cannot use this one ... matches PET and calls all PET scans as foot ! 
+            "нога"#RU
+        ],
+        ["Foot"], ["Foot"]),
+    DisplayableAnatomicConcept(
+        "C0223680","55797009", True ,#paired
+        "SRT", "SNM3", None, "T-12402", "Forearm bone", "FOREARM",
+        [
+            "Forearm","U ARM",#DE
+            "Unterarm",#DE"Avambraccio",#IT
+            "PØEDLOKTÍ",#CZ"Onderarm",#NL
+            "Kyynärvarsi",#FI"Avant-bras",#FR
+            "まえうで",#JP"前腕",#JP
+            "Antebraço",#PT"ПРЕДПЛЕЧЬЕ",#RU
+            "antebrazo",#ES"Underarm",#SE
+            "predlaktie"#SK
+        ],
+        ["Forearm"], ["Forearm"]),
+    DisplayableAnatomicConcept(
+        "C0016976","28231008", False,#unpaired
+        "SRT", "SNM3", None, "T-63000", "Gallbladder", "GALLBLADDER", None,
+        ["Gallbladder"], ["Gallbladder"]),
+    DisplayableAnatomicConcept("C0018563","85562004", True ,#paired
+        "SRT", "SNM3", None, "T-D8700", "Hand", "HAND", None,
+        ["Hand"], ["Hand"]),
+    DisplayableAnatomicConcept("C0018670","69536005", False,#unpaired
+        "SRT", "SNM3", None, "T-D1100", "Head", "HEAD",
+        [
+            "Kopf",#DE"Schaedel",#DE
+            "Schædel",#DE"Sch?del",#DE encoded incorrectly
+            "Tete"#FR
+        ],
+        ["Head"], ["Head"]),
+    DisplayableAnatomicConcept(
+        "C0460004","774007", False,#unpaired
+        "SRT", "SNM3", None, "T-D1000", "Head and Neck",
+        "HEADNECK", ["Head Neck"],
+        ["Head and Neck"], ["Head and Neck"]),
+    DisplayableAnatomicConcept(
+        "C0018787","80891009", False,#unpaired
+        "SRT", "SNM3", None, "T-32000", "Heart", "HEART", None,
+        ["Heart"], ["Heart"]),
+    DisplayableAnatomicConcept("C0019552","24136001", True ,#paired
+        "SRT", "SNM3", None, "T-15710", "Hip joint", "HIP",
+        [
+            "Hip","Heup",#NL
+            "Hanche",#FR"Hüfte",#DE
+            "Puus",#EE"HÖFT",#SE
+            "Cadera",#ES"ισχίο",#GR
+            "anca",#IT"ヒップ",#JP
+            "엉덩이",#KR"вальма"#RU
+        ],
+        ["Hip"], ["Hip"]),
+    DisplayableAnatomicConcept(
+        "C0020164","85050009", True ,#paired
+        "SRT", "SNM3", None, "T-12410", "Humerus", "HUMERUS",
+        [
+            "UP_EXM",#Fuji CR BPE"O ARM",#DE,SE
+            "Oberarm",#DE"Õlavars",#EE
+            "Bovenarm",#NL"húmero"#ES
+        ],
+        ["Humerus"], ["Humerus"]),
+    DisplayableAnatomicConcept(
+        "C0020885","34516001", False,#unpaired
+        "SRT", "SNM3", None, "T-58600", "Ileum", "ILEUM", None, ["Ileum"],
+        ["Ileum"]),
+    DisplayableAnatomicConcept("C0576469","299716001", True ,#paired
+        "SRT", "SNM3", None, "T-41068", "Iliac and femoral artery", None, None,
+        ["Iliac and femoral artery"], ["Iliac and femoral artery"]),
+    DisplayableAnatomicConcept("C0020889","22356005", True ,#paired
+        "SRT", "SNM3", None, "T-12340", "Ilium", "ILIUM", None, ["Ilium"], ["Ilium"]),
+    DisplayableAnatomicConcept("C0018246","26893007", True ,#paired
+        "SRT", "SNM3", None, "T-D7000", "Inguinal region", None, None,
+        ["Inguinal region"], ["Inguinal region"]),
+    DisplayableAnatomicConcept("C1283773","361078006", True ,#paired
+        "SRT", "SNM3", None, "T-AB959", "Internal Auditory Canal", "IAC",
+        ["IAC"],
+        ["Internal Auditory Canal"], ["Internal Auditory Canal"]),
+    DisplayableAnatomicConcept(
+        "C0226364","90024005", True ,#paired
+        "SRT", "SNM3", None, "T-46740", "Internal iliac artery", None, None,
+        ["Internal iliac artery"], ["Internal iliac artery"]),
+    DisplayableAnatomicConcept("C0022359","661005", True ,#paired
+        "SRT", "SNM3", None, "T-D1213", "Jaw region", "JAW", None,
+        ["Jaw region"], ["Jaw region"]),
+    DisplayableAnatomicConcept("C0022378","21306003", False,#unpaired
+        "SRT", "SNM3", None, "T-58400", "Jejunum", "JEJUNUM", None,
+        ["Jejunum"], ["Jejunum"]),
+    DisplayableAnatomicConcept("C0022646","64033007", True ,#paired
+        "SRT", "SNM3", None, "T-71000", "Kidney", "KIDNEY", None,
+        ["Kidney"], ["Kidney"]),
+    DisplayableAnatomicConcept("C1456798","72696002", True ,#paired
+        "SRT", "SNM3", None, "T-D9200", "Knee", "KNEE",
+        [
+            "Knie",#DE,NL"Genou",#FR
+            "Põlv",#EE"Pölv",#EE ?wrong accent
+            "Knä",#SE"Rodilla"#ES
+        ],
+        ["Knee"], ["Knee"]),
+    DisplayableAnatomicConcept(
+        "C0023078","4596009", False,#unpaired
+        "SRT", "SNM3", None, "T-24100", "Larynx", "LARYNX",
+        [
+            "Laringe",#ES,IT"Kehlkopf",#DE
+            "Strottenhoofd"#NL#FR is same as english
+        ],
+        ["Larynx"], ["Larynx"]),
+    DisplayableAnatomicConcept(
+        "C1140621","30021000", True ,#paired
+        "SRT", "SNM3", None, "T-D9400", "Leg", "LEG",
+        [
+            "LOW_EXM",#Fuji CR BPE"LOWEXM",#Siemens CR BPE
+            "TIB FIB ANKLE","Jambe"#FR
+        ],
+        ["Leg"], ["Leg"]),
+    DisplayableAnatomicConcept(
+        "C0023884","10200004", False,#unpaired
+        "SRT", "SNM3", None, "T-62000", "Liver", "LIVER",
+        [
+            "foie",#FR"Kepenys"#LT
+        ],
+        ["Liver"], ["Liver"]),
+    DisplayableAnatomicConcept(
+        "C0024091","122496007", False,#unpaired
+        "SRT", "SNM3", None, "T-11503", "Lumbar spine", "LSPINE",
+        [
+            "LS","LWK",#NL
+        "LWZ",#NL"LWS",#DE
+        "L Rygg",#SE"Lspine",
+        "L spine","Spine Lumbar",
+        "Lumbar","Rachis lombaire",#FR
+        "COLONNE LOMBAIRE",#FR"Rach.Lomb",#FR abbrev
+        "lombaire",#FR"Nimmelülid",#EE
+        "Columna lumbar",#ES"LÄNDRYGG",#SE
+        "L chrbtica",#SK"COL LOMBARE"
+        ],
+        ["Lumbar spine"], ["Lumbar spine"]),
+    DisplayableAnatomicConcept(
+        "C0223603","297173004", False,#unpaired
+        "SRT", "SRT", None, "T-D00F9", "Lumbo-sacral spine", "LSSPINE",
+        [
+            "LSSPINE","Lumbosacral spine",
+        "Lumbo-sacrale wervelzuil",#BE"columna vertebral lumbosacra",#ES
+        "vértebras lumbosacras",#ES"Colonna Lombosacrale"
+        ],
+        ["Lumbo-sacral spine"], ["Lumbo-sacral spine"]),
+    DisplayableAnatomicConcept(
+        "C0024109","39607008", True ,#paired
+        "SRT", "SNM3", None, "T-28000", "Lung", "LUNG",
+        [
+            "pluco",#PL"pluca"#PL
+        ],
+        ["Lung"], ["Lung"]),
+    DisplayableAnatomicConcept(
+        "C0024687","91609006", True ,#paired
+        "SRT", "SNM3", None, "T-11180", "Mandible", "JAW", None,
+        ["Mandible"], ["Mandible"]),
+    DisplayableAnatomicConcept("C0024947","70925003", True ,#paired
+        "SRT", "SNM3", None, "T-11170", "Maxilla", "MAXILLA", None,
+        ["Maxilla"], ["Maxilla"]),
+    DisplayableAnatomicConcept("C0178738","LP30124-9", True ,#paired
+        "LN", None, None, "LP30124-9", "Maxilla and Mandible", None, None,
+        ["Maxilla and Mandible"], ["Maxilla and Mandible"]),
+    DisplayableAnatomicConcept("C0025066","72410000", False,#unpaired
+        "SRT", "SNM3", None, "T-D3300", "Mediastinum", "MEDIASTINUM", None,
+        ["Mediastinum"], ["Mediastinum"]),
+    DisplayableAnatomicConcept("C1267547","21082005", False,#unpaired
+        "SRT", "SNM3", None, "T-51000", "Mouth", "MOUTH", None, ["Mouth"],
+        ["Mouth"]),
+    DisplayableAnatomicConcept("C0027530","45048000", False,#unpaired
+        "SRT", "SNM3", None, "T-D1600", "Neck", "NECK",
+        [
+            "Kael",#EE"Collo",#IT
+            "Cuello",#ES"Hals",#DE
+            "Nek",#NL"Nacke"#SE
+        ],
+        ["Neck"], ["Neck"]),
+    DisplayableAnatomicConcept(
+        "C0028429","45206002", False,#unpaired
+        "SRT", "SNM3", None, "T-21000", "Nose", "NOSE", None,
+        ["Nose"], ["Nose"]),
+    DisplayableAnatomicConcept("C0015392","371398005", True ,#paired
+        "SRT", "SNM3", None, "T-D0801", "Orbital region", "ORBIT",
+        ["Orbit"], ["Orbital region"], ["Orbital region"]),
+    DisplayableAnatomicConcept(
+        "C0029939","15497006", True ,#paired
+        "SRT", "SNM3", None, "T-87000", "Ovary", "OVARY", None,
+        ["Ovary"], ["Ovary"]),
+    DisplayableAnatomicConcept("C0030274","15776009", False,#unpaired
+        "SRT", "SNM3", None, "T-65000", "Pancreas", "PANCREAS", None,
+        ["Pancreas"], ["Pancreas"]),
+    DisplayableAnatomicConcept("C0030288","69930009", False,#unpaired
+        "SRT", "SNM3", None, "T-65010", "Pancreatic duct", None, None,
+        ["Pancreatic duct"], ["Pancreatic duct"]),
+    DisplayableAnatomicConcept("C1267614","110621006", False,#unpaired
+        "SRT", "SNM3", None, "T-65600",
+        "Pancreatic duct and bile duct systems", None,
+        [
+            "Pancreatic duct and bile duct systems","Pancreatic duct and bile ducts",
+            "Pancreatic duct and bile duct","Pancreatic and bile ducts"
+        ],
+        ["Pancreatic duct and bile duct systems"],
+    ["Pancreatic duct and bile duct systems"]),
+    DisplayableAnatomicConcept(
+        "C0030580","45289007", True ,#paired
+        "SRT", "SNM3", None, "T-61100", "Parotid gland", "PAROTID",["Parotid"],
+        ["Parotid gland"], ["Parotid gland"]),
+    DisplayableAnatomicConcept(
+        "C0030647","64234005", True ,#paired
+        "SRT", "SNM3", None, "T-12730", "Patella", "PATELLA", None, ["Patella"], ["Patella"]),
+    DisplayableAnatomicConcept("C0030797","12921003", False,#unpaired
+        "SRT", "SNM3", None, "T-D6000", "Pelvis", "PELVIS",
+        [
+            "PV",#abbreviations"Pelv",
+            "Pel","Bekken",#NL
+            "Becken",#DE"Bassin",#FR
+            "Vaagen",#EE"BÄCKEN",#SE
+            "λεκάνη",#GR"Bacino",#IT
+            "骨盤",#JP"골반",#KR
+            "miednica"#PL
+        ],
+        ["Pelvis"], ["Pelvis"]),
+    DisplayableAnatomicConcept(
+        "C0030851","18911002", False,#unpaired
+        "SRT", "SNM3", None, "T-91000", "Penis", "PENIS", None, ["Penis"],
+        ["Penis"]),
+    DisplayableAnatomicConcept("C0225972","25489000", False,#unpaired
+        "SRT", "SNM3", None, "T-39050", "Pericardial cavity", None, None,
+        ["Pericardial cavity"], ["Pericardial cavity"]),
+    DisplayableAnatomicConcept("C1278903","181211006", False,#unpaired
+        "SRT", "SNM3", None, "T-55002", "Pharynx", "PHARYNX", None,
+        ["Pharynx"], ["Pharynx"]),
+    DisplayableAnatomicConcept("C0033572","41216001", False,#unpaired
+        "SRT", "SNM3", None, "T-92000", "Prostate", "PROSTATE", None,
+        ["Prostate"], ["Prostate"]),
+    DisplayableAnatomicConcept("C0034896","34402009", False,#unpaired
+        "SRT", "SNM3", None, "T-59600", "Rectum", "RECTUM", None,
+        ["Rectum"], ["Rectum"]),
+    DisplayableAnatomicConcept("C0035561","113197003", True ,#paired
+        "SRT", "SNM3", None, "T-11300", "Rib", "RIB",
+        [
+            "Gril costal",#FR"Gril cost"#FR abbrev
+        ],
+        ["Rib"], ["Rib"]),
+    DisplayableAnatomicConcept(
+        "C0036037","54735007", False,#unpaired
+        "SRT", "SNM3", None, "T-11AD0", "Sacrum", "SSPINE",["SSPINE"],
+        ["Sacrum"], ["Sacrum"]),
+    DisplayableAnatomicConcept(
+        "C0036270","41695006", False,#unpaired
+        "SRT", "SNM3", None, "T-D1160", "Scalp", "SCALP", None,
+        ["Scalp"], ["Scalp"]),
+    DisplayableAnatomicConcept("C0036277","79601000", True ,#paired
+        "SRT", "SNM3", None, "T-12280", "Scapula", "SCAPULA", None,
+        ["Scapula"], ["Scapula"]),
+    DisplayableAnatomicConcept("C0036410","18619003", True ,#paired
+        "SRT", "SNM3", None, "T-AA110", "Sclera", "SCLERA", None,
+        ["Sclera"], ["Sclera"]),
+    DisplayableAnatomicConcept("C0036471","20233005", True ,#paired
+        "SRT", "SNM3", None, "T-98000", "Scrotum", "SCROTUM", None,
+        ["Scrotum"], ["Scrotum"]),
+    DisplayableAnatomicConcept("C0037004","16982005", True ,#paired
+        "SRT", "SNM3", None, "T-D2220", "Shoulder", "SHOULDER",
+        [
+            "Schouder",#NL"Schulter",#DE
+            "Epaule",#FR"épaule",#FR
+            "õlg",#EE"Ölg",#EE ?wrong accent
+            "Hombro",#ES"Ombro",#PT
+            "Rameno",#SK"Rippe"#DE
+        ],
+        ["Shoulder"], ["Shoulder"]),
+    DisplayableAnatomicConcept(
+        "C0021852","30315005", False,#unpaired
+        "SRT", "SNM3", None, "T-58000", "Small intestine", None, None,
+        ["Small intestine"], ["Small intestine"]),
+    DisplayableAnatomicConcept(
+        "C0037303","89546000", False,#unpaired
+        "SRT", "SNM3", None, "T-11100", "Skull", "SKULL",
+        [
+            "Kolju",#EE"LEBKA",#CZ
+            "Schedel",#NL"Kallo",#FI
+            "Crâne",#FR"Cranium",#DE
+            "Schädel",#DE"Cranio",#IT
+            "Calota Craniana",#PT"Crânio",#PT
+            "ЧЕРЕП",#RU"Calota Craneal",#ES
+            "Cráneo",#ES"Kalvarium",#SE
+            "Kranium",#SE"Skalle",#SE
+            "Lebka"#SK
+        ],
+        ["Skull"], ["Skull"]),
+    DisplayableAnatomicConcept(
+        "C0037949","280717001", False,#unpaired
+        "SRT", "SNM3", None, "T-D0146", "Spine", "SPINE",
+        [
+            "Rachis",#FR"Rygg",#SE
+            "chrbtica"#SK
+        ],
+        ["Spine"], ["Spine"]),
+    DisplayableAnatomicConcept(
+        "C0028872","51807001", False,#unpaired
+        "SRT", "SNM3", None, "T-64710", "Sphincter of Oddi", None, None,
+        ["Sphincter of Oddi"], ["Sphincter of Oddi"]),
+    DisplayableAnatomicConcept("C0278443","56101001", False,#unpaired
+        "SRT", "SNM3", None, "T-65016", "Sphincter pancreaticus", None, None,
+        ["Sphincter pancreaticus"], ["Sphincter pancreaticus"]),
+    DisplayableAnatomicConcept("C0037993","78961009", False,#unpaired
+        "SRT", "SNM3", None, "T-C3000", "Spleen", "SPLEEN", None,
+        ["Spleen"], ["Spleen"]),
+    DisplayableAnatomicConcept("C0038293","56873002", False,#unpaired
+        "SRT", "SNM3", None, "T-11210", "Sternum", "STERNUM", None,
+        ["Sternum"], ["Sternum"]),
+    DisplayableAnatomicConcept("C0038351","69695003", False,#unpaired
+        "SRT", "SNM3", None, "T-57000", "Stomach", "STOMACH", None,
+        ["Stomach"], ["Stomach"]),
+    DisplayableAnatomicConcept("C0038530","36765005", False,#unpaired
+        "SRT", "SNM3", None, "T-46100", "Subclavian artery", None, None,
+        ["Subclavian artery"], ["Subclavian artery"]),
+    DisplayableAnatomicConcept("C0038556","54019009", True ,#paired
+        "SRT", "SNM3", None, "T-61300", "Submandibular gland",
+        "SUBMANDIBULAR",["Submandibular"],
+        ["Submandibular gland"], ["Submandibular gland"]),
+    DisplayableAnatomicConcept(
+        "C0039493","53620006", True ,#paired
+        "SRT", "SNM3", None, "T-15290", "Temporomandibular joint", "TMJ",
+        [
+            "Temporomandibular","TMJ"
+        ],
+        ["Temporomandibular joint"], ["Temporomandibular joint"]),
+    DisplayableAnatomicConcept(
+        "C0039597","40689003", True ,#paired
+        "SRT", "SNM3", None, "T-94000", "Testis", "TESTIS", None,
+        ["Testis"], ["Testis"]),
+    DisplayableAnatomicConcept("C0039866","68367000", True ,#paired
+        "SRT", "SNM3", None, "T-D9100", "Thigh", "THIGH",
+        [
+            "Oberschenkel",#DE"Bovenbeen",#NL
+            "Reis"#EE
+        ],
+        ["Thigh"], ["Thigh"]),
+    DisplayableAnatomicConcept(
+        "C0581269","122495006", False,#unpaired
+        "SRT", "SNM3", None, "T-11502", "Thoracic spine", "TSPINE",
+        [
+            "TSPINE","TS",
+            "THWK",#NL"DWZ",#NL
+            "BWS",#DE"B Rygg",#SE
+            "T spine","Spine Thoracic",
+            "Thoracic","Dorsal",
+            "Dorsal spine","Spine Dorsal",
+            "Rachis dorsal",#FR"COLONNE THORACIQUE",#FR
+            "THORACIQUE",#FR"Rinnaosa",#EE??
+            "Rinnalülid",#EE"Columna dorsal",#ES
+            "Columna vertebral dorsal",#ES"Thoracale wervelzuil",#BE
+            "BRÖSTRYGG",#SE"Th chrbtica"#SK
+        ],
+        ["Thoracic spine"], ["Thoracic spine"]),
+    DisplayableAnatomicConcept(
+        "C0729374","297172009", False,#unpaired
+        "SRT", "SRT", None, "T-D00F8", "Thoraco-lumbar spine", "TLSPINE",
+        [
+            "TLSPINE","Thoraco-lumbar",
+            "Thoracolumbar","Col.Dors.Lomb",#FR abbrev
+            "THORACOLUMBALE"],
+        ["Thoraco-lumbar spine"], ["Thoraco-lumbar spine"]),
+    DisplayableAnatomicConcept(
+        "C0040067","76505004", True ,#paired
+        "SRT", "SNM3", None, "T-D8810", "Thumb", "THUMB", None,
+        ["Thumb"], ["Thumb"]),
+    DisplayableAnatomicConcept("C1306748","118507000", False,#unpaired
+        "SRT", "SNM3", None, "T-C8001", "Thymus", "THYMUS", None,
+        ["Thymus"], ["Thymus"]),
+    DisplayableAnatomicConcept("C0040132","69748006", False,#unpaired
+        "SRT", "SNM3", None, "T-B6000", "Thyroid", "THYROID", None,
+        ["Thyroid"], ["Thyroid"]),
+    DisplayableAnatomicConcept("C0040357","29707007", True ,#paired
+        "SRT", "SNM3", None, "T-D9800", "Toe", "TOE", None,
+        ["Toe"], ["Toe"]),
+    DisplayableAnatomicConcept("C0040408","21974007", False,#unpaired
+        "SRT", "SNM3", None, "T-53000", "Tongue", "TONGUE", None,
+        ["Tongue"], ["Tongue"]),
+    DisplayableAnatomicConcept("C0040578","44567001", False,#unpaired
+        "SRT", "SNM3", None, "T-25000", "Trachea", "TRACHEA", None,
+        ["Trachea"], ["Trachea"]),
+    DisplayableAnatomicConcept("C0227690","65364008", True ,#paired
+        "SRT", "SNM3", None, "T-73800", "Ureter", "URETER", None,
+        ["Ureter"], ["Ureter"]),
+    DisplayableAnatomicConcept("C0041967","13648007", False,#unpaired
+        "SRT", "SNM3", None, "T-75000", "Urethra", "URETHRA", None,
+        ["Urethra"], ["Urethra"]),
+    DisplayableAnatomicConcept("C0042149","35039007", False,#unpaired
+        "SRT", "SNM3", None, "T-83000", "Uterus", "UTERUS", None,
+        ["Uterus"], ["Uterus"]),
+    DisplayableAnatomicConcept("C0042232","76784001", False,#unpaired
+        "SRT", "SNM3", None, "T-82000", "Vagina", "VAGINA", None,
+        ["Vagina"], ["Vagina"]),
+    DisplayableAnatomicConcept("C0729900","312548007", False,#unpaired
+        "SRT", "SNM3", None, "T-46006", "Ventral branch of abdominal aorta",
+        None, None,
+        ["Ventral branch of abdominal aorta"],
+        ["Ventral branch of abdominal aorta"]),
+    DisplayableAnatomicConcept("C0042993","45292006", False,#unpaired
+        "SRT", "SNM3", None, "T-81000", "Vulva", "VULVA", None,
+        ["Vulva"], ["Vulva"]),
+    DisplayableAnatomicConcept("C1262468","74670003", True ,#paired
+        "SRT", "SNM3", None, "T-15460", "Wrist joint", "WRIST",
+        [
+            "Wrist","muñeca",#ES
+            "MUÒECA",#ES ? misspelled"pols",#NL
+            "poignet",#FR"Handgelenk",#DE
+            "καρπός",#GR"polso",#IT,PT
+            "手首",#JP"손목",#KR
+            "запястье руки",#RU"ranne",#EE
+            "käe"#EE
+            ], 
+        ["Wrist joint"], ["Wrist joint"]),
+    DisplayableAnatomicConcept(
+        "C0162485","51204001", True ,#paired
+        "SRT", "SNM3", None, "T-11167", "Zygomatic arch",
+        "ZYGOMA", # need to change concept when CP 1258 is approved :(
+        ["Zygoma"],["Zygomatic arch"], ["Zygomatic arch"]),
+]
+def removeAccentsFromLowerCaseString(txt: str) -> str:	
+    txt = re.sub("[àáãäåāąăâ]","a", txt)
+    txt = re.sub("[æ]","ae", txt)
+    txt = re.sub("[çćĉċ]","c", txt)
+    txt = re.sub("[ďđ]","d", txt)
+    txt = re.sub("[èéêëēęěĕė]","e", txt)
+    txt = re.sub("[ƒ]","f", txt)
+    txt = re.sub("[ĝğġģ]","g", txt)
+    txt = re.sub("[ĥħ]","h", txt)
+    txt = re.sub("[ìíîïīĩĭįı]","i", txt)
+    txt = re.sub("[ĳ]","ij", txt)
+    txt = re.sub("[ĵ]","j", txt)
+    txt = re.sub("[ĸ]","k", txt)
+    txt = re.sub("[łľĺļŀ]","l", txt)
+    txt = re.sub("[ñńňņŉŋ]","n", txt)
+    txt = re.sub("[òóôõöøōőŏ]","o", txt)
+    txt = re.sub("[œ]","oe", txt)
+    txt = re.sub("[ŕřŗ]","r", txt)
+    txt = re.sub("[śšşŝș]","txt", txt)
+    txt = re.sub("[ťţŧț]","t", txt)
+    txt = re.sub("[ùúûüūůűŭũų]","u", txt)
+    txt = re.sub("[ŵ]","w", txt)
+    txt = re.sub("[ýÿŷ]","y", txt)
+    txt = re.sub("[žżź]","z", txt)
+    txt = re.sub("[ß]","ss", txt)
+    return txt
+
+
+def isBadLateralityOrViewOrAnatomyPhraseTriggers(keyText: str) -> bool:
+    badLateralityOrViewOrAnatomyPhraseTriggers = [
+        "History",
+        "Hx of",
+    ]
+    keyText = keyText.lower()
+    for bad_w in badLateralityOrViewOrAnatomyPhraseTriggers:
+        if re.search(bad_w.lower(), keyText) is not None:
+            return True
+    return False
+
+
+def removeAnyBadWords(string: str) -> str:
+    for badWord in badAnatomyWords:
+        string = re.sub(badWord.lower()," ", string)
+        string = re.sub(r'\s{2}'," ", string)
+        cleanedText = re.sub(r'\s*(.*)',r'\g<1>', string)
+        cleanedText = re.sub(r'(.*)\s*',r'\g<1>', cleanedText)
+    return string
+
+
+def findLongestIndividualEntryContainedWithin(
+        keyText: str) -> DisplayableAnatomicConcept:
+    entry = None
+    cleanedText = keyText.lower()
+    cleanedText = removeAccentsFromLowerCaseString(cleanedText)
+    cleanedText = re.sub(r'[^a-zA-Z0-9]',' ', cleanedText)		
+    cleanedText = re.sub(r'\n{2,}', ' ', cleanedText)
+    cleanedText = re.sub(r'\s{2,}', ' ', cleanedText)
+    cleanedText = re.sub(r'^\s+(.*)',r'\g<1>', cleanedText)
+    cleanedText = re.sub(r'(.*)\s+$',r'\g<1>', cleanedText)
+    cleanedText = removeAnyBadWords(cleanedText)
+    if len(cleanedText) > 0:
+        lengthFound=0;
+        for concept in anatomicConceptEntries:
+            codeMeaning = concept.CodeMeaning.lower()
+            s_res = re.search(codeMeaning, cleanedText)
+            if s_res is not None:
+                tryLength = len(codeMeaning)
+                if tryLength > lengthFound:
+                    entry = concept
+                    lengthFound = tryLength
+            synonyms = concept.Synonynms
+            for synonym in synonyms:
+                synonym = synonym.lower()
+                synonym = removeAccentsFromLowerCaseString(synonym);
+                s_res = re.search(synonym, cleanedText)
+                if s_res is not None:
+                    tryLength = len(synonym)
+                    if tryLength > lengthFound:
+                        entry = concept
+                        lengthFound = tryLength
+    return entry
