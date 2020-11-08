@@ -81,6 +81,11 @@ from typing import (
     Tuple,
 )
 from multiprocessing import Manager
+from anatomy_query import (
+    # FUNCTIONS
+    get_anatomy_info,
+    quey_anatomy_from_tables,
+)
 # ---------------- Global Vars --------------------------:
 max_number_of_study_processes = 1
 max_number_of_fix_processes = MAX_NUMBER_OF_THREADS
@@ -89,8 +94,6 @@ max_number_of_bq_processes = MAX_NUMBER_OF_THREADS
 max_number_of_frameset_processes = MAX_NUMBER_OF_THREADS
 max_number_of_conversion_processes = MAX_NUMBER_OF_THREADS
 processes_to_monitor = []
-bpe_dict = {}
-ars_dict = {}
 
 flaw_query_form = '''(
         "{}",-- COLLECTION_NAME
@@ -151,24 +154,6 @@ def VER(file: str, log: list, char_set: str = 'ascii'):
     # my_code_output = verify_dicom(file, False, '')
 
 
-def get_anatomy_info(anatomy_info):
-    if anatomy_info is not None:
-        bpe = list(anatomy_info[0])
-        if len(bpe) == 1:
-            bpe = bpe[0]
-        else:
-            bpe = None
-        ars = anatomy_info[1]
-        del ars[str(code_item())]
-        if len(ars) == 1:
-            ars = list(ars.values())[0]
-            ars = (ars.value, ars.meaning, ars.scheme_designator)
-        else:
-            ars = (None, None, None)
-    return (bpe, ars)
-
-
-
 def FixFile(dicom_file: str, dicom_fixed_file: str,
             log_fix: list, log_david_pre: list, log_david_post: list):
     ds = pydicom.read_file(dicom_file)
@@ -184,6 +169,7 @@ def FixFile(dicom_file: str, dicom_fixed_file: str,
         cl_anatomy_info = cln_an[0]
         if st_uid in cln_an[1]:
             st_anatomy_info = cln_an[1][st_uid]
+            break
     if st_anatomy_info is not None:
         bpe, ars = get_anatomy_info(st_anatomy_info)
     if bpe is None and ars[0] is None:
@@ -1123,115 +1109,10 @@ def main(number_of_processes: int = None,
     """.format(in_dicoms.BigQuery.GetBigQueryStyleAddress(), limit_q,
                BigQueryInputCollectionInfo.GetBigQueryStyleAddress())
 
-    anatomy_query = """
-WITH 
-    T1 AS (
-        SELECT 
-            StudyInstanceUID,
-            X.CODEVALUE AS CodeValue,
-            X.CodeMeaning AS CodeMeaning,
-            X.CodingSchemeDesignator AS CodingSchemeDesignator
-        FROM {0} 
-            CROSS JOIN UNNEST(AnatomicRegionSequence) AS X
-    ), 
-    T2 AS (
-        SELECT 
-            SRC.StudyInstanceUID,
-            SRC.BodyPartExamined 
-        FROM {0} AS SRC 
-        GROUP BY StudyInstanceUID, BodyPartExamined
-        ),
-    ST AS (
-        SELECT  AUX.GCS_BUCKET AS COLLECTIONNAME, DCM.STUDYINSTANCEUID 
-        FROM {0} AS DCM 
-            INNER JOIN {1} AS AUX 
-            ON AUX.SOPINSTANCEUID=DCM.SOPINSTANCEUID 
-        GROUP BY AUX.GCS_BUCKET, DCM.STUDYINSTANCEUID ),
-    ANATOMY AS (
-        SELECT 
-            T2.StudyInstanceUID as BodyPartExamined_STUDYUID,
-            T1.StudyInstanceUID as AnatomicRegionSequence_STUDYUID,
-            BodyPartExamined ,
-            CodeValue, 
-            CodeMeaning,
-            CodingSchemeDesignator 
-        FROM T1 FULL OUTER JOIN T2 ON T1.StudyInstanceUID=T2.StudyInstanceUID 
-        GROUP BY 
-            T2.StudyInstanceUID, 
-            T1.StudyInstanceUID, 
-            BodyPartExamined , 
-            CodeValue, 
-            CodeMeaning, 
-            CodingSchemeDesignator 
-        ORDER BY T2.StudyInstanceUID)
-SELECT 
-    COLLECTIONNAME,
-    STUDYINSTANCEUID,
-    BodyPartExamined ,
-    CodeValue, 
-    CodeMeaning,
-    CodingSchemeDesignator, 
-FROM ANATOMY FULL OUTER JOIN ST ON (ST.STUDYINSTANCEUID = ANATOMY.BodyPartExamined_STUDYUID)
-GROUP BY 
-    COLLECTIONNAME,
-    STUDYINSTANCEUID,
-    BodyPartExamined ,
-    CodeValue, 
-    CodeMeaning,
-    CodingSchemeDesignator
-ORDER BY 
-    COLLECTIONNAME,
-    STUDYINSTANCEUID,
-    BodyPartExamined ,
-    CodeValue, 
-    CodeMeaning,
-    CodingSchemeDesignator
-    """.format('`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata`',
-    '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_auxilliary_metadata`'
-    )
-    anatomies = query_string_with_result(anatomy_query)
     global anatomy_info
-    anatomy_info = {}
-    for row in anatomies:
-        st_uid = row.STUDYINSTANCEUID
-        cln_name = row.COLLECTIONNAME
-        bpe = row.BodyPartExamined
-        if bpe is not None:
-            bpe = bpe.upper()
-            bpe = re.sub(r'[^3-4A-Z]','', bpe)
-            bpe = bpe[0] + re.sub(r'[^A-Z]', '', bpe[1:])
-            if bpe not in BodyPartExamined2SCT:
-                bpe = get_closest_body_part_examined(bpe)
-                
-        coding = code_item(
-            row.CodeValue,
-            row.CodeMeaning,
-            row.CodingSchemeDesignator)
-        if cln_name in anatomy_info:
-            if bpe is not None:
-                anatomy_info[cln_name][0][0].add(bpe)
-            anatomy_info[cln_name][0][1][str(coding)] = coding
-            studies = anatomy_info[cln_name][1]
-            if st_uid in studies:
-                if bpe is not None:
-                    studies[st_uid][0].add(bpe)
-                studies[st_uid][1][str(coding)] = coding
-            else:
-                studies[st_uid] = (
-                    set((bpe,)) if bpe is not None else set(),
-                    {str(coding): coding} )
-        else:
-            anatomy_info[cln_name] = (
-                (
-                    set((bpe,)) if bpe is not None else set(),
-                    {str(coding): coding} 
-                ),
-                {
-                    st_uid: (
-                    set((bpe,)) if bpe is not None else set(),
-                    {str(coding): coding})
-                }  
-            ) 
+    anatomy_info = quey_anatomy_from_tables(
+        '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata`',
+        '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_auxilliary_metadata`')
     uids: dict = {}
     # q_dataset_uid = '{}.{}.{}'.format(
     #     in_dicoms.BigQuery.ProjectID,

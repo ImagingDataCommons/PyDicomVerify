@@ -430,118 +430,318 @@ StringValueTable_Laterality = {
 }
 
 StringValueTable_BodyPartExaminedHuman = {
-	"ABDOMEN" : ""
-	,"ABDOMENPELVIS" : ""
-	,"ADRENAL" : ""
-	,"ANKLE" : ""
-	,"AORTA" : ""
-	,"ARM" : ""
-	,"AXILLA" : ""
-	,"BACK" : ""
-	,"BLADDER" : ""
-	,"BRAIN" : ""
-	,"BREAST" : ""
-	,"BRONCHUS" : ""
-	,"BUTTOCK" : ""
-	,"CALCANEUS" : ""
-	,"CALF" : ""
-	,"CAROTID" : ""
-	,"CEREBELLUM" : ""
-	,"CSPINE" : ""
-	,"CTSPINE" : ""
-	,"CERVIX" : ""
-	,"CHEEK" : ""
-	,"CHEST" : ""
-	,"CHESTABDOMEN" : ""
-	,"CHESTABDPELVIS" : ""
-	,"CIRCLEOFWILLIS" : ""
-	,"CLAVICLE" : ""
-	,"COCCYX" : ""
-	,"COLON" : ""
-	,"CORNEA" : ""
-	,"CORONARYARTERY" : ""
-	,"DUODENUM" : ""
-	,"EAR" : ""
-	,"ELBOW" : ""
-	,"WHOLEBODY" : ""
-	,"ESOPHAGUS" : ""
-	,"EXTREMITY" : ""
-	,"EYE" : ""
-	,"EYELID" : ""
-	,"FACE" : ""
-	,"FEMUR" : ""
-	,"FINGER" : ""
-	,"FOOT" : ""
-	,"GALLBLADDER" : ""
-	,"HAND" : ""
-	,"HEAD" : ""
-	,"HEADNECK" : ""
-	,"HEART" : ""
-	,"HIP" : ""
-	,"HUMERUS" : ""
-	,"ILEUM" : ""
-	,"ILIUM" : ""
-	,"IAC" : ""
-	,"JAW" : ""
-	,"JEJUNUM" : ""
-	,"KIDNEY" : ""
-	,"KNEE" : ""
-	,"LARYNX" : ""
-	,"LEG" : ""
-	,"LIVER" : ""
-	,"LSPINE" : ""
-	,"LSSPINE" : ""
-	,"LUNG" : ""
-	,"JAW" : ""
-	,"MAXILLA" : ""
-	,"MEDIASTINUM" : ""
-	,"MOUTH" : ""
-	,"NECK" : ""
-	,"NECKCHEST" : ""
-	,"NECKCHESTABDOMEN" : ""
-	,"NECKCHESTABDPELV" : ""
-	,"NOSE" : ""
-	,"ORBIT" : ""
-	,"OVARY" : ""
-	,"PANCREAS" : ""
-	,"PAROTID" : ""
-	,"PATELLA" : ""
-	,"PELVIS" : ""
-	,"PENIS" : ""
-	,"PHARYNX" : ""
-	,"PROSTATE" : ""
-	,"RECTUM" : ""
-	,"RIB" : ""
-	,"SSPINE" : ""
-	,"SCALP" : ""
-	,"SCAPULA" : ""
-	,"SCLERA" : ""
-	,"SCROTUM" : ""
-	,"SHOULDER" : ""
-	,"SKULL" : ""
-	,"SPINE" : ""
-	,"SPLEEN" : ""
-	,"STERNUM" : ""
-	,"STOMACH" : ""
-	,"SUBMANDIBULAR" : ""
-	,"TMJ" : ""
-	,"TESTIS" : ""
-	,"THIGH" : ""
-	,"TSPINE" : ""
-	,"TLSPINE" : ""
-	,"THUMB" : ""
-	,"THYMUS" : ""
-	,"THYROID" : ""
-	,"TOE" : ""
-	,"TONGUE" : ""
-	,"TRACHEA" : ""
-	,"URETER" : ""
-	,"URETHRA" : ""
-	,"UTERUS" : ""
-	,"VAGINA" : ""
-	,"VULVA" : ""
-	,"WRIST" : ""
-	,"ZYGOMA" : ""
+    '3RDVENTRICLE': '',
+    '4THVENTRICLE': '',
+    'ABDOMEN': '',
+    'ABDOMENPELVIS': '',
+    'ABDOMINALAORTA': '',
+    'ACA': '',
+    'ACJOINT': '',
+    'ADRENAL': '',
+    'AMNIOTICFLUID': '',
+    'ANKLE': '',
+    'ANTCARDIACV': '',
+    'ANTCOMMA': '',
+    'ANTECUBITALV': '',
+    'ANTSPINALA': '',
+    'ANTTIBIALA': '',
+    'ANUSRECTUMSIGMD': '',
+    'AORTA': '',
+    'AORTICARCH': '',
+    'APPENDIX': '',
+    'ARM': '',
+    'ARTERY': '',
+    'ASCAORTA': '',
+    'ASCENDINGCOLON': '',
+    'AXILLA': '',
+    'AXILLARYA': '',
+    'AXILLARYV': '',
+    'AZYGOSVEIN': '',
+    'BACK': '',
+    'BASILARA': '',
+    'BILEDUCT': '',
+    'BLADDER': '',
+    'BLADDERURETHRA': '',
+    'BRACHIALA': '',
+    'BRACHIALV': '',
+    'BRAIN': '',
+    'BREAST': '',
+    'BRONCHUS': '',
+    'BULB': '',
+    'BUTTOCK': '',
+    'CALCANEUS': '',
+    'CALF': '',
+    'CAROTID': '',
+    'CCA': '',
+    'CELIACA': '',
+    'CEPHALICV': '',
+    'CEREBELLUM': '',
+    'CEREBHEMISPHERE': '',
+    'CEREBRALA': '',
+    'CERVIX': '',
+    'CFA': '',
+    'CFV': '',
+    'CHEEK': '',
+    'CHEST': '',
+    'CHESTABDOMEN': '',
+    'CHESTABDPELVIS': '',
+    'CHOROIDPLEXUS': '',
+    'CIRCLEOFWILLIS': '',
+    'CLAVICLE': '',
+    'COCCYX': '',
+    'COLON': '',
+    'COMILIACA': '',
+    'COMILIACV': '',
+    'COMMONBILEDUCT': '',
+    'CORNEA': '',
+    'CORONARYARTERY': '',
+    'CORONARYSINUS': '',
+    'CSPINE': '',
+    'CTSPINE': '',
+    'CULDESAC': '',
+    'DESCAORTA': '',
+    'DESCENDINGCOLON': '',
+    'DUODENUM': '',
+    'EAC': '',
+    'EAR': '',
+    'ECA': '',
+    'ELBOW': '',
+    'ENDOARTERIAL': '',
+    'ENDOCARDIAC': '',
+    'ENDOESOPHAGEAL': '',
+    'ENDOMETRIUM': '',
+    'ENDONASAL': '',
+    'ENDONASOPHARYNYX': '',
+    'ENDORECTAL': '',
+    'ENDORENAL': '',
+    'ENDOURETERIC': '',
+    'ENDOURETHRAL': '',
+    'ENDOVAGINAL': '',
+    'ENDOVASCULAR': '',
+    'ENDOVENOUS': '',
+    'ENDOVESICAL': '',
+    'EPIDIDYMIS': '',
+    'EPIGASTRIC': '',
+    'ESOPHAGUS': '',
+    'EXTILIACA': '',
+    'EXTILIACV': '',
+    'EXTJUGV': '',
+    'EXTREMITY': '',
+    'EYE': '',
+    'EYELID': '',
+    'FACE': '',
+    'FACIALA': '',
+    'FEMORALA': '',
+    'FEMORALV': '',
+    'FEMUR': '',
+    'FETALARM': '',
+    'FETALDIGIT': '',
+    'FETALHEART': '',
+    'FETALLEG': '',
+    'FETALPOLE': '',
+    'FIBULA': '',
+    'FINGER': '',
+    'FLANK': '',
+    'FONTANEL': '',
+    'FOOT': '',
+    'FOREARM': '',
+    'GALLBLADDER': '',
+    'GASTRICV': '',
+    'GENICULARA': '',
+    'GESTSAC': '',
+    'GLUTEAL': '',
+    'GSV': '',
+    'HAND': '',
+    'HEAD': '',
+    'HEADNECK': '',
+    'HEART': '',
+    'HEPATICA': '',
+    'HEPATICV': '',
+    'HIP': '',
+    'HUMERUS': '',
+    'HYPOGASTRIC': '',
+    'HYPOPHARYNX': '',
+    'IAC': '',
+    'ICA': '',
+    'ILEUM': '',
+    'ILIACA': '',
+    'ILIACV': '',
+    'ILIUM': '',
+    'INFMESA': '',
+    'INFVENACAVA': '',
+    'INGUINAL': '',
+    'INNOMINATEA': '',
+    'INNOMINATEV': '',
+    'INTILIACA': '',
+    'INTJUGULARV': '',
+    'INTMAMMARYA': '',
+    'INTRACRANIAL': '',
+    'JAW': '',
+    'JAW': '',
+    'JEJUNUM': '',
+    'JOINT': '',
+    'KIDNEY': '',
+    'KNEE': '',
+    'LACRIMALA': '',
+    'LARGEINTESTINE': '',
+    'LARYNX': '',
+    'LATRIUM': '',
+    'LATVENTRICLE': '',
+    'LEG': '',
+    'LFEMORALA': '',
+    'LHEPATICV': '',
+    'LHYPOCHONDRIAC': '',
+    'LINGUALA': '',
+    'LINGUINAL': '',
+    'LIVER': '',
+    'LLQ': '',
+    'LLUMBAR': '',
+    'LPORTALV': '',
+    'LPULMONARYA': '',
+    'LSPINE': '',
+    'LSSPINE': '',
+    'LSUPPULMONARYV': '',
+    'LUMBAR': '',
+    'LUMBARA': '',
+    'LUMEN': '',
+    'LUNG': '',
+    'LUQ': '',
+    'LVENTRICLE': '',
+    'MASTOID': '',
+    'MAXILLA': '',
+    'MCA': '',
+    'MEDIASTINUM': '',
+    'MESENTRICA': '',
+    'MESENTRICV': '',
+    'MIDHEPATICV': '',
+    'MORISONSPOUCH': '',
+    'MOUTH': '',
+    'NASOPHARYNX': '',
+    'NECK': '',
+    'NECKCHEST': '',
+    'NECKCHESTABDOMEN': '',
+    'NECKCHESTABDPELV': '',
+    'NOSE': '',
+    'OCCIPTALV': '',
+    'OCCPITALA': '',
+    'OPHTHALMICA': '',
+    'OPTICCANAL': '',
+    'ORBIT': '',
+    'OVARY': '',
+    'PANCREAS': '',
+    'PANCREATICDUCT': '',
+    'PARASTERNAL': '',
+    'PARATHYROID': '',
+    'PAROTID': '',
+    'PATELLA': '',
+    'PCA': '',
+    'PELVIS': '',
+    'PENILEA': '',
+    'PENIS': '',
+    'PERINEUM': '',
+    'PERONEALA': '',
+    'PHARYNX': '',
+    'PHARYNXLARYNX': '',
+    'PLACENTA': '',
+    'POPLITEALA': '',
+    'POPLITEALFOSSA': '',
+    'POPLITEALV': '',
+    'PORTALV': '',
+    'POSCOMMA': '',
+    'POSTIBIALA': '',
+    'PROFFEMA': '',
+    'PROFFEMV': '',
+    'PROSTATE': '',
+    'PULMONARYA': '',
+    'PULMONARYV': '',
+    'RADIALA': '',
+    'RADIUS': '',
+    'RADIUSULNA': '',
+    'RATRIUM': '',
+    'RECTUM': '',
+    'RENALA': '',
+    'RENALV': '',
+    'RETROPERITONEUM': '',
+    'RFEMORALA': '',
+    'RHEPATICV': '',
+    'RHYPOCHONDRIAC': '',
+    'RIB': '',
+    'RINGUINAL': '',
+    'RLQ': '',
+    'RLUMBAR': '',
+    'RPORTALV': '',
+    'RPULMONARYA': '',
+    'RSUPPULMONARYV': '',
+    'RUQ': '',
+    'RVENTRICLE': '',
+    'SAPHENOUSV': '',
+    'SCALP': '',
+    'SCAPULA': '',
+    'SCJOINT': '',
+    'SCLERA': '',
+    'SCROTUM': '',
+    'SELLA': '',
+    'SEMVESICLE': '',
+    'SESAMOID': '',
+    'SFA': '',
+    'SFJ': '',
+    'SFV': '',
+    'SHOULDER': '',
+    'SIGMOID': '',
+    'SIJOINT': '',
+    'SKULL': '',
+    'SMA': '',
+    'SMALLINTESTINE': '',
+    'SPINALCORD': '',
+    'SPINE': '',
+    'SPLEEN': '',
+    'SPLENICA': '',
+    'SPLENICV': '',
+    'SSPINE': '',
+    'STERNUM': '',
+    'STOMACH': '',
+    'SUBCLAVIANA': '',
+    'SUBCLAVIANV': '',
+    'SUBCOSTAL': '',
+    'SUBMANDIBULAR': '',
+    'SUPRACLAVICULAR': '',
+    'SUPRAPUBIC': '',
+    'SUPTHYROIDA': '',
+    'SVC': '',
+    'TESTIS': '',
+    'THALAMUS': '',
+    'THIGH': '',
+    'THORACICAORTA': '',
+    'THORAX': '',
+    'THUMB': '',
+    'THYMUS': '',
+    'THYROID': '',
+    'TIBIA': '',
+    'TIBIAFIBULA': '',
+    'TLSPINE': '',
+    'TMJ': '',
+    'TOE': '',
+    'TONGUE': '',
+    'TRACHEA': '',
+    'TRACHEABRONCHUS': '',
+    'TRANSVERSECOLON': '',
+    'TSPINE': '',
+    'ULNA': '',
+    'ULNARA': '',
+    'UMBILICAL': '',
+    'UMBILICALA': '',
+    'UMBILICALV': '',
+    'UPRURINARYTRACT': '',
+    'URETER': '',
+    'URETHRA': '',
+    'UTERUS': '',
+    'VAGINA': '',
+    'VEIN': '',
+    'VERTEBRALA': '',
+    'VULVA': '',
+    'WHOLEBODY': '',
+    'WRIST': '',
+    'ZYGOMA': '',
 }
 
 StringValueTable_BodyPartExaminedAnimal = {

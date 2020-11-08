@@ -479,7 +479,7 @@ def CodeSeqItemGenerator(code_value: str, code_meaning: str,
     output = Dataset()
     cv = Dictionary.tag_for_keyword('CodeValue')
     cm = Dictionary.tag_for_keyword('CodeMeaning')
-    cs = Dictionary.tag_for_keyword('CodeSchemeDesignator')
+    cs = Dictionary.tag_for_keyword('CodingSchemeDesignator')
     output[cv] = DataElement(cv, Dictionary.dictionary_VR(cv), code_value)
     output[cm] = DataElement(cm, Dictionary.dictionary_VR(cm), code_meaning)
     output[cs] = DataElement(
