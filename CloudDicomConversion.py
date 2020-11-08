@@ -155,26 +155,13 @@ def VER(file: str, log: list, char_set: str = 'ascii'):
 
 
 def FixFile(dicom_file: str, dicom_fixed_file: str,
-            log_fix: list, log_david_pre: list, log_david_post: list):
+            log_fix: list, log_david_pre: list, log_david_post: list,
+            anatomy: tuple):
     ds = pydicom.read_file(dicom_file)
-    st_uid = ds["StudyInstanceUID"].value
     char_set = DicomFileInfo.get_chaset_val_from_dataset(ds)
     # log_mine = []
     VER(dicom_file, log_david_pre, char_set=char_set)
-    st_anatomy_info = None
-    cl_anatomy_info = None
-    for cln, cln_an in anatomy_info.items():
-        # if len(cln_an[0][0]) > 1:
-        #     print(cln_an[0])
-        cl_anatomy_info = cln_an[0]
-        if st_uid in cln_an[1]:
-            st_anatomy_info = cln_an[1][st_uid]
-            break
-    if st_anatomy_info is not None:
-        bpe, ars = get_anatomy_info(st_anatomy_info)
-    if bpe is None and ars[0] is None:
-        bpe, ars = get_anatomy_info(cl_anatomy_info)
-    add_anatomy(ds, bpe, ars, log_fix)
+    add_anatomy(ds, anatomy[0], anatomy[1], log_fix)
     fix_dicom(ds, log_fix)
     # fix_report = PrintLog(log_fix)
     pydicom.write_file(dicom_fixed_file, ds)
@@ -235,7 +222,8 @@ def BuildQueries(header: str, qs: list, dataset_id: str,
 def fix_one_instance(inst_info: DicomFileInfo,
                      fx_inst_info: DicomFileInfo,
                      input_table_name: str,
-                     fixed_table_name: str) -> tuple:
+                     fixed_table_name: str,
+                     anatomy: tuple) -> tuple:
     logger = logging.getLogger(__name__)
     fix_log = []
     pre_fix_issues = []
@@ -244,7 +232,7 @@ def fix_one_instance(inst_info: DicomFileInfo,
         fx_ds = FixFile(
             inst_info.file_path, fx_inst_info.file_path, fix_log,
             pre_fix_issues,
-            post_fix_issues)
+            post_fix_issues, anatomy)
         fx_inst_info.study_uid = fx_ds.StudyInstanceUID
         fx_inst_info.sereies_uid = fx_ds.SeriesInstanceUID
         fx_inst_info.instance_uid = fx_ds.SOPInstanceUID
@@ -458,7 +446,7 @@ def download_fix_convert_upload_one_sereis(
         inst_infos: list,
         fx_local_study_path: str,
         mf_local_study_path: str,
-        in_gc_info, fx_gc_info, mf_gc_info):
+        in_gc_info, fx_gc_info, mf_gc_info, anatomy: tuple):
     if len(inst_infos) == 0:
         return([], [], [], [], 0, 0, 0, 0, 0, 0)
     in_table_name = in_gc_info.BigQuery.GetBigQueryStyleAddress(False)
@@ -505,7 +493,7 @@ def download_fix_convert_upload_one_sereis(
         (fix_q, iss_q, org_q, flaw) = fix_one_instance(
             obj,
             fx_obj,
-            in_table_name, fx_table_name)
+            in_table_name, fx_table_name, anatomy)
         if flaw == '':
             fix_queries.extend(fix_q)
             issue_queries.extend(iss_q)
@@ -635,8 +623,7 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
     study_local_folders = []
     for number_of_studies, (study_uid, collection_id, series_dictinary) in\
             enumerate(studies_chunk, 1):
-        study_local_folder = os.path.join(
-                in_folder, study_uid)
+        study_local_folder = os.path.join(in_folder, study_uid)
         study_local_folders.append(study_local_folder)
         for number_of_series, (series_uid, [size, instances]) in\
                 enumerate(series_dictinary.items(), 1):
@@ -694,6 +681,17 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
     max_q_cap = 4000 * proc_num
     for study_uid, study_contents in study_series_dict.items():
         for series_uid, series_contents in study_contents.items():
+            st_anatomy_info = None
+            cl_anatomy_info = None
+            for cln, cln_an in anatomy_info.items():
+                cl_anatomy_info = cln_an[0]
+                if study_uid in cln_an[1]:
+                    st_anatomy_info = cln_an[1][study_uid]
+                    break
+            if st_anatomy_info is not None:
+                anatomy = get_anatomy_info(st_anatomy_info)
+            if anatomy[0] is None and anatomy[1][0] is None:
+                anatomy = get_anatomy_info(cl_anatomy_info)
             if q_sz % max_q_cap == 0:
                 container = []
                 jobs.append(container)
@@ -706,7 +704,7 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
                             in_folder, '/{}', '/{}'.format(fx_sub_dir)),
                         '{}{}{}'.format(
                             in_folder, '/{}', '/{}'.format(mf_sub_dir)),
-                        in_gc_info, fx_gc_info, mf_gc_info)
+                        in_gc_info, fx_gc_info, mf_gc_info, anatomy)
                 )
             )
             q_sz += 1

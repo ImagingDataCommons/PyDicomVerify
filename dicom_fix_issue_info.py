@@ -1,5 +1,6 @@
 import git
 import pydicom.datadict as Dic
+from pydicom.multival import MultiValue
 from pydicom import uid
 import re
 import os
@@ -379,15 +380,17 @@ class DicomFileInfo:
             self.dicom_ds is None else 'Exists but hidden')
         return out.format(content)
 
-
     @staticmethod
     def get_chaset_val_from_dataset(ds: Dataset = None) -> str:
         python_char_set = 'ascii'
         if isinstance(ds, Dataset) and ds is not None:
             if "SpecificCharacterSet" in ds:
                 dicom_char_set = ds.SpecificCharacterSet
-                if dicom_char_set in python_encoding:
-                    python_char_set = python_encoding[dicom_char_set]
+                if isinstance(dicom_char_set, MultiValue):
+                    dicom_char_set = dicom_char_set[-1]
+                if isinstance(dicom_char_set, str):
+                    if dicom_char_set in python_encoding:
+                        python_char_set = python_encoding[dicom_char_set]
         return python_char_set
 
 
