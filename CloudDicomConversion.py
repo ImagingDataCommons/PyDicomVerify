@@ -175,7 +175,6 @@ def FixFile(dicom_file: str, dicom_fixed_file: str,
     if bpe is None and ars[0] is None:
         bpe, ars = get_anatomy_info(cl_anatomy_info)
     add_anatomy(ds, bpe, ars, log_fix)
-    add_anatomy(ds, anatomy_val[0], anatomy_val[1], log_fix)
     fix_dicom(ds, log_fix)
     # fix_report = PrintLog(log_fix)
     pydicom.write_file(dicom_fixed_file, ds)
@@ -1029,7 +1028,7 @@ def main(number_of_processes: int = None,
                 'idc_tcia_mvp_wave0',
                 'idc_tcia_dicom_metadata'),
         )
-    general_dataset_name = 'afshin_results_00_' + in_dicoms.BigQuery.Dataset
+    general_dataset_name = 'afshin_results_01_' + in_dicoms.BigQuery.Dataset
     fx_dicoms = DataInfo(
         Datalet('idc-tcia',      # Bucket
                 'us',
@@ -1068,7 +1067,8 @@ def main(number_of_processes: int = None,
         fx_dicoms.BigQuery.CloudRegion, True)
     # --> this suffices to remove both fix and multiframes buckets
     success = delete_bucket_all_or_part(
-        fx_dicoms.Bucket.ProjectID, fx_dicoms.Bucket.Dataset, number_of_processes)
+        fx_dicoms.Bucket.ProjectID, fx_dicoms.Bucket.Dataset,
+        number_of_processes)
     if not success:
         logger.info(
             "Couldn't delete the bucket successfully."
@@ -1083,7 +1083,7 @@ def main(number_of_processes: int = None,
         mf_dicoms.Bucket.Dataset,
         False)
     max_number = 2 ** 63 - 1
-    max_number = 50
+    # max_number = 50
     if max_number < 2 ** 63 - 1:
         limit_q = 'LIMIT 50000'
     else:
