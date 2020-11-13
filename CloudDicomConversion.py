@@ -133,7 +133,7 @@ hs = logging.RootLogger.root.handlers
 for h in hs:
     if h.name == 'file':
         h.namer = namer
-# install_mp_handler()
+install_mp_handler()
 logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.CRITICAL)
 # -----------------------------------------------------------------------
 
@@ -447,7 +447,9 @@ def download_fix_convert_upload_one_sereis(
         fx_local_study_path: str,
         mf_local_study_path: str,
         in_gc_info, fx_gc_info, mf_gc_info, anatomy: tuple):
+    logger = logging.getLogger(__name__)
     if len(inst_infos) == 0:
+        logger.debug('The input is empty')
         return([], [], [], [], 0, 0, 0, 0, 0, 0)
     in_table_name = in_gc_info.BigQuery.GetBigQueryStyleAddress(False)
     fx_table_name = fx_gc_info.BigQuery.GetBigQueryStyleAddress(False)
@@ -472,6 +474,7 @@ def download_fix_convert_upload_one_sereis(
             obj.bucket_name,
             obj.blob_address,
             obj.file_path)
+        logger.debug('Start downloading {}'.format(obj.file_path))
         downloaded_files_size += os.path.getsize(obj.file_path)
         if not success:
             flaw_queries.append(flaw_query_form.format(
@@ -490,6 +493,7 @@ def download_fix_convert_upload_one_sereis(
         fx_obj = DicomFileInfo(
             fx_gc_info.Bucket.ProjectID, fx_gc_info.Bucket.Dataset,
             '', fx_file, obj.study_uid, obj.series_uid, obj.study_uid)
+        logger.debug('Start fixing {}'.format(obj.file_path))
         (fix_q, iss_q, org_q, flaw) = fix_one_instance(
             obj,
             fx_obj,
@@ -502,6 +506,8 @@ def download_fix_convert_upload_one_sereis(
             fx_obj.blob_address = fx_blob_form.format(
                 fx_obj.study_uid, fx_obj.series_uid,
                 fx_obj.instance_uid)
+            logger.debug(
+                'Start uploading the fixed file {}'.format(fx_obj.file_path))
             success = upload_blob(
                 fx_gc_info.Bucket.ProjectID,
                 fx_gc_info.Bucket.Dataset,
@@ -533,6 +539,7 @@ def download_fix_convert_upload_one_sereis(
     (fsets, mf_series_uid, mf_series_dir) = frameset_for_one_series(
         single_frames,
         study_folder)
+    logger.debug('Start conversion process for {} frameset'.format(len(fsets)))
     number_of_all_converted_mf = 0
     if len(fsets) == 0:
         for file_blob in single_frames:
@@ -1157,7 +1164,7 @@ def main(number_of_processes: int = None,
         max_series_count_in_chunk = (
             rough_series_count_in_chunk // number_of_processes
             ) * number_of_processes
-        max_mem = vrtual_mem.free / 6.5
+        max_mem = vrtual_mem.free / 8
 
         series_chunk_count = 0
         study_chunk = []
@@ -1306,6 +1313,6 @@ if __name__ == '__main__':
     status_logger = Periodic(log_status, None, 60)
     status_logger.start()
     try:
-        main(88, 1000)
+        main(33, 1000)
     finally:
         status_logger.kill_timer()
