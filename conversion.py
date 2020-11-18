@@ -95,13 +95,12 @@ class ParentChildDicoms:
                         self.GetValue(child_table_name),
                         self.GetValue(str(self.child_sop_instance_uid))
                     ),
-                    {
-                        u"PARENT_TABLE": parent_table_name,
-                        u"PARENT_SOP_INSATANCE_UID": str(parent_uid),
-                        u"CHILD_TABLE": child_table_name,
-                        u"CHILD_SOP_INSATANCE_UID": str(
-                            self.child_sop_instance_uid),
-                    }
+                    (
+                        parent_table_name,  # PARENT_TABLE
+                        str(parent_uid),  # PARENT_SOP_INSATANCE_UID
+                        child_table_name,  # CHILD_TABLE
+                        str(self.child_sop_instance_uid),  # CHILD_SOP_INSATANCE_UID
+                    )
                 )
             )
         return whole_query

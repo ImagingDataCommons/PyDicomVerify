@@ -161,8 +161,10 @@ def VER(file: str, log: list, char_set: str = 'ascii'):
         if dcm_verify is None:
             print("Error: install dciodvfy into system path")
             assert(False)
-    ctools.RunExe([dcm_verify, '-filename', file], '', '', errlog = log,
+    err_log = []
+    ctools.RunExe([dcm_verify, '-filename', file], '', '', errlog=err_log,
                   char_encoding=char_set)
+    organize_dcmvfy_errors(err_log, log)
     # my_code_output = verify_dicom(file, False, '')
 
 
@@ -172,16 +174,12 @@ def FixFile(dicom_file: str, dicom_fixed_file: str,
     ds = pydicom.read_file(dicom_file)
     char_set = DicomFileInfo.get_chaset_val_from_dataset(ds)
     # log_mine = []
-    prelog = []
-    VER(dicom_file, prelog, char_set=char_set)
-    organize_dcmvfy_errors(prelog, log_david_pre)
+    VER(dicom_file, log_david_pre, char_set=char_set)
     add_anatomy(ds, anatomy[0], anatomy[1], log_fix)
     fix_dicom(ds, log_fix)
     # fix_report = PrintLog(log_fix)
     pydicom.write_file(dicom_fixed_file, ds)
-    postlog = []
-    VER(dicom_fixed_file, postlog, char_set=char_set)
-    organize_dcmvfy_errors(postlog, log_david_post)
+    VER(dicom_fixed_file, log_david_post, char_set=char_set)
     return ds
 
 
@@ -477,6 +475,17 @@ def organiase_file_blob_infos(file_blob_list: list):
     return(output, st_count, se_count, inst_count)
 
 
+def get_rows_and_insert_ids(q_list: list, insert_id_start: int):
+    if len(q_list) == 0:
+        return [], [], insert_id_start
+    rows = []
+    ids = list(range(insert_id_start, insert_id_start + len(q_list)))
+    insert_id_start += len(ids)
+    for q_elem in q_list:
+        rows.append(q_elem[1])
+    return (rows, ids, insert_id_start)
+
+
 def download_fix_convert_upload_one_sereis(
         inst_infos: list,
         fx_local_study_path: str,
@@ -547,24 +556,18 @@ def download_fix_convert_upload_one_sereis(
         issue_report_table_id = '{}.{}'.format(bgq_db_id, 'ISSUE')
         orig_report_table_id = '{}.{}'.format(bgq_db_id, 'ORIGINATED_FROM')
         if flaw == '':
-            fix_queries.extend(fix_q)
-            rows = []
-            ids = list(range(insert_id, insert_id + len(fix_q)))
-            for q_elem in fix_q:
-                rows.append(q_elem[1])
-            stream_insert_with_ids(fix_report_table_id, rows, ids)
-            rows = []
-            ids = list(range(insert_id, insert_id + len(iss_q)))
-            for q_elem  in iss_q:
-                rows.append(q_elem[1])
-            stream_insert_with_ids(issue_report_table_id, rows, ids)
-            rows = []
-            ids = list(range(insert_id, insert_id + len(org_q)))
-            for q_elem  in org_q:
-                rows.append(q_elem[1])
-            stream_insert_with_ids(issue_report_table_id, rows, ids)
-            issue_queries.extend(org_q)
-            origin_queries.extend(org_q)
+            rows, ids, insert_id = get_rows_and_insert_ids(fix_q, insert_id)
+            success = stream_insert_with_ids(fix_report_table_id, rows, schema_fix)
+            if not success:
+                fix_queries.extend(fix_q)
+            rows, ids, insert_id = get_rows_and_insert_ids(iss_q, insert_id)
+            success = stream_insert_with_ids(issue_report_table_id, rows, schema_issue)
+            if not success:
+                issue_queries.extend(iss_q)
+            rows, ids, insert_id = get_rows_and_insert_ids(org_q, insert_id)
+            success = stream_insert_with_ids(orig_report_table_id, rows, schema_originated_from)
+            if not success:
+                origin_queries.extend(org_q)
             single_frames.append(fx_obj)
             fx_obj.blob_address = fx_blob_form.format(
                 fx_obj.study_uid, fx_obj.series_uid,
@@ -640,16 +643,26 @@ def download_fix_convert_upload_one_sereis(
             else:
                 mf_files_size += os.path.getsize(pr_ch.child_dicom_file)
                 number_of_all_converted_mf += 1
-                origin_queries.extend(
-                    pr_ch.GetQuery(fx_table_name, mf_table_name))
+                org_q = pr_ch.GetQuery(fx_table_name, mf_table_name)
+                rows, ids, insert_id = get_rows_and_insert_ids(org_q, insert_id)
+                success = stream_insert_with_ids(
+                    orig_report_table_id, rows, schema_originated_from)
+                if not success:
+                    origin_queries.extend(org_q)
                 multiframe_log = []
                 VER(pr_ch.child_dicom_file, multiframe_log, char_set=char_set)
                 mf_issues = IssueCollection(
-                    multiframe_log[1:], mf_table_name,
+                    multiframe_log, mf_table_name,
                     pr_ch.child_study_instance_uid,
                     pr_ch.child_series_instance_uid,
                     pr_ch.child_sop_instance_uid, )
-                issue_queries.extend(mf_issues.GetQuery())
+                q_iss = mf_issues.GetQuery()
+                rows, ids, insert_id = get_rows_and_insert_ids(
+                    q_iss, insert_id)
+                success = stream_insert_with_ids(
+                    issue_report_table_id, rows, schema_issue)
+                if not success:
+                    issue_queries.extend(q_iss)
                 mf_blob_path = '{}/dicom/{}/{}/{}.dcm'.format(
                         mf_gc_info.Bucket.DataObject,
                         pr_ch.child_study_instance_uid,
@@ -663,8 +676,7 @@ def download_fix_convert_upload_one_sereis(
                     flaw_queries.append(flaw_query_form.format(
                         mf_gc_info.Bucket.Dataset, pr_ch.study_uid,
                         pr_ch.series_uid, pr_ch.instance_uid,
-                        'UPLOAD')
-                    )
+                        'UPLOAD'))
                 else:
                     upload_files_size += os.path.getsize(pr_ch.child_dicom_file)
     # Now I can remove the series:
@@ -829,13 +841,13 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
     global org_report_tq
     global defect_report_tq
     if len(fix_queries) != 0:
-        BuildQueries1(
+        BuildQueries(
             fix_report_tq,
             fix_queries,
             dataset_id, False,
             big_q_processes)
     if len(issue_queries) != 0:
-        BuildQueries1(
+        BuildQueries(
             issue_report_tq,
             issue_queries,
             dataset_id, False,
@@ -1100,7 +1112,7 @@ def main(number_of_processes: int = None,
                 'idc_tcia_mvp_wave0',
                 'idc_tcia_dicom_metadata'),
         )
-    general_dataset_name = 'afshin_results_00_' + in_dicoms.BigQuery.Dataset
+    general_dataset_name = 'afshin_results_01_' + in_dicoms.BigQuery.Dataset
     fx_dicoms = DataInfo(
         Datalet('idc-tcia',      # Bucket
                 'us',
@@ -1176,7 +1188,7 @@ def main(number_of_processes: int = None,
         mf_dicoms.Bucket.Dataset,
         False)
     max_number = 2 ** 63 - 1
-    max_number = 50
+    max_number = 100
     if max_number < 2 ** 63 - 1:
         limit_q = 'LIMIT 50000'
     else:

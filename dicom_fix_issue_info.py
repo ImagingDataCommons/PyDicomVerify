@@ -304,16 +304,16 @@ class DicomIssue:
                 self.GetValue(self.attribute),
                 self.GetValue(self.tag)
             )
-        out1 = {
-                u"DCM_TABLE_NAME": TableName,
-                u"DCM_SOP_INSATANCE_UID": str(SOPInstanceUID),
-                u"ISSUE_MSG": self.issue_msg,
-                u"MESSAGE": self.message,
-                u"TYPE": self.type,
-                u"MODULE_MACRO": self.module_macro,
-                u"KEYWORD": self.attribute,
-                u"TAG": self.tag,
-        } 
+        out1 = (
+                TableName,  # DCM_TABLE_NAME
+                str(SOPInstanceUID),  # DCM_SOP_INSATANCE_UID
+                self.issue_msg,  # ISSUE_MSG
+                self.message,  # MESSAGE
+                self.type,  # TYPE
+                self.module_macro,  # MODULE_MACRO
+                self.attribute,  # KEYWORD
+                self.tag,  # TAG
+        )
         return (out, out1)
 
     def GetQuery_OLD(self, TableName: str, SOPInstanceUID: uid) -> str:
@@ -466,21 +466,21 @@ class DicomFix:
                 self.GetValue(self.file2_link),
                 self.GetValue(self.message),
                 )
-        out1 = {
-            u"DCM_SOP_INSATANCE_UID": str(SOPInstanceUID),
-            u"SHORT_ISSUE": self.issue_short,
-            u"ISSUE": self.issue,
-            u"FIX": self.fix,
-            u"TYPE": self.type,
-            u"MODULE_MACRO": self.module_macro,
-            u"KEYWORD": self.attribute,
-            u"TAG": self.tag,
-            u"FIX_FUNCTION1": self.fun1,
-            u"FIX_FUNCTION1_LINK": self.file1_link,
-            u"FIX_FUNCTION2": self.fun2,
-            u"FIX_FUNCTION2_LINK": self.file2_link,
-            u"MESSAGE": self.message, 
-        }
+        out1 = (
+            str(SOPInstanceUID),  # DCM_SOP_INSATANCE_UID
+            self.issue_short,  # SHORT_ISSUE
+            self.issue,  # ISSUE
+            self.fix,  # FIX
+            self.type,  # TYPE
+            self.module_macro,  # MODULE_MACRO
+            self.attribute,  # KEYWORD
+            self.tag,  # TAG
+            self.fun1,  # FIX_FUNCTION1
+            self.file1_link,  # FIX_FUNCTION1_LINK
+            self.fun2,  # FIX_FUNCTION2
+            self.file2_link,  # FIX_FUNCTION2_LINK
+            self.message,   # MESSAGE
+        )
         return (out, out1)
 
     def GetQuery_OLD(self, SOPInstanceUID: uid) -> str:

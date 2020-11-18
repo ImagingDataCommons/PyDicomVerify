@@ -128,17 +128,35 @@ def query_string(q: str, table_name: str = '', silent: bool = True):
         print('sth went wrong')
 
 
-def stream_insert_with_ids(table_id: str, rows_to_insert: list,insert_ids: list):
+def stream_insert_with_ids(table_id: str, rows_to_insert: list, schema):
     logger = logging.getLogger(__name__)
-    job_config = bigquery.QueryJobConfig(priority=bigquery.QueryPriority.BATCH)
+    if len(rows_to_insert) == 0:
+        return True
+    job_config = bigquery.LoadJobConfig(priority=bigquery.QueryPriority.BATCH)
     client = bigquery.Client(default_query_job_config=job_config)
     try:
-        ctools.retry_if_failes(
-            client.insert_rows_json,
-            (table_id, rows_to_insert, insert_ids),
-            30, 1, True, 5
-        )
-        success = True
+        mx_retries = 30
+        retries = 0
+        while retries < mx_retries:
+            output = ctools.retry_if_failes(
+                client.insert_rows,
+                (table_id, rows_to_insert, schema),
+                50, 1, True, 5
+            )
+            if len(output) == 0:
+                break
+            else:
+                retries += 1
+        if len(output) != 0:
+            success = False
+            for elem in output:
+                if isinstance(elem, dict):
+                    msg = ctools.dict2str(elem)
+                else:
+                    msg = str(elem)
+                logger.error(msg)
+        else:
+            success = True
     except BaseException as err:
         logger.error('{:-^100}'.format('BIG QUERY POPULATING ERROR'))
         logger.error(err, exc_info=True)
