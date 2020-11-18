@@ -9,6 +9,7 @@ import shutil
 import time
 import common.common_tools as ctools
 import conversion as conv
+from collections.abc import Callable
 from common.parallelization import (
     # CLASSES
     Periodic,
@@ -32,6 +33,8 @@ from dicom_fix_issue_info import (
     IssueCollection,
     PerformanceMeasure,
     ProcessPerformance,
+    table_quota,
+    organize_dcmvfy_errors,
 )
 from gcloud.BigQueryStuff import (
     # FUNCTIONS
@@ -40,6 +43,12 @@ from gcloud.BigQueryStuff import (
     query_string,
     query_string_with_result,
     delete_table,
+    schema_fix,
+    schema_issue,
+    schema_defective,
+    schema_originated_from,
+    stream_insert,
+    stream_insert_with_ids,
 )
 from gcloud.DicomStoreStuff import (
     # FUNCTIONS
@@ -93,8 +102,11 @@ max_number_of_up_down_load_processes = MAX_NUMBER_OF_THREADS
 max_number_of_bq_processes = MAX_NUMBER_OF_THREADS
 max_number_of_frameset_processes = MAX_NUMBER_OF_THREADS
 max_number_of_conversion_processes = MAX_NUMBER_OF_THREADS
+fix_report_tq = None
+issue_report_tq = None
+org_report_tq = None
+defect_report_tq = None
 processes_to_monitor = []
-
 flaw_query_form = '''(
         "{}",-- COLLECTION_NAME
         "{}",-- STUDY_INSTANCE_UID
@@ -160,16 +172,29 @@ def FixFile(dicom_file: str, dicom_fixed_file: str,
     ds = pydicom.read_file(dicom_file)
     char_set = DicomFileInfo.get_chaset_val_from_dataset(ds)
     # log_mine = []
-    VER(dicom_file, log_david_pre, char_set=char_set)
+    prelog = []
+    VER(dicom_file, prelog, char_set=char_set)
+    organize_dcmvfy_errors(prelog, log_david_pre)
     add_anatomy(ds, anatomy[0], anatomy[1], log_fix)
     fix_dicom(ds, log_fix)
     # fix_report = PrintLog(log_fix)
     pydicom.write_file(dicom_fixed_file, ds)
-    VER(dicom_fixed_file, log_david_post, char_set=char_set)
+    postlog = []
+    VER(dicom_fixed_file, postlog, char_set=char_set)
+    organize_dcmvfy_errors(postlog, log_david_post)
     return ds
 
 
-def BuildQueries(header: str, qs: list, dataset_id: str,
+def BuildQueries1(table_q_info: table_quota, qs: list, dataset_id: str,
+                 return_: bool = True, processes: ProcessPool=None) -> list:
+    logger = logging.getLogger(__name__)
+    rows = []
+    for q in qs:
+        rows.append(q[1])
+    stream_insert(table_q_info.table_base_id, rows, table_q_info.schema)
+
+
+def BuildQueries(table_q_info: table_quota, qs: list, dataset_id: str,
                  return_: bool = True, processes: ProcessPool=None) -> list:
     logger = logging.getLogger(__name__)
     # m = re.search("\.(.*)\n", header)
@@ -183,14 +208,23 @@ def BuildQueries(header: str, qs: list, dataset_id: str,
     elem_q = ''
     n = 0
     rn = 0
+    header_ptrn = """
+        INSERT INTO {0}
+        VALUES {1}
+        """
+    header = header_ptrn.format(table_q_info.get_table(), '{}')
     for q in qs:
+        if isinstance(q, tuple):
+            q = q[0]
         rn += 1
         if len(elem_q) + len(q) + len(header) < ch_limit and rn < row_limit:
             elem_q = q if elem_q == '' else '{},{}'.format(q, elem_q)
         else:
+            if n > 0:
+                header = header_ptrn.format(table_q_info.get_table(), '{}')
             n += 1
-            out_q.append(header.format(dataset_id, elem_q))
-            elem_q = q # for the next round
+            out_q.append(header.format(elem_q))
+            elem_q = q  # for the next round
             rn = 0
             if processes is None:
                 query_string(out_q[-1], '')
@@ -202,7 +236,8 @@ def BuildQueries(header: str, qs: list, dataset_id: str,
                         (out_q[-1], '')
                     )
                 )
-    out_q.append(header.format(dataset_id, elem_q))
+    header = header_ptrn.format(table_q_info.get_table(), '{}')
+    out_q.append(header.format(elem_q))
     if processes is None:
         query_string(out_q[-1], '')
     else:
@@ -250,14 +285,14 @@ def fix_one_instance(inst_info: DicomFileInfo,
         fx_inst_info.series_uid, fx_inst_info.instance_uid)
     fix_queries = fixes_all.GetQuery()
     pre_issues = IssueCollection(
-        pre_fix_issues[1:],
+        pre_fix_issues,
         input_table_name,
         inst_info.study_uid,
         inst_info.series_uid,
         inst_info.instance_uid)
     issue_queries = pre_issues.GetQuery()
     post_issues = IssueCollection(
-        post_fix_issues[1:],
+        post_fix_issues,
         fixed_table_name,
         fx_inst_info.study_uid,
         fx_inst_info.series_uid,
@@ -311,8 +346,8 @@ def extract_convert_framesets_for_bunch_of_studies(
     # Now I want to extract framesets from fixed sereis:
     logger = logging.getLogger(__name__)
     logger.info('Start finding the framesets')
-    fx_table_name = fx_gc_info.BigQuery.GetBigQueryStyleAddress(False)
-    mf_table_name = mf_gc_info.BigQuery.GetBigQueryStyleAddress(False)
+    fx_table_name = fx_gc_info.BigQuery.GetBigQueryStyleTableAddress(False)
+    mf_table_name = mf_gc_info.BigQuery.GetBigQueryStyleTableAddress(False)
     tic = time.time()
     frameset_processes = ProcessPool(
         max_number_of_frameset_processes, 'frset')
@@ -448,12 +483,21 @@ def download_fix_convert_upload_one_sereis(
         mf_local_study_path: str,
         in_gc_info, fx_gc_info, mf_gc_info, anatomy: tuple):
     logger = logging.getLogger(__name__)
+    try:
+        download_fix_convert_upload_one_sereis.counter += 1
+    except AttributeError:
+        download_fix_convert_upload_one_sereis.counter = 1
+    
     if len(inst_infos) == 0:
         logger.debug('The input is empty')
         return([], [], [], [], 0, 0, 0, 0, 0, 0)
-    in_table_name = in_gc_info.BigQuery.GetBigQueryStyleAddress(False)
-    fx_table_name = fx_gc_info.BigQuery.GetBigQueryStyleAddress(False)
-    mf_table_name = mf_gc_info.BigQuery.GetBigQueryStyleAddress(False)
+    current_pid = os.getpid()
+    insert_id = int('1{:05d}{:04d}00000'.format(
+        current_pid,download_fix_convert_upload_one_sereis.counter)
+        )
+    in_table_name = in_gc_info.BigQuery.GetBigQueryStyleTableAddress(False)
+    fx_table_name = fx_gc_info.BigQuery.GetBigQueryStyleTableAddress(False)
+    mf_table_name = mf_gc_info.BigQuery.GetBigQueryStyleTableAddress(False)
     single_frames = []
     issue_queries = []
     fix_queries = []
@@ -498,9 +542,28 @@ def download_fix_convert_upload_one_sereis(
             obj,
             fx_obj,
             in_table_name, fx_table_name, anatomy)
+        bgq_db_id = fx_gc_info.BigQuery.GetBigQueryStyleDatasetAddress(False)
+        fix_report_table_id = '{}.{}'.format(bgq_db_id, 'FIX_REPORT')
+        issue_report_table_id = '{}.{}'.format(bgq_db_id, 'ISSUE')
+        orig_report_table_id = '{}.{}'.format(bgq_db_id, 'ORIGINATED_FROM')
         if flaw == '':
             fix_queries.extend(fix_q)
-            issue_queries.extend(iss_q)
+            rows = []
+            ids = list(range(insert_id, insert_id + len(fix_q)))
+            for q_elem in fix_q:
+                rows.append(q_elem[1])
+            stream_insert_with_ids(fix_report_table_id, rows, ids)
+            rows = []
+            ids = list(range(insert_id, insert_id + len(iss_q)))
+            for q_elem  in iss_q:
+                rows.append(q_elem[1])
+            stream_insert_with_ids(issue_report_table_id, rows, ids)
+            rows = []
+            ids = list(range(insert_id, insert_id + len(org_q)))
+            for q_elem  in org_q:
+                rows.append(q_elem[1])
+            stream_insert_with_ids(issue_report_table_id, rows, ids)
+            issue_queries.extend(org_q)
             origin_queries.extend(org_q)
             single_frames.append(fx_obj)
             fx_obj.blob_address = fx_blob_form.format(
@@ -761,21 +824,25 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
     tic = time.time()
     all_rows = (len(fix_queries) + len(issue_queries) + len(origin_queries) +
                 len(flaw_queries))
+    global fix_report_tq
+    global issue_report_tq
+    global org_report_tq
+    global defect_report_tq
     if len(fix_queries) != 0:
-        BuildQueries(
-            FixCollection.GetQueryHeader(),
+        BuildQueries1(
+            fix_report_tq,
             fix_queries,
             dataset_id, False,
             big_q_processes)
     if len(issue_queries) != 0:
-        BuildQueries(
-            IssueCollection.GetQueryHeader(),
+        BuildQueries1(
+            issue_report_tq,
             issue_queries,
             dataset_id, False,
             big_q_processes)
     if len(origin_queries) != 0:
         BuildQueries(
-            conv.ParentChildDicoms.GetQueryHeader(),
+            org_report_tq,
             origin_queries,
             dataset_id, False,
             big_q_processes)
@@ -788,7 +855,7 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
                 './gitexcluded_qqq.txt', '{} -> {}'.format(iq, qqq), append)
     if len(flaw_queries) != 0:
         BuildQueries(
-            "INSERT INTO `{0}`.DEFECTIVE VALUES {1};",
+            org_report_tq,
             flaw_queries,
             dataset_id, False,
             big_q_processes)
@@ -1033,7 +1100,7 @@ def main(number_of_processes: int = None,
                 'idc_tcia_mvp_wave0',
                 'idc_tcia_dicom_metadata'),
         )
-    general_dataset_name = 'afshin_results_01_' + in_dicoms.BigQuery.Dataset
+    general_dataset_name = 'afshin_results_00_' + in_dicoms.BigQuery.Dataset
     fx_dicoms = DataInfo(
         Datalet('idc-tcia',      # Bucket
                 'us',
@@ -1070,7 +1137,28 @@ def main(number_of_processes: int = None,
     create_all_tables('{}.{}'.format(
         fx_dicoms.BigQuery.ProjectID, fx_dicoms.BigQuery.Dataset),
         fx_dicoms.BigQuery.CloudRegion, True)
-    # --> this suffices to remove both fix and multiframes buckets
+    db_dataset_address =\
+        fx_dicoms.BigQuery.GetBigQueryStyleDatasetAddress(False)
+    global fix_report_tq
+    global issue_report_tq
+    global org_report_tq
+    global defect_report_tq
+    fix_report_tq = table_quota(
+        10, '{}.{}'.format(
+            db_dataset_address, 'FIX_REPORT'), schema_fix)
+    issue_report_tq = table_quota(
+        10, '{}.{}'.format(
+            db_dataset_address, 'ISSUE'), schema_issue)
+    org_report_tq = table_quota(
+        10, '{}.{}'.format(
+            db_dataset_address, 'ORIGINATED_FROM'),
+        schema_originated_from)
+    defect_report_tq = table_quota(
+        10, '{}.{}'.format(
+            db_dataset_address, 'DEFECTIVE'),
+        schema_originated_from)
+
+    # --> this suffices to remove both issueand multiframes buckets
     success = delete_bucket_all_or_part(
         fx_dicoms.Bucket.ProjectID, fx_dicoms.Bucket.Dataset,
         number_of_processes)
@@ -1088,7 +1176,7 @@ def main(number_of_processes: int = None,
         mf_dicoms.Bucket.Dataset,
         False)
     max_number = 2 ** 63 - 1
-    # max_number = 50
+    max_number = 50
     if max_number < 2 ** 63 - 1:
         limit_q = 'LIMIT 50000'
     else:
@@ -1111,8 +1199,8 @@ def main(number_of_processes: int = None,
                         {} AS
                         COLLECTION_TABLE ON
                         COLLECTION_TABLE.SOPINSTANCEUID = DICOMS.SOPINSTANCEUID
-    """.format(in_dicoms.BigQuery.GetBigQueryStyleAddress(), limit_q,
-               BigQueryInputCollectionInfo.GetBigQueryStyleAddress())
+    """.format(in_dicoms.BigQuery.GetBigQueryStyleTableAddress(), limit_q,
+               BigQueryInputCollectionInfo.GetBigQueryStyleTableAddress())
 
     global anatomy_info
     anatomy_info = quey_anatomy_from_tables(

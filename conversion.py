@@ -87,11 +87,22 @@ class ParentChildDicoms:
         """
         str_ = ''
         for i, parent_uid in enumerate(self.parent_sop_instanc_uid):
-            whole_query.append(q.format(
-                self.GetValue(parent_table_name),
-                self.GetValue(str(parent_uid)),
-                self.GetValue(child_table_name),
-                self.GetValue(str(self.child_sop_instance_uid)))
+            whole_query.append(
+                (
+                    q.format(
+                        self.GetValue(parent_table_name),
+                        self.GetValue(str(parent_uid)),
+                        self.GetValue(child_table_name),
+                        self.GetValue(str(self.child_sop_instance_uid))
+                    ),
+                    {
+                        u"PARENT_TABLE": parent_table_name,
+                        u"PARENT_SOP_INSATANCE_UID": str(parent_uid),
+                        u"CHILD_TABLE": child_table_name,
+                        u"CHILD_SOP_INSATANCE_UID": str(
+                            self.child_sop_instance_uid),
+                    }
+                )
             )
         return whole_query
 

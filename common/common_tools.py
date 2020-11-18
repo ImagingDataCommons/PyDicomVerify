@@ -250,7 +250,7 @@ def retry_if_failes(function, args, max_retries: int = 30,
                             wait_in_sec, function.__name__))
                     time.sleep(wait_in_sec)
                 if give_message and retries % messaging_intervals == 0:
-                    arg_msg = str(err + '\n\t')
+                    arg_msg = str(err) + '\n\t'
                     arg_msg += 'Retyining number {} after {} seconds\n\t ->'\
                                ' Function {} list of arguments:'.format(
                                     retries, wait_in_sec, function.__name__)
