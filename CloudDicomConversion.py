@@ -47,7 +47,6 @@ from gcloud.BigQueryStuff import (
     schema_issue,
     schema_defective,
     schema_originated_from,
-    stream_insert,
     stream_insert_with_ids,
 )
 from gcloud.DicomStoreStuff import (
@@ -186,10 +185,51 @@ def FixFile(dicom_file: str, dicom_fixed_file: str,
 def BuildQueries1(table_q_info: table_quota, qs: list, dataset_id: str,
                  return_: bool = True, processes: ProcessPool=None) -> list:
     logger = logging.getLogger(__name__)
-    rows = []
+    out_q = []
+    row_limit = 500
+    elem_q = []
+    n = 0
+    rn = 0
     for q in qs:
-        rows.append(q[1])
-    stream_insert(table_q_info.table_base_id, rows, table_q_info.schema)
+        rn += 1
+        if rn < row_limit:
+            elem_q.append(q)
+        else:
+            # if n > 0:
+            #     header = header_ptrn.format(table_q_info.get_table(), '{}')
+            n += 1
+            out_q.append(elem_q)
+            elem_q = [q]  # for the next round
+            rn = 0
+            if processes is None:
+                stream_insert_with_ids(
+                    table_q_info.table_base_id, out_q[-1], table_q_info.schema)
+            else:
+                # logger.info('putting in queue')
+                processes.queue.put(
+                    (
+                        stream_insert_with_ids,
+                        (
+                            table_q_info.table_base_id,
+                            out_q[-1], table_q_info.schema)
+                    )
+                )
+    out_q.append(elem_q)
+    if processes is None:
+        stream_insert_with_ids(
+            table_q_info.table_base_id, out_q[-1], table_q_info.schema)
+    else:
+        # logger.info('putting in queue')
+        processes.queue.put(
+            (
+                stream_insert_with_ids,
+                (table_q_info.table_base_id, out_q[-1], table_q_info.schema)
+            )
+        )
+    if return_:
+        return out_q
+    else:
+        return []
 
 
 def BuildQueries(table_q_info: table_quota, qs: list, dataset_id: str,
@@ -556,18 +596,18 @@ def download_fix_convert_upload_one_sereis(
         issue_report_table_id = '{}.{}'.format(bgq_db_id, 'ISSUE')
         orig_report_table_id = '{}.{}'.format(bgq_db_id, 'ORIGINATED_FROM')
         if flaw == '':
-            rows, ids, insert_id = get_rows_and_insert_ids(fix_q, insert_id)
-            success = stream_insert_with_ids(fix_report_table_id, rows, schema_fix)
-            if not success:
-                fix_queries.extend(fix_q)
-            rows, ids, insert_id = get_rows_and_insert_ids(iss_q, insert_id)
-            success = stream_insert_with_ids(issue_report_table_id, rows, schema_issue)
-            if not success:
-                issue_queries.extend(iss_q)
-            rows, ids, insert_id = get_rows_and_insert_ids(org_q, insert_id)
-            success = stream_insert_with_ids(orig_report_table_id, rows, schema_originated_from)
-            if not success:
-                origin_queries.extend(org_q)
+            # rows, ids, insert_id = get_rows_and_insert_ids(fix_q, insert_id)
+            # success = stream_insert_with_ids_with_ids(fix_report_table_id, rows, schema_fix)
+            # if not success:
+            fix_queries.extend(fix_q)
+            # rows, ids, insert_id = get_rows_and_insert_ids(iss_q, insert_id)
+            # success = stream_insert_with_ids_with_ids(issue_report_table_id, rows, schema_issue)
+            # if not success:
+            issue_queries.extend(iss_q)
+            # rows, ids, insert_id = get_rows_and_insert_ids(org_q, insert_id)
+            # success = stream_insert_with_ids_with_ids(orig_report_table_id, rows, schema_originated_from)
+            # if not success:
+            origin_queries.extend(org_q)
             single_frames.append(fx_obj)
             fx_obj.blob_address = fx_blob_form.format(
                 fx_obj.study_uid, fx_obj.series_uid,
@@ -644,11 +684,11 @@ def download_fix_convert_upload_one_sereis(
                 mf_files_size += os.path.getsize(pr_ch.child_dicom_file)
                 number_of_all_converted_mf += 1
                 org_q = pr_ch.GetQuery(fx_table_name, mf_table_name)
-                rows, ids, insert_id = get_rows_and_insert_ids(org_q, insert_id)
-                success = stream_insert_with_ids(
-                    orig_report_table_id, rows, schema_originated_from)
-                if not success:
-                    origin_queries.extend(org_q)
+                # rows, ids, insert_id = get_rows_and_insert_ids(org_q, insert_id)
+                # success = stream_insert_with_ids_with_ids(
+                #     orig_report_table_id, rows, schema_originated_from)
+                # if not success:
+                origin_queries.extend(org_q)
                 multiframe_log = []
                 VER(pr_ch.child_dicom_file, multiframe_log, char_set=char_set)
                 mf_issues = IssueCollection(
@@ -657,12 +697,12 @@ def download_fix_convert_upload_one_sereis(
                     pr_ch.child_series_instance_uid,
                     pr_ch.child_sop_instance_uid, )
                 q_iss = mf_issues.GetQuery()
-                rows, ids, insert_id = get_rows_and_insert_ids(
-                    q_iss, insert_id)
-                success = stream_insert_with_ids(
-                    issue_report_table_id, rows, schema_issue)
-                if not success:
-                    issue_queries.extend(q_iss)
+                # rows, ids, insert_id = get_rows_and_insert_ids(
+                #     q_iss, insert_id)
+                # success = stream_insert_with_ids_with_ids(
+                #     issue_report_table_id, rows, schema_issue)
+                # if not success:
+                issue_queries.extend(q_iss)
                 mf_blob_path = '{}/dicom/{}/{}/{}.dcm'.format(
                         mf_gc_info.Bucket.DataObject,
                         pr_ch.child_study_instance_uid,
@@ -832,7 +872,7 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
         fx_gc_info.BigQuery.Dataset)
     logger.info('Start running bigquery jobs')
     big_q_processes = ProcessPool(
-        max_number_of_bq_processes, 'BQ')
+        max_number_of_bq_processes, 'BQSTREAM')
     tic = time.time()
     all_rows = (len(fix_queries) + len(issue_queries) + len(origin_queries) +
                 len(flaw_queries))
@@ -841,30 +881,38 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
     global org_report_tq
     global defect_report_tq
     if len(fix_queries) != 0:
-        BuildQueries(
+        BuildQueries1(
             fix_report_tq,
             fix_queries,
             dataset_id, False,
             big_q_processes)
     if len(issue_queries) != 0:
-        BuildQueries(
+        BuildQueries1(
             issue_report_tq,
             issue_queries,
             dataset_id, False,
             big_q_processes)
     if len(origin_queries) != 0:
-        BuildQueries(
+        BuildQueries1(
             org_report_tq,
             origin_queries,
             dataset_id, False,
             big_q_processes)
-        for iq, qqq in enumerate(origin_queries, 1):
-            if iq == 1:
-                append = False
-            else:
-                append = True
-            ctools.WriteStringToFile(
-                './gitexcluded_qqq.txt', '{} -> {}'.format(iq, qqq), append)
+    # big_q_processes.queue.join()
+    # big_q_processes.kill_them_all()
+    # results = big_q_processes.output
+    # for args, success in results:
+
+        # for iq, qqq in enumerate(origin_queries, 1):
+        #     if iq == 1:
+        #         append = False
+        #     else:
+        #         append = True
+        #     ctools.WriteStringToFile(
+        #         './gitexcluded_qqq.txt', '{} -> {}'.format(iq, qqq), append)
+    # logger.info('Start running bigquery jobs')
+    # big_q_processes = ProcessPool(
+    #     max_number_of_bq_processes, 'BQJOB')
     if len(flaw_queries) != 0:
         BuildQueries(
             org_report_tq,
@@ -1112,7 +1160,7 @@ def main(number_of_processes: int = None,
                 'idc_tcia_mvp_wave0',
                 'idc_tcia_dicom_metadata'),
         )
-    general_dataset_name = 'afshin_results_01_' + in_dicoms.BigQuery.Dataset
+    general_dataset_name = 'afshin_results_00_' + in_dicoms.BigQuery.Dataset
     fx_dicoms = DataInfo(
         Datalet('idc-tcia',      # Bucket
                 'us',
@@ -1156,17 +1204,17 @@ def main(number_of_processes: int = None,
     global org_report_tq
     global defect_report_tq
     fix_report_tq = table_quota(
-        10, '{}.{}'.format(
+        1500, '{}.{}'.format(
             db_dataset_address, 'FIX_REPORT'), schema_fix)
     issue_report_tq = table_quota(
-        10, '{}.{}'.format(
+        1500, '{}.{}'.format(
             db_dataset_address, 'ISSUE'), schema_issue)
     org_report_tq = table_quota(
-        10, '{}.{}'.format(
+        1500, '{}.{}'.format(
             db_dataset_address, 'ORIGINATED_FROM'),
         schema_originated_from)
     defect_report_tq = table_quota(
-        10, '{}.{}'.format(
+        1500, '{}.{}'.format(
             db_dataset_address, 'DEFECTIVE'),
         schema_originated_from)
 
@@ -1188,7 +1236,7 @@ def main(number_of_processes: int = None,
         mf_dicoms.Bucket.Dataset,
         False)
     max_number = 2 ** 63 - 1
-    max_number = 100
+    # max_number = 100
     if max_number < 2 ** 63 - 1:
         limit_q = 'LIMIT 50000'
     else:

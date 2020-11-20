@@ -134,13 +134,16 @@ def stream_insert_with_ids(table_id: str, rows_to_insert: list, schema):
         return True
     job_config = bigquery.LoadJobConfig(priority=bigquery.QueryPriority.BATCH)
     client = bigquery.Client(default_query_job_config=job_config)
+    rows = []
+    for r in rows_to_insert:
+        rows.append(r[1])
     try:
         mx_retries = 30
         retries = 0
         while retries < mx_retries:
             output = ctools.retry_if_failes(
                 client.insert_rows,
-                (table_id, rows_to_insert, schema),
+                (table_id, rows, schema),
                 50, 1, True, 5
             )
             if len(output) == 0:

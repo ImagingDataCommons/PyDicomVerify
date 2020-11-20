@@ -239,6 +239,8 @@ class table_quota:
     @property
     def schema(self):
         return self._schema
+
+    @property
     def table_base_id(self):
         return self._table_base_id
 
