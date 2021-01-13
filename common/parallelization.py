@@ -8,6 +8,7 @@ import sys
 import threading
 import time
 import traceback
+from datetime import timedelta
 import common.common_tools as ctools
 from dicom_fix_issue_info import (
     # CLASSES
@@ -260,18 +261,31 @@ class ThreadPool:
 class WorkerProcess(Process):
 
     def __init__(self, queue: JoinableQueue, res_queue: Queue, lock: Lock,
+                 status_log_interval: int,
                  **kwarg):
         Process.__init__(self, **kwarg)
         self.output = res_queue
         self._queue = queue
         self._kill = False
         self._lock = lock
+        self.start_time = time.time()
+        self.time_interval = status_log_interval
+        self.current_loop_start_time = time.time()
+        self.last_log_time = time.time() - \
+            randrange(0, self.time_interval)
+        self.kill_status_thread = False
+        self.task_timeout = 60 * 30
+        self.current_task = (None, None)
+        self.task_timeout_last_log_time = time.time()
 
     def run(self):
         logger = logging.getLogger(__name__)
-        # tic = time.time() - randrange(0, time_interval_for_log)
+        self.kill_status_thread = False
+        t = threading.Thread(target=self.log_status)
+        t.start()
         n = 0
         while True:
+            self.current_loop_start_time = time.time()
             n += 1
             # toc = time.time()
             # if (toc - tic) > time_interval_for_log:
@@ -283,19 +297,20 @@ class WorkerProcess(Process):
                 # if qsz < 2000 and qsz > 0:
                 #     logger.info(
                 #         "before task out of {} in queue".format(qsz))
-
-            (work_fun, args) = self._queue.get()
-            if sys.platform == "linux" or sys.platform == "linux2" or\
-                    sys.platform == "win32":
-                qsz = self._queue.qsize()
-                # with self._lock:
-                if qsz % 1000 == 0 and qsz > 0:
-                    logger.info(
-                        "picked a task ({}) out of {} "
-                        "remaining in queue".format(
-                            work_fun.__name__, qsz))
-            else:
-                qsz = None
+            self.current_task = self._queue.get()
+            (work_fun, args) = self.current_task
+            
+            # if sys.platform == "linux" or sys.platform == "linux2" or\
+            #         sys.platform == "win32":
+            #     qsz = self._queue.qsize()
+            #     # with self._lock:
+            #     if qsz % 1000 == 0 and qsz > 0:
+            #         logger.info(
+            #             "picked a task ({}) out of {} "
+            #             "remaining in queue".format(
+            #                 work_fun.__name__, qsz))
+            # else:
+            #     qsz = None
             if work_fun is None or args is None:
                 self._queue.task_done()
                 break
@@ -321,7 +336,9 @@ class WorkerProcess(Process):
             finally:
                 self._queue.task_done()
         # logging.getLogger().setLevel(logging.INFO)
-        self.output.close() # will stop the thread running the queeu anf flush
+        self.kill_status_thread = True
+        t.join(10)
+        self.output.close()  # will stop the thread running the queeu anf flush
         self.output.join_thread()
         logger.debug('returning from the run')
         return
@@ -333,6 +350,52 @@ class WorkerProcess(Process):
         h_l = lnegth_in_chars/2
         choped_msg = msg[:h_l] + '[.....]' + msg[-h_l:]
         return choped_msg
+    
+    def log_status(self):
+        logger = logging.getLogger(__name__)
+        while not self.kill_status_thread:
+            toc = time.time()
+            log_elapsed_time = toc - self.last_log_time
+            timeout_log_elapsed_time = toc - self.task_timeout_last_log_time
+            el_time = toc - self.current_loop_start_time
+            el_time_total = toc - self.start_time
+            if log_elapsed_time > self.time_interval:
+                if sys.platform == "linux" or sys.platform == "linux2" or\
+                        sys.platform == "win32":
+                    qsz = self._queue.qsize()
+                else:
+                    qsz = None
+                logger.info(
+                    "Time since the creation of process :{}, time since"
+                    " the start of the current task {}, "
+                    "number of tasks left {}".format(
+                        timedelta(seconds=el_time_total),
+                        timedelta(seconds=el_time),
+                        qsz))
+                self.last_log_time = time.time()
+            if self.task_timeout < el_time and\
+                    self.task_timeout < timeout_log_elapsed_time:
+                self.task_timeout_last_log_time = time.time()
+                (work_fun, args) = self.current_task
+                if work_fun is None:
+                    continue
+                arg_labels = inspect.getfullargspec(work_fun)
+                msg = 'TIMEOUT this task has taken {} so far: '\
+                    '\n\t -> Function {} list of arguments:'.format(
+                        timedelta(seconds=el_time),
+                        work_fun.__name__)
+                for arg_l, arg in zip(arg_labels[0], args):
+                    if isinstance(arg, tuple) or isinstance(arg, list):
+                        if len(arg) > 0:
+                            arg = arg[0]
+                    if isinstance(arg, str):
+                        msg += ('\n\t\t\t{} = "{}"'.format(arg_l, arg))
+                    else:
+                        msg += ('\n\t\t\t{} = {}'.format(arg_l, arg))
+                logger.error(msg, exc_info=True)
+
+            time.sleep(5)
+
 
 
 class ProcessPool:
@@ -344,6 +407,7 @@ class ProcessPool:
         self._process_pool = []
         self.output = []
         self._lock = Lock()
+        self._processes_count = max_number_of_processs
         for i in range(max_number_of_processs):
             self._process_pool.append(self._create_pr(
                 '{}{:02d}'.format(process_name_prifix, i)
@@ -351,7 +415,8 @@ class ProcessPool:
 
     def _create_pr(self, th_name) -> WorkerProcess:
         t = WorkerProcess(
-            self._queue, self._res_queue, self._lock, name=th_name)
+            self._queue, self._res_queue, self._lock, name=th_name,
+            status_log_interval=self._processes_count * 20)
         t.daemon = True
         t.start()
         return t

@@ -34,13 +34,17 @@ def ViolationMessage(error: str, elementtype: str,
                      module: str, element: str,
                      log: list, verbose: bool, has_fix=False):
     if not has_fix:
-        mesg = "{} {} {}".format(#EMsgDC("Null"),
-                                error, elementtype,
-                                LogElementAndModule(module, element))
+        mesg = "{} {} {}".format(
+            #EMsgDC("Null"),
+            error, elementtype,
+            LogElementAndModule(module, element)
+            )
     else:
-        mesg = error.format(#EMsgDC("Null"),
-                             elementtype,
-                                LogElementAndModule(module, element))
+        mesg = error.format(
+            #EMsgDC("Null"),
+            elementtype,
+            LogElementAndModule(module, element)
+            )
     log.append(mesg)
 
 
@@ -70,8 +74,11 @@ def fix_by_removing(ds: Dataset, kw: str, check_emptyness=True) -> str:
         del ds[kw]
         reason = "fixed by removing the attribute. "
     else:
+        val = str(attrib.value)
+        if len(val) > 128:
+            val = " ... value is too long ... "
         reason = "didn't fix since the attrib holds value = <{}>. ".format(
-            attrib.value
+            val
        )
     return reason
 

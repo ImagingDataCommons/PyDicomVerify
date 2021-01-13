@@ -1,5 +1,6 @@
 import git
 import pydicom.datadict as Dic
+from pydicom.multival import MultiValue
 from pydicom import uid
 import re
 import os
@@ -8,10 +9,148 @@ import common.common_tools as ct
 from datetime import timedelta
 from pydicom import Dataset
 from pydicom.charset import python_encoding
-
+from gcloud.BigQueryStuff import *
 git_url = 'https://github.com/afshinmessiah/PyDicomVerify/{}'
 repo = git.Repo(search_parent_directories=True)
 commit = repo.head.object.hexsha
+iod_names = [
+        "CRImage",
+        "CTImage",
+        "MRImage",
+        "NMImage",
+        "USImage",
+        "USMultiFrameImage",
+        "SCImage",
+        "MultiframeSingleBitSCImage",
+        "MultiframeGrayscaleByteSCImage",
+        "MultiframeGrayscaleWordSCImage",
+        "MultiframeTrueColorSCImage",
+        "StandaloneOverlay",
+        "StandaloneCurve",
+        "StandaloneModalityLUT",
+        "StandaloneVOILUT",
+        "Segmentation",
+        "SurfaceSegmentation",
+        "SpatialRegistration",
+        "DeformableSpatialRegistration",
+        "SpatialFiducials",
+        "EncapsulatedPDF",
+        "EncapsulatedCDA",
+        "EncapsulatedSTL",
+        "RealWorldValueMapping",
+        "IVOCTImage",
+        "ParametricMap",
+        "BasicDirectory",
+        "BasicDirectoryDental",
+        "XAImage",
+        "XRFImage",
+        "EnhancedXAImage",
+        "EnhancedXRFImage",
+        "XRay3DAngiographicImage",
+        "XRay3DCraniofacialImage",
+        "PETImage",
+        "EnhancedPETImage",
+        "LegacyConvertedEnhancedPETImage",
+        "PrivatePixelMedLegacyConvertedEnhancedPETImage",
+        "RTImage",
+        "RTDose",
+        "RTStructureSet",
+        "RTPlan",
+        "RTBeamsTreatmentRecord",
+        "RTBrachyTreatmentRecord",
+        "RTTreatmentSummaryRecord",
+        "RTIonPlan",
+        "RTIonBeamsTreatmentRecord",
+        "DXImageForProcessing",
+        "DXImageForPresentation",
+        "MammographyImageForProcessing",
+        "MammographyImageForPresentation",
+        "MammographyImageForProcessingIHEMammo",
+        "MammographyImageForProcessingIHEMammoPartialViewOption",
+        "MammographyImageForPresentationIHEMammo",
+        "MammographyImageForPresentationIHEMammoPartialViewOption",
+        "IntraoralImageForProcessing",
+        "IntraoralImageForPresentation",
+        "IntraoralImageForPresentationDentalMedia",
+        "DXImageForPresentationDentalMedia",
+        "BreastTomosynthesisImage",
+        "BreastTomosynthesisImageIHEDBT",
+        "BreastProjectionXRayImage",
+        "VLEndoscopicImage",
+        "VLMicroscopicImage",
+        "VLSlideCoordinatesMicroscopicImage",
+        "VLPhotographicImage",
+        "VideoEndoscopicImage",
+        "VideoMicroscopicImage",
+        "VideoPhotographicImage",
+        "OphthalmicPhotography8BitImage",
+        "OphthalmicPhotography16BitImage",
+        "StereometricRelationship",
+        "OphthalmicTomographyImage",
+        "VLWholeSlideMicroscopyImage",
+        "LensometryMeasurements",
+        "AutorefractionMeasurements",
+        "KeratometryMeasurements",
+        "SubjectiveRefractionMeasurements",
+        "VisualAcuityMeasurements",
+        "OphthalmicAxialMeasurements",
+        "IntraocularLensCalculations",
+        "OphthalmicVisualFieldStaticPerimetryMeasurements",
+        "BasicVoice",
+        "TwelveLeadECG",
+        "GeneralECG",
+        "AmbulatoryECG",
+        "HemodynamicWaveform",
+        "CardiacElectrophysiologyWaveform",
+        "BasicTextSR",
+        "EnhancedSR",
+        "ComprehensiveSR",
+        "Comprehensive3DSR",
+        "KeyObjectSelectionDocument",
+        "KeyObjectSelectionDocumentIHEXDSIManifest",
+        "MammographyCADSR",
+        "ChestCADSR",
+        "ProcedureLog",
+        "XRayRadiationDoseSR",
+        "XRayRadiationDoseSRIHEREM",
+        "RadiopharmaceuticalRadiationDoseSR",
+        "SpectaclePrescriptionReport",
+        "AcquisitionContextSR",
+        "GrayscaleSoftcopyPresentationState",
+        "ColorSoftcopyPresentationState",
+        "PseudoColorSoftcopyPresentationState",
+        "BlendingSoftcopyPresentationState",
+        "HangingProtocol",
+        "ColorPalette",
+        "BasicStructuredDisplay",
+        "EnhancedMRImage",
+        "EnhancedMRColorImage",
+        "MRSpectroscopy",
+        "RawData",
+        "LegacyConvertedEnhancedMRImage",
+        "PrivatePixelMedLegacyConvertedEnhancedMRImage",
+        "TractographyResults",
+        "EnhancedCTImage",
+        "LegacyConvertedEnhancedCTImage",
+        "PrivatePixelMedLegacyConvertedEnhancedCTImage",
+        "EnhancedUltrasoundVolume",
+        "EnhancedUltrasoundVolumeQTUS",
+    ]
+
+def organize_dcmvfy_errors(issues: list, output: list = []):
+    prev_line = None
+    for line_ in issues:
+        if line_ in iod_names:
+            continue
+        if line_.startswith('Error - ') or line_.startswith('Warning - '):
+            if prev_line is not None:
+                output.append(prev_line)
+            prev_line = line_
+        else:
+            if prev_line is not None:
+                prev_line += ('\n' + line_)
+    if prev_line is not None:
+        output.append(prev_line)
 
 
 class Datalet:
@@ -25,11 +164,22 @@ class Datalet:
         self.Dataset = dataset
         self.DataObject = dataobject
 
-    def GetBigQueryStyleAddress(self, quoted: bool = True) -> str:
-        output = '{}.{}.{}'.format(
+    def GetBigQueryStyleTableAddress(self, quoted: bool = True) -> str:
+        output = '{}.{}'.format(
             self.ProjectID,
-            self.Dataset,
-            self.DataObject
+            self.Dataset
+        )
+        if quoted:
+            output = '`{}`.{}'.format(output, self.DataObject)
+        else:
+            output = '{}.{}'.format(output, self.DataObject)
+
+        return output
+
+    def GetBigQueryStyleDatasetAddress(self, quoted: bool = True) -> str:
+        output = '{}.{}'.format(
+            self.ProjectID,
+            self.Dataset
         )
         if quoted:
             output = '`{}`'.format(output)
@@ -57,24 +207,62 @@ class MessageError(Exception):
         super().__init__(self.message)
 
 
+class table_quota:
+    def __init__(self, quota: int, table_base_id: str, schema: list):
+        self.table_id_number: int = 0
+        self.table_update_counter: int = 0
+        self.table_update_quota_limit: int = quota
+        self._schema = schema
+        self._table_base_id = table_base_id
+
+    def get_table(self):
+        if self.table_update_counter == 0 and self.table_id_number == 0:
+            create_new = True
+        else:
+            create_new = False
+        self.table_update_counter += 1
+        create_new: bool = False
+        if self.table_update_counter > \
+                self.table_update_quota_limit:
+            self.table_update_counter %=\
+                self.table_update_quota_limit
+            self.table_id_number += 1
+            create_new = True
+        real_table = "{}_{:03d}".format(
+            self._table_base_id, self.table_id_number)
+        if create_new:
+            create_table(real_table, self._schema)
+        return real_table
+    
+    
+    
+    @property
+    def schema(self):
+        return self._schema
+
+    @property
+    def table_base_id(self):
+        return self._table_base_id
+
+
 class DicomIssue:
 
     def __init__(self, issue_msg: str) -> None:
         self.message = issue_msg
-        regexp = '.*(Error|Warning)([-\s]*)(.*)'
+        regexp = r'.*(Error|Warning)([-\s]*)(.*)'
         m = re.search(regexp, issue_msg)
         if m is None:
             raise MessageError('The issue is not a right type')
         self.type = m.group(1)
         self.issue_msg = m.group(3)
-        issue_pattern = 'T<([^>]*)>\s(.*)'
+        issue_pattern = r'T<([^>]*)>\s(.*)'
         m_issue = re.search(issue_pattern, self.issue_msg)
         if m_issue is not None:
             self.issue_short = m_issue.group(1)
             self.issue = m_issue.group(2)
         else:
             self.issue_short = None
-        element_pattern = '(Element|attribute|keyword)[=\s]{,5}<([^>]*)>'
+        element_pattern = r'(Element|attribute|keyword)[=\s]{,5}<([^>]*)>'
         m = re.search(element_pattern, issue_msg)
         if m is not None:
             self.attribute = m.group(2)
@@ -83,13 +271,13 @@ class DicomIssue:
         if self.attribute is not None:
             self.tag = Dic.tag_for_keyword(self.attribute)
         else:
-            ptrn = "\(0x([0-9A-Fa-f]{4})[,\s]*0x([0-9A-Fa-f]{4})\)"
+            ptrn = r"\(0x([0-9A-Fa-f]{4})[,\s]*0x([0-9A-Fa-f]{4})\)"
             m =  re.search(ptrn, issue_msg)
             if m is not None:
                 self.tag = int(m.group(1) + m.group(2), 16)
             else:
                 self.tag = None
-        module_pattern = '(Module|Macro)[=\s]{,5}<([^>]*)>'
+        module_pattern = r'(Module|Macro)[=\s]{,5}<([^>]*)>'
         m = re.search(module_pattern, issue_msg)
         if m is not None:
             self.module_macro = m.group(2)
@@ -118,7 +306,17 @@ class DicomIssue:
                 self.GetValue(self.attribute),
                 self.GetValue(self.tag)
             )
-        return out
+        out1 = (
+                TableName,  # DCM_TABLE_NAME
+                str(SOPInstanceUID),  # DCM_SOP_INSATANCE_UID
+                self.issue_msg,  # ISSUE_MSG
+                self.message,  # MESSAGE
+                self.type,  # TYPE
+                self.module_macro,  # MODULE_MACRO
+                self.attribute,  # KEYWORD
+                self.tag,  # TAG
+        )
+        return (out, out1)
 
     def GetQuery_OLD(self, TableName: str, SOPInstanceUID: uid) -> str:
         out = '''
@@ -149,7 +347,7 @@ class DicomIssue:
         if v is None:
             return "NULL"
         elif type(v) == str:
-            return '"{}"'.format(v)
+            return '"""{}"""'.format(v)
         else:
             return v
 
@@ -188,16 +386,16 @@ class IssueCollection:
 
 
 class DicomFix:
-
+    
     def __init__(self, fix_msg: str) -> None:
         self.message = fix_msg
-        regexp = '([^-]*)\s-\s(.*):-\>:(.*)\<function(.*)from file:(.*) line_number: (.*)\> \<function(.*)from file:(.*) line_number: (.*)\>'
+        regexp = r'([^-]*)\s-\s(.*):-\>:(.*)\<function(.*)from file:(.*) line_number: (.*)\> \<function(.*)from file:(.*) line_number: (.*)\>'
         m = re.search(regexp, fix_msg)
         if m is None:
             raise MessageError("The message is not fix type")
         self.type = m.group(1)
         self.issue = m.group(2)
-        issue_pattern = 'T<([^>]*)>\s(.*)'
+        issue_pattern = r'T<([^>]*)>\s(.*)'
         m_issue = re.search(issue_pattern, self.issue)
         if m_issue is not None:
             self.issue_short = m_issue.group(1)
@@ -217,7 +415,7 @@ class DicomFix:
         self.file2_name = os.path.basename(file2)
         self.file2_link = git_url.format('tree/' + commit) + "/{}#L{}".format(
             self.file2_name, line2)
-        element_pattern = '(Element|attribute|keyword)[=\s]{,5}<([^>]*)>'
+        element_pattern = r'(Element|attribute|keyword)[=\s]{,5}<([^>]*)>'
         m = re.search(element_pattern, self.issue)
         if m is not None:
             self.attribute = m.group(2)
@@ -226,13 +424,13 @@ class DicomFix:
         if self.attribute is not None:
             self.tag = Dic.tag_for_keyword(self.attribute)
         else:
-            ptrn = '\(0x([0-9A-Fa-f]{4})[,\s]{,2}0x([0-9A-Fa-f]{4})\)'
+            ptrn = r'\(0x([0-9A-Fa-f]{4})[,\s]{,2}0x([0-9A-Fa-f]{4})\)'
             m =  re.search(ptrn, self.issue)
             if m is not None:
                 self.tag = int(m.group(1) + m.group(2), 16)
             else:
                 self.tag = None
-        module_pattern = '(Module|Macro)[=\s]{,5}<([^>]*)>'
+        module_pattern = r'(Module|Macro)[=\s]{,5}<([^>]*)>'
         m = re.search(module_pattern, self.issue)
         if m is not None:
             self.module_macro = m.group(2)
@@ -270,7 +468,22 @@ class DicomFix:
                 self.GetValue(self.file2_link),
                 self.GetValue(self.message),
                 )
-        return out
+        out1 = (
+            str(SOPInstanceUID),  # DCM_SOP_INSATANCE_UID
+            self.issue_short,  # SHORT_ISSUE
+            self.issue,  # ISSUE
+            self.fix,  # FIX
+            self.type,  # TYPE
+            self.module_macro,  # MODULE_MACRO
+            self.attribute,  # KEYWORD
+            self.tag,  # TAG
+            self.fun1,  # FIX_FUNCTION1
+            self.file1_link,  # FIX_FUNCTION1_LINK
+            self.fun2,  # FIX_FUNCTION2
+            self.file2_link,  # FIX_FUNCTION2_LINK
+            self.message,   # MESSAGE
+        )
+        return (out, out1)
 
     def GetQuery_OLD(self, SOPInstanceUID: uid) -> str:
         out = '''
@@ -307,7 +520,7 @@ class DicomFix:
         if v is None:
             return "NULL"
         elif type(v) == str:
-            return '"{}"'.format(v)
+            return '"""{}"""'.format(v)
         else:
             return v
 
@@ -330,11 +543,11 @@ class FixCollection:
                 pass
 
     @staticmethod
-    def GetQueryHeader() -> str:
+    def GetQueryHeader(table_name) -> str:
         header = '''
-            INSERT INTO `{0}`.FIX_REPORT
+            INSERT INTO `{0}`.{}
                 VALUES {1};
-        '''
+        '''.format(table_name)
         return header
 
     def GetQuery(self) -> str:
@@ -379,15 +592,17 @@ class DicomFileInfo:
             self.dicom_ds is None else 'Exists but hidden')
         return out.format(content)
 
-
     @staticmethod
     def get_chaset_val_from_dataset(ds: Dataset = None) -> str:
         python_char_set = 'ascii'
         if isinstance(ds, Dataset) and ds is not None:
             if "SpecificCharacterSet" in ds:
                 dicom_char_set = ds.SpecificCharacterSet
-                if dicom_char_set in python_encoding:
-                    python_char_set = python_encoding[dicom_char_set]
+                if isinstance(dicom_char_set, MultiValue):
+                    dicom_char_set = dicom_char_set[-1]
+                if isinstance(dicom_char_set, str):
+                    if dicom_char_set in python_encoding:
+                        python_char_set = python_encoding[dicom_char_set]
         return python_char_set
 
 

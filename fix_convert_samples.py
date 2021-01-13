@@ -230,9 +230,10 @@ if __name__ == '__main__':
     in_folders = ['../Tmp/in']
     out_folders = '../Tmp/out'
     out_folders = os.path.realpath(out_folders)
-    series_uid = '1.3.6.1.4.1.14519.5.2.1.2744.7002.197068175253397018269193799114'
+    series_uid = '1.3.6.1.4.1.14519.5.2.1.3344.4004.113152617378946754174569892286'
+    sop_uid = '1.3.6.1.4.1.14519.5.2.1.3671.4004.233818514332124445394742500894'
     study_uid, series_uid, instance_uid, bucket_name = GetSeries(
-        'SeriesInstanceUID', series_uid)
+        'SOPInstanceUID', sop_uid)
     # bucket_name = 'idc-tcia-tcga-blca'
     # study_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.292170230498352399648594035286'
     # series_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.316228581410299389630475076825'
@@ -241,12 +242,12 @@ if __name__ == '__main__':
     log = []
     log_ver = []
     fix_: bool = True
-    download_ : bool = False
+    download_ : bool = True
     global anatomy_info
     anatomy_info = {}
     anatomy_info = quey_anatomy_from_tables(
         '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata`',
-    '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_auxilliary_metadata`')
+        '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_auxilliary_metadata`')
     for i in range(0, len(in_folders)):
         in_folder = os.path.realpath(in_folders[i])
         if download_:

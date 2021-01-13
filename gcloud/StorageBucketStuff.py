@@ -259,26 +259,33 @@ def download_blob(project_id: str, bucket_name: str,
     maximum_retry = 15
     retries = 0
     success = False
-    while retries < maximum_retry:
-        try:
-            blob.download_to_filename(destination_file_name)
-            logger.debug("Blob {} downloaded to {}.".format(
-                source_blob_name, destination_file_name))
-            success = True
-            break
-        except BaseException as err:
-            retries += 1
-            if retries >= maximum_retry:
-                logger.error(
-                    "after {} retries couldn't "
-                    "download the file\n{}\n{} ".format(
-                        retries, destination_file_name, err), exc_info=True)
-                break
-            else:
-                if retries % 10 == 0:
-                    logger.info(
-                        '({})retrying connection for file \n{}'.format(
-                            retries, destination_file_name))
+    try:
+        ct.retry_if_failes(
+            blob.download_to_filename, (destination_file_name,),
+            maximum_retry, 10, True, 10)
+        success = True
+    except BaseException as err:
+        success = False
+    # while retries < maximum_retry:
+    #     try:
+    #         blob.download_to_filename(destination_file_name)
+    #         logger.debug("Blob {} downloaded to {}.".format(
+    #             source_blob_name, destination_file_name))
+    #         success = True
+    #         break
+    #     except BaseException as err:
+    #         retries += 1
+    #         if retries >= maximum_retry:
+    #             logger.error(
+    #                 "after {} retries couldn't "
+    #                 "download the file\n{}\n{} ".format(
+    #                     retries, destination_file_name, err), exc_info=True)
+    #             break
+    #         else:
+    #             if retries % 10 == 0:
+    #                 logger.info(
+    #                     '({})retrying connection for file \n{}'.format(
+    #                         retries, destination_file_name))
     return success
 
 
@@ -295,27 +302,34 @@ def upload_blob(project_id: str, bucket_name: str,
     maximum_retry = 15
     retries = 0
     success = False
-    while retries < maximum_retry:
-        try:
-            blob.upload_from_filename(source_file_name)
-            logger.debug("File {} uploaded to {}.".format(
-                    source_file_name, destination_blob_name
-                )
-            )
-            success = True
-            break
-        except BaseException as err:
-            retries += 1
-            if retries >= maximum_retry:
-                logger.error(
-                    "after {} retries couldn't upload the file\n{}\n{}".format(
-                        retries, source_file_name, err), exc_info=True)
-                break
-            else:
-                if retries % 5 == 0:
-                    logger.info(
-                        '({})retrying connection for file \n{}'.format(
-                            retries, source_file_name))
+    try:
+        ct.retry_if_failes(
+            blob.upload_from_filename, (source_file_name,),
+            maximum_retry, 10, True, 10)
+        success = True
+    except BaseException as err:
+        success = False
+    # while retries < maximum_retry:
+    #     try:
+    #         blob.upload_from_filename(source_file_name)
+    #         logger.debug("File {} uploaded to {}.".format(
+    #                 source_file_name, destination_blob_name
+    #             )
+    #         )
+    #         success = True
+    #         break
+    #     except BaseException as err:
+    #         retries += 1
+    #         if retries >= maximum_retry:
+    #             logger.error(
+    #                 "after {} retries couldn't upload the file\n{}\n{}".format(
+    #                     retries, source_file_name, err), exc_info=True)
+    #             break
+    #         else:
+    #             if retries % 5 == 0:
+    #                 logger.info(
+    #                     '({})retrying connection for file \n{}'.format(
+    #                         retries, source_file_name))
     return success
 
 
@@ -330,25 +344,27 @@ def exists_bucket(project_id: str, bucket_name: str) -> bool:
 
 
 def delete_blob_directly(blob) -> bool:
-    logger = logging.getLogger(__name__)
+    # logger = logging.getLogger(__name__)
     max_retries = 30
-    retries = 0
+    # retries = 0
     success = False
-    while True:
-        try:
-            blob.delete()
-            logger.debug("Blob {} deleted.".format(blob))
-            success = True
-            break
-        except BaseException as err:
-            if retries >= max_retries:
-                logger.error(
-                    "after {} retries couldn't "
-                    "delete the file\n{}\n{} ".format(
-                        retries, blob, err), exc_info=True)
-                break
-            else:
-                logger.info(
-                    '({})retrying connection for file \n{}'.format(
-                        retries, blob))
+    success = ct.retry_if_failes(blob.delete, None, max_retries, 10, True, 10)
+    # return True
+    # while True:
+    #     try:
+    #         blob.delete()
+    #         logger.debug("Blob {} deleted.".format(blob))
+    #         success = True
+    #         break
+    #     except BaseException as err:
+    #         if retries >= max_retries:
+    #             logger.error(
+    #                 "after {} retries couldn't "
+    #                 "delete the file\n{}\n{} ".format(
+    #                     retries, blob, err), exc_info=True)
+    #             break
+    #         else:
+    #             logger.info(
+    #                 '({})retrying connection for file \n{}'.format(
+    #                     retries, blob))
     return success
