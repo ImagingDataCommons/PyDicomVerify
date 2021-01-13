@@ -8,6 +8,8 @@ from rightdicom.dcmvfy.mesgtext_cc import (
 )
 from rightdicom.dcmfix.fix_tools import *
 from rightdicom.dcmfix.anatomy import *
+from rightdicom.dcmvfy.condn_h import (
+    Condition_LateralityRequired as checkLaterality)
 
 def add_anatomy(ds: Dataset,
                 BodyPartExamined_value: str,
@@ -25,8 +27,8 @@ def add_anatomy(ds: Dataset,
             new_bpe, new_ars = (
                 BodyPartExamined_value, AnatomicRegionSequence_value)
     else:
-        new_bpe = old_bpe
-        new_ars = old_ars     
+        new_bpe, new_ars = CorrectAnatomicInfo(old_bpe, old_ars)
+    
     if old_bpe != new_bpe and new_bpe is not None:
         bpe_a = DataElement(bpe, dictionary_VR(bpe), new_bpe)
         old_bpe_txt = old_bpe if bpe not in ds else ds[bpe].value
@@ -55,6 +57,7 @@ def add_anatomy(ds: Dataset,
                 old_item_text,
                 subfix_CodeSeqItem2txt(ars_a, 0))
         log.append(msg.getWholeMessage())
+    AddLaterality(ds, log)
 
 
 
@@ -119,6 +122,51 @@ def get_old_anatomy(ds):
             cs = None if CodingSchemeDesignator not in old_ars_item else \
                 old_ars_item[CodingSchemeDesignato].value
             old_ars_val = (cv, cm, cs)
-    return CorrectAnatomicInfo(old_bpe, old_ars_val)
+    return old_bpe, old_ars_val
+
+def AddLaterality(ds: Dataset, log: list):
+    needlaterality = checkLaterality(ds, 0, ds)
+    old_laterality = None if "Laterality" not in ds else ds['Laterality'].value
+    AddImageLateralityForBoth = False
+    if needlaterality:
+        if old_laterality is None:
+            AddImageLateralityForBoth = True
+        if old_laterality is not None:
+            if old_laterality not in ['L', 'R']:
+                if old_laterality.lower() == 'left':
+                    new_laterality = 'L'
+                elif old_laterality.lower() == 'right':
+                    new_laterality = 'R'
+                else:
+                    new_laterality = None
+                if new_laterality is not None:
+                    msg = ErrorInfo()
+                    msg.msg = 'General Fix - {}'.format(
+                        "<Laterality> holds wrong value")
+                    msg.fix = "fixed by setting the <Laterality>"\
+                        "from {} to '{}'".format(old_laterality, new_laterality)
+                    log.append(msg.getWholeMessage())
+                    ds['Laterlaity'].value = new_laterality
+                    return
+                else:
+                    AddImageLateralityForBoth = True
+            else:
+                return
+    if 'Laterality' in ds:
+        del ds['Laterality']
+    if AddImageLateralityForBoth:
+        kw = 'Laterality'
+        tg = tag_for_keyword(kw)
+        imglaterality = DataElement(tg, 'CS', 'RL')
+        ds[tg] = imglaterality
+        msg.msg = 'General Fix - {}'.format(
+                        "<Laterality> holds wrong value")
+        msg.fix = "fixed by setting the <Laterality>"\
+            " to '{}'".format(old_laterality, new_laterality)
+        log.append(msg.getWholeMessage())
+
+
+
+
     
 

@@ -46,6 +46,7 @@ from rightdicom.dcmvfy.sopclc_h import(
     NuclearMedicineImageStorageSOPClassUID,)
 
 
+
 def loopOverListsInSequencesWithLog(a: DataElement, log: list, func) -> bool:
     succeeded = True
     if type(a.value) == Sequence:
@@ -1788,6 +1789,21 @@ def getRepeatingBase(t:Tag):
 
 def AfterVerificationValidateUsed(ds: Dataset, log: list) -> bool:
     succeeded = True
+    not_recognized_keys = []
+    not_used_keys = []
+    get_not_used_list(ds, not_used_keys, not_recognized_keys)
+    if len(not_used_keys) + len(not_recognized_keys) > 0:
+        succeeded = False
+    for kw, key, _ in not_recognized_keys:
+        log.append("{} - {}".format(
+            EMsgDC("AttributeIsNotARecognizedStandardAttribute"),
+            validate_vr.tag2str(key)))
+    for kw, key, _ in not_used_keys:
+        log.append('{} - {}'.format(WMsgDC("AttributeIsNotUsedInIOD"),
+        validate_vr.tag2str(key)))
+    return succeeded
+
+def get_not_used_list(ds: Dataset, notused: list, notrecognized: list):
     for key, a in ds.items():
         try:
             a = (ds[key])
@@ -1795,25 +1811,25 @@ def AfterVerificationValidateUsed(ds: Dataset, log: list) -> bool:
         except KeyError as err:
             if not key.is_private:
                 if not Dictionary.dictionary_has_tag(key):
-                    log.append("{} - {}".format(
-                        EMsgDC("AttributeIsNotARecognizedStandardAttribute"),
-                        validate_vr.tag2str(key)))
-                    succeeded == False
+                    notrecognized.append((a.keyword, key, ds))
                     continue
-        if(not key.is_private and
-        key != Dictionary.tag_for_keyword("ModifiedAttributesSequence") and
-        key != Dictionary.tag_for_keyword("UnassignedSharedConvertedAttributesSequence") and
-        key != Dictionary.tag_for_keyword("UnassignedPerFrameConvertedAttributesSequence")
-       ):
-            if not loopOverListsInSequencesWithLog(a, log, AfterVerificationValidateUsed):
-                    succeeded = False
-        used = a.used_in_verification
+        if(a.VR == 'SQ' and not key.is_private and
+                key != Dictionary.tag_for_keyword(
+                    "ModifiedAttributesSequence") and
+                key != Dictionary.tag_for_keyword(
+                    "UnassignedSharedConvertedAttributesSequence") and
+                key != Dictionary.tag_for_keyword(
+                    "UnassignedPerFrameConvertedAttributesSequence")):
+            sq_ = a.value
+            for item in sq_:
+                get_not_used_list(item, notused, notrecognized)
+        try:
+            used = a.used_in_verification
+        except(BaseException):
+            print(a.value)
         if not used and isRepeatingGroup(key):
             tt = getRepeatingBase(key)
             if getRepeatingBase(tt) in ds:
                 used = ds[tt].used_in_verification
         if not used and not key.is_private:
-            log.append('{} - {}'.format(WMsgDC("AttributeIsNotUsedInIOD"),
-            validate_vr.tag2str(key)))
-            succeeded = False
-
+            notused.append((a.keyword, key, ds))

@@ -34,6 +34,59 @@ from rightdicom.dcmvfy.mesgtext_cc import(
     # CLASSES
     ErrorInfo,)
 
+from rightdicom.dcmfix._iods import IOD_MODULE_MAP
+from rightdicom.dcmfix._modules import MODULE_ATTRIBUTE_MAP
+from rightdicom.dcmfix._sops import sopclassuid2hyphenated
+
+
+
+def find_attribute_in_iod(ds, keyword: str) -> dict:
+    sop = ds.SOPClassUID
+    if sop not in sopclassuid2hyphenated:
+        return {}
+    hname = sopclassuid2hyphenated[sop]
+    mods = IOD_MODULE_MAP[hname]
+    for mod in mods:
+        attribs = MODULE_ATTRIBUTE_MAP[mod['key']]
+        for at in attribs:
+            if at['keyword'] == keyword:
+                return at
+    return {}
+
+
+def get_full_attrib_list(ds) -> dict:
+    sop = ds.SOPClassUID
+    output = {}
+    if sop not in sopclassuid2hyphenated:
+        return output
+    hname = sopclassuid2hyphenated[sop]
+    mods = IOD_MODULE_MAP[hname]
+    for mod in mods:
+        attribs = MODULE_ATTRIBUTE_MAP[mod['key']]
+        for at in attribs:
+            output[at['keyword']] = {'path': at['path'], 'type': at['type']}
+    return output
+
+
+def put_attribute_in_path(ds: Dataset, path: list, a: DataElement):
+    if not path:
+        if a.tag not in ds:
+            ds[a.tag] = a
+    else:
+        kw = path.pop(0)
+        tg = Dictionary.tag_for_keyword(kw)
+        vr = Dictionary.dictionary_VR(tg)
+        if vr == 'SQ':
+            if tg in ds:
+                inner_sq = ds[tg]
+                item = inner_sq.value[0]
+            else:
+                item = Dataset()
+                new_element = DataElement(tg, vr, Sequence([item]))
+                ds[tg] = new_element
+            put_attribute_in_path(item, path, a)
+                
+
 
 def subfix_LookUpRegexInLog(regexp:str, log:list, appendIfNone = False,
 DefaultErrorMsg=''):

@@ -6,7 +6,7 @@ from pydicom.dataset import Dataset
 from rightdicom.dcmvfy.condn_h import *
 from rightdicom.dcmvfy.iodcomp_h import *
 import rightdicom.dcmvfy.data_elementx
-def SelectAndRunCompositeIOD(ds:Dataset, verbose:bool, log:list, fix_trivials:bool, profile: str)->bool:
+def SelectAndRunCompositeIOD(ds:Dataset, verbose:bool, log:list, profile: str, fix_trivials:bool)->bool:
 
 	iod = False
 	ds =  rightdicom.dcmvfy.data_elementx.ConvertDataset(ds)

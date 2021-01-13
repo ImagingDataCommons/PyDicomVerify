@@ -15,7 +15,7 @@ NR==1	{
 	print "from rightdicom.dcmvfy.iodcomp_h import *"
 	print "import rightdicom.dcmvfy.data_elementx"
 
-	print "def SelectAndRunCompositeIOD(ds:Dataset, verbose:bool, log:list, fix_trivials:bool, profile: str)->bool:"
+	print "def SelectAndRunCompositeIOD(ds:Dataset, verbose:bool, log:list, profile: str, fix_trivials:bool)->bool:"
 	print ""
 	print "\tiod = False"
 	print "\tds =  rightdicom.dcmvfy.data_elementx.ConvertDataset(ds)"

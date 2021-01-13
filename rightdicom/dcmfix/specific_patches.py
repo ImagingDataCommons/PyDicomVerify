@@ -1,8 +1,11 @@
 import pydicom.datadict as Dictionary
 import rightdicom.dcmvfy.mesgtext_cc as mesgtext_cc
 import rightdicom.dcmvfy.sopclc_h as sopclc_h
-import rightdicom.dcmvfy.verify as verify
-from pydicom.dataset import (
+from rightdicom.dcmvfy.verify import verify_dicom_dataset
+from rightdicom.dcmvfy.dicom_prechecks import get_not_used_list
+import rightdicom.dcmvfy.mesgtext_cc as mesgtext_cc
+from rightdicom.dcmvfy.validate_vr import tag2str
+from pydicom.dataset import(
     # CLASSES
     Dataset,
 )
@@ -12,6 +15,8 @@ from rightdicom.dcmfix.fix_tools import (
     subfix_AddOrChangeAttrib,
     subfix_CodeSeqItem2txt,
     subfix_LookUpRegexInLog,
+    get_full_attrib_list,
+    put_attribute_in_path,
 )
 from rightdicom.dcmvfy.mesgtext_cc import (
     # CLASSES
@@ -24,7 +29,34 @@ from rightdicom.dcmvfy.sopclc_h import (
 
 
 def fix_Trivials(ds: Dataset, log: list):
-    verify.SelectAndRunCompositeIOD(ds, False, log, True, '')
+    log.extend(verify_dicom_dataset(ds, False, '', True))
+    fixed = False
+    
+    not_used_attribs = []
+    not_recognized_attribs = []
+    wrn_msg = 'Warning - Attribute is not present in standard DICOM IOD - {}'
+    get_not_used_list(ds, not_used_attribs, not_recognized_attribs)
+    standard_ds = get_full_attrib_list(ds)
+    for kw, tg, parent in not_used_attribs:
+        msg = mesgtext_cc.ErrorInfo()
+        msg.msg = wrn_msg.format(tag2str(tg))
+        if kw not in standard_ds:
+            del parent[tg]
+            msg.fix = "fixed by removing the attribute"
+        else:
+            path_ = standard_ds[kw]['path']
+            msg.fix = "fixed by moving the attribute to the path {}".format(path_)
+            attribute = parent[tg]
+            del parent[tg]
+            put_attribute_in_path(ds, path_, attribute)
+        log.append(msg.getWholeMessage())
+        
+            
+
+
+
+    # print(not_used_attribs)
+    # print(not_recognized_attribs)
     # verify.PrintLog(log)
 
 
