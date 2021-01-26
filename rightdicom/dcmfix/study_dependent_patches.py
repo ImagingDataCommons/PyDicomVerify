@@ -155,18 +155,72 @@ def AddLaterality(ds: Dataset, log: list):
     if 'Laterality' in ds:
         del ds['Laterality']
     if AddImageLateralityForBoth:
-        kw = 'Laterality'
+        kw = 'ImageLaterality'
         tg = tag_for_keyword(kw)
-        imglaterality = DataElement(tg, 'CS', 'RL')
+        imglaterality = DataElement(tg, 'CS', 'B')
         ds[tg] = imglaterality
+        msg = ErrorInfo()
         msg.msg = 'General Fix - {}'.format(
-                        "<Laterality> holds wrong value")
-        msg.fix = "fixed by setting the <Laterality>"\
-            " to '{}'".format(old_laterality, new_laterality)
+                        "<Laterality> doesn't exist or holds wrong value")
+        msg.fix = "fixed by changing the <Laterality>"\
+            "to <{}> with value '{}' for both".format(kw, 'B')
         log.append(msg.getWholeMessage())
 
 
-
-
+def fix_SOPReferencedMacro(
+        ds: Dataset, log: list, suggested_SOPClassUID: dict = {}):
+    kw = 'ReferencedStudySequence'
+    tg = tag_for_keyword(kw)
+    if tg not in ds:
+        return
+    val = ds[tg].value
+    if len(val) == 0:
+        del ds[tg]
+        return
+    i = 0
+    
+    while i < len(val):
+        item = val[i]
+        msg = ErrorInfo()
+        if 'ReferencedSOPInstanceUID' not in item:
+            msg.msg = 'General Fix - item {}/{} <ReferencedStudySequence>'\
+                ' lacks <ReferencedSOPInstanceUID> attribute'.format(i + 1, len(val))
+            msg.fix = 'fixed by removint the item'
+            log.append(msg.getWholeMessage())
+            val.pop(i)
+            continue
+        if item['ReferencedSOPInstanceUID'].is_empty:
+            msg.msg = 'General Fix - item {}/{} <ReferencedStudySequence>'\
+                ' holds an empty <ReferencedSOPInstanceUID> attribute'.format(i + 1, len(val))
+            msg.fix = 'fixed by removint the item'
+            log.append(msg.getWholeMessage())
+            val.pop(i)
+            continue
+        if 'ReferencedSOPClassUID' not in item or\
+                item['ReferencedSOPClassUID'].is_empty:
+            uid = item['ReferencedSOPInstanceUID'].value
+            msg.msg = 'General Fix - item {}/{} <ReferencedStudySequence>'\
+                ' lacks <ReferencedSOPClassUID> attribute'.format(i + 1, len(val))
+            if uid not in suggested_SOPClassUID:
+                msg.fix = 'fixed by removint the item'
+                log.append(msg.getWholeMessage())
+                val.pop(i)
+                continue
+            else:
+                msg.fix = 'fixed by querying the attribute '\
+                    'ReferencedSOPClassUID filling it with {}'.format(
+                        suggested_SOPClassUID[uid]
+                    )
+                log.append(msg.getWholeMessage())
+                item['ReferencedSOPClassUID'].value = suggested_SOPClassUID[uid]
+        i += 1
+    if len(val) == 0:
+        msg = ErrorInfo()
+        msg.msg = 'General Fix - Attribute <{}> is empty '.format(kw)
+        msg.fix = 'fixed by removint the attribute'
+        log.append(msg.getWholeMessage())
+        del ds[tg]
+    return
+    
     
 

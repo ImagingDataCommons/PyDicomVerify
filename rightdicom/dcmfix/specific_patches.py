@@ -9,6 +9,7 @@ from pydicom.dataset import(
     # CLASSES
     Dataset,
 )
+from pydicom.dataelem import DataElement
 from rightdicom.dcmfix.fix_tools import (
     # FUNCTIONS
     subfix_AddMissingAttrib,
@@ -45,10 +46,25 @@ def fix_Trivials(ds: Dataset, log: list):
             msg.fix = "fixed by removing the attribute"
         else:
             path_ = standard_ds[kw]['path']
-            msg.fix = "fixed by moving the attribute to the path {}".format(path_)
-            attribute = parent[tg]
-            del parent[tg]
-            put_attribute_in_path(ds, path_, attribute)
+            tmp_parent = ds
+            attribute_is_present = True
+            pp = list(path_)
+            pp.append(kw)
+            for aa in pp:
+                if aa in tmp_parent:
+                    tmp_parent = tmp_parent[aa]
+                else:
+                    attribute_is_present = False
+                    break
+            if attribute_is_present:
+                attribute_is_present = not tmp_parent.is_empty
+            if not attribute_is_present:
+                msg.fix = "fixed by moving the attribute to the path {}".format(path_)
+                attribute = parent[tg]
+                del parent[tg]
+                put_attribute_in_path(ds, path_, attribute)
+            else:
+                msg.fix = "didn't fixed because there is already an attribute in correct place"
         log.append(msg.getWholeMessage())
         
             
@@ -58,6 +74,36 @@ def fix_Trivials(ds: Dataset, log: list):
     # print(not_used_attribs)
     # print(not_recognized_attribs)
     # verify.PrintLog(log)
+
+
+def fix_PatientSex(ds: Dataset, log: list) -> bool:
+    fixed = False
+    msg = mesgtext_cc.ErrorInfo()
+    kw = "PatientSex"
+    error_regex = r".*Unrecognized enumerated value .* for .* of attribute .*Patient.*Sex"
+    if kw in ds:
+        old_value = ds[kw].value
+    else:
+        old_value = ''
+    new_value = "O"
+    fix_m = "fixed by modifying the {} from {} to {}".format(
+        kw, old_value, new_value)
+    return subfix_AddOrChangeAttrib(ds, log, error_regex, fix_m, kw, new_value)
+
+
+def fix_PregnancyStatus(ds: Dataset, log: list) -> bool:
+    fixed = False
+    msg = mesgtext_cc.ErrorInfo()
+    kw = "PregnancyStatus"
+    error_regex = r".*Unrecognized enumerated value .* attribute .*Pregnancy.*Status.*"
+    if kw in ds:
+        old_value = ds[kw].value
+    else:
+        old_value = ''
+    new_value = int(4)
+    fix_m = "fixed by modifying the {} from {} to {} (Unknown)".format(
+        kw, old_value, new_value)
+    return subfix_AddOrChangeAttrib(ds, log, error_regex, fix_m, kw, new_value)
 
 
 def fix_VRForLongitudinalTemporalInformationModified(ds: Dataset,
@@ -174,3 +220,48 @@ def fix_ChangePhotometric_Interpretation(ds:Dataset, log:list) -> bool:
             fix_m = "fixed by modifying the {} to {}".format(kw, value)
             fixed = subfix_AddOrChangeAttrib(ds, log, regexp, fix_m, kw, value)
     return fixed
+
+
+def fix_ReferencedImageSequence(ds, log: list) -> bool:
+    # This patch is a prticular fixing procedure to replace SOPInstanceUID
+    # with ReferencedSOPInstanceUID and SOPClassUID with ReferencedSOPClassUID
+    fixed = False
+    kw = 'ReferencedImageSequence'
+    tg = Dictionary.tag_for_keyword(kw)
+    if tg not in ds:
+        return True
+    val = ds[tg].value
+    ref_cls_kw = 'ReferencedSOPClassUID'
+    ref_cls_tg = Dictionary.tag_for_keyword(ref_cls_kw)
+    ref_inst_kw = 'ReferencedSOPInstanceUID'
+    ref_inst_tg = Dictionary.tag_for_keyword(ref_inst_kw)
+
+    i = 0
+    while i < len(val):
+        item = val[i]
+        if 'SOPInstanceUID' in item:
+            msg = mesgtext_cc.ErrorInfo()
+            msg.msg = "Item {}/{} in <ReferencedImageSequence> holds "\
+                "<SOPInstanceUID> instead of <ReferencedSOPInstanceUID>".format(i + 1, len(val))
+            msg.fix = "fixed by changing the attribute into <ReferencedSOPInstanceUID>"
+            log.append(msg.getWholeMessage())
+            item[ref_inst_tg] = DataElement(
+                ref_inst_tg, 'UI', item['SOPInstanceUID'].value) 
+            del item['SOPInstanceUID']
+            fixed = True
+        if 'SOPClassUID' in item:
+            msg = mesgtext_cc.ErrorInfo()
+            msg.msg = "Item {}/{} in <ReferencedImageSequence> holds "\
+                "<SOPClassUID> instead of <ReferencedSOPClassUID>".format(i + 1, len(val))
+            msg.fix = "fixed by changing the attribute into <ReferencedSOPClassUID>"
+            log.append(msg.getWholeMessage())
+            item[ref_cls_tg] = DataElement(
+                ref_cls_tg, 'UI', item['SOPClassUID'].value) 
+            del item['SOPClassUID']
+            fixed = True
+        i += 1
+    return fixed
+
+
+
+     

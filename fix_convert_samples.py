@@ -230,10 +230,10 @@ if __name__ == '__main__':
     in_folders = ['../Tmp/in']
     out_folders = '../Tmp/out'
     out_folders = os.path.realpath(out_folders)
-    series_uid = '1.3.6.1.4.1.14519.5.2.1.3344.4004.113152617378946754174569892286'
+    series_uid = '1.3.6.1.4.1.14519.5.2.1.4591.4003.945678196635089694147290015292'
     sop_uid = '1.3.6.1.4.1.14519.5.2.1.3671.4004.233818514332124445394742500894'
     study_uid, series_uid, instance_uid, bucket_name = GetSeries(
-        'SOPInstanceUID', sop_uid)
+        'SeriesInstanceUID', series_uid)
     # bucket_name = 'idc-tcia-tcga-blca'
     # study_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.292170230498352399648594035286'
     # series_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.316228581410299389630475076825'

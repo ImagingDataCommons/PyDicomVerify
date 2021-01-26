@@ -77,7 +77,7 @@ def put_attribute_in_path(ds: Dataset, path: list, a: DataElement):
         tg = Dictionary.tag_for_keyword(kw)
         vr = Dictionary.dictionary_VR(tg)
         if vr == 'SQ':
-            if tg in ds:
+            if tg in ds and ds[tg].VM > 0:
                 inner_sq = ds[tg]
                 item = inner_sq.value[0]
             else:

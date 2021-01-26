@@ -47,10 +47,12 @@ def isValidText(bytecodes: bytes, encodings: list) -> list:
 
 
 def tag2str(ttag: BaseTag):
+    if type(ttag) == int:
+        ttag = BaseTag(ttag)
     if Dictionary.dictionary_has_tag(ttag):
         desc = Dictionary.dictionary_description(ttag)
         vr = Dictionary.dictionary_VR(ttag)
-        txt = "-> \t {}:\t{}".format(vr, desc)
+        txt = "VR<{}>: ({})".format(vr, desc)
     else:
         txt = ''
     msg = "(0x{:0>4x}, 0x{:0>4x}) {}".format(ttag.group, ttag.element, txt)
@@ -160,8 +162,10 @@ def isinteger(n: str) -> bool:
 
 def StringCheck(s: bytes) -> dict:
     out = {"TrailingNullBytes": False, "EmbededNullBytes": False,
-           "TrainlingWhiteSpace": False}
+           "TrailingWhiteSpace": False}
     l = len(s)
+    if l == 0:
+        return out
     foundNonNullByte = False
     for ii in range(l - 1, -1, -1):
         asc = s[ii]
@@ -173,7 +177,7 @@ def StringCheck(s: bytes) -> dict:
         else:
             foundNonNullByte = True
     if curses.ascii.isspace(s[-1]):
-        out["TrainlingWhiteSpace"] = True
+        out["TrailingWhiteSpace"] = True
     return out
 
 

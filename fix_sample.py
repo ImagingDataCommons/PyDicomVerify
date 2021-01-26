@@ -35,11 +35,13 @@ from rightdicom.dcmfix.fix_all import (
 from rightdicom.dcmfix.study_dependent_patches import (
     # FUNCTIONS
     add_anatomy,
+    fix_SOPReferencedMacro,
 )
 from rightdicom.dcmvfy.verify import (
     # FUNCTIONS
     verify_dicom,
 )
+from ref_query import QueryReferencedStudySequence
 
 LOGGING_CONFIG = {
     'version': 1,
@@ -89,7 +91,7 @@ def downlaod_onefile(project_id: str, bucket_name: str, st_uid: str,
                       se_uid: str, sop_uid: str, destination_dir: str):
     logger = logging.getLogger(__name__)
     bl_name = 'dicom/{}/{}/{}.dcm'.format(st_uid, se_uid, sop_uid)
-    
+    logger.info('Blob to be downloaded gs://{}/{}'.format(bucket_name, bl_name))
     
     if os.path.exists(destination_dir):
         shutil.rmtree(destination_dir)
@@ -188,11 +190,19 @@ def FixFile(dicom_file: str, dicom_fixed_file: str,
     if bpe is None and ars[0] is None:
         bpe, ars = get_anatomy_info(cl_anatomy_info)
     add_anatomy(ds, bpe, ars, log_fix)
+    fix_SOPReferencedMacro(ds, log_fix, ref_info)
+    print(ref_info)
     # log_mine = []
     # VER(dicom_file, log_david_pre)
     fix_dicom(ds, log_fix)
+    file_name = dicom_fixed_file
+    if dicom_fixed_file.endswith('.dcm'):
+        file_name = dicom_fixed_file[: -4]
+    file_name += '_fixrpt.txt'
+    fixrpt = ''
     for l in log_fix:
-        print(l)
+        fixrpt += (l + '\n')
+    ctools.WriteStringToFile(file_name, fixrpt)
     pydicom.write_file(dicom_fixed_file, ds)
     # VER(dicom_fixed_file, log_david_post)
     return ds
@@ -239,16 +249,16 @@ def GetSeries(keyword: str, value: str):
     return (stuid, seuid, sopuid, cln_id)
 
 
-if __name__ == '__main__':
+
+def DownloadAndFixOneInstance(kw, value):
     freeze_support()
     project_id = 'idc-tcia'
     in_folders = ['../Tmp/in']
     out_folders = '../Tmp/out'
     out_folders = os.path.realpath(out_folders)
-    series_uid = '1.3.6.1.4.1.14519.5.2.1.2744.7002.197068175253397018269193799114'
-    sop_uid = '1.3.6.1.4.1.14519.5.2.1.8421.4009.156254651462305983660096677787'
-    study_uid, series_uid, instance_uid, bucket_name = GetSeries(
-        'SOPINSTANCEUID', sop_uid)
+    # series_uid = '1.3.6.1.4.1.14519.5.2.1.2744.7002.197068175253397018269193799114'
+    # sop_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4025.177183272588319960642806659064'
+    study_uid, series_uid, instance_uid, bucket_name = GetSeries(kw, value)
     # bucket_name = 'idc-tcia-tcga-blca'
     # study_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.292170230498352399648594035286'
     # series_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.316228581410299389630475076825'
@@ -257,17 +267,23 @@ if __name__ == '__main__':
     log = []
     log_ver = []
     fix_: bool = True
-    download_ : bool = False
+    download_ : bool = True
     global anatomy_info
+    global ref_info
+    ref_info = QueryReferencedStudySequence()
     anatomy_info = {}
     anatomy_info = quey_anatomy_from_tables(
         '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata`',
     '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_auxilliary_metadata`')
     for i in range(0, len(in_folders)):
+        if study_uid is None:
+            print('The query fetched back nothing')
+            break
+        # print(project_id, bucket_name, study_uid, series_uid, instance_uid)
         in_folder = os.path.realpath(in_folders[i])
         if download_:
             downlaod_onefile(
-                project_id, bucket_name, study_uid, series_uid, sop_uid, in_folder)
+                project_id, bucket_name, study_uid, series_uid, instance_uid, in_folder)
         out_folder = os.path.join(out_folders, str(i + 1))
         if os.path.exists(out_folder):
             shutil.rmtree(out_folder)
@@ -297,3 +313,28 @@ if __name__ == '__main__':
             fx_files[0], out_folder, log_ver, 'post')
         (v_file_pre, m_file_pre) = VER(
             in_files[0], out_folder, log_ver, 'pre')
+
+
+if __name__ == '__main__':
+    sopuids = [
+        '1.3.6.1.4.1.14519.5.2.1.3023.4017.209704513302973727718328582207', 
+        '1.3.6.1.4.1.14519.5.2.1.1357.4011.281397539124178351223598058296', 
+        '1.3.6.1.4.1.14519.5.2.1.7695.1700.517751118054315065905894958987', 
+        '1.3.6.1.4.1.14519.5.2.1.7695.1700.320920268173347144917922857171', 
+        '1.3.6.1.4.1.14519.5.2.1.4591.4003.320266460157857465796899572176', 
+        '1.3.6.1.4.1.14519.5.2.1.7695.1700.104086005828132894361977889440', 
+        '1.3.6.1.4.1.14519.5.2.1.3023.4017.246024658770497204037525420107', 
+        '1.3.6.1.4.1.14519.5.2.1.1706.4016.104956504013800026071463578618', 
+        '1.3.6.1.4.1.14519.5.2.1.1706.4016.201023326714000639624412829570', 
+        '1.3.6.1.4.1.14519.5.2.1.7695.1700.589383253769829158675407601303', 
+        '1.3.6.1.4.1.14519.5.2.1.7695.1700.265307053861517090156869032024', 
+        '1.3.6.1.4.1.14519.5.2.1.8421.4009.468320073525327856416576257347', 
+        '1.3.6.1.4.1.14519.5.2.1.8421.4019.657240631665032686647487884916', 
+        '1.3.6.1.4.1.14519.5.2.1.2783.4001.106083817550297346660811112826', 
+        '1.3.6.1.4.1.14519.5.2.1.2783.4001.227521395173726890260143595013', 
+        '1.3.6.1.4.1.14519.5.2.1.2783.4001.296459728980938767573311222171', 
+        '1.3.6.1.4.1.14519.5.2.1.6354.4025.325770388737145266070938538988', 
+    ]
+    for i, uid in enumerate(sopuids, 1):
+        print('{}/{}) {}'.format(i, len(sopuids), uid))
+        DownloadAndFixOneInstance('SOPINSTANCEUID', uid)
