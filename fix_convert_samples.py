@@ -230,10 +230,10 @@ if __name__ == '__main__':
     in_folders = ['../Tmp/in']
     out_folders = '../Tmp/out'
     out_folders = os.path.realpath(out_folders)
-    series_uid = '1.3.6.1.4.1.14519.5.2.1.4591.4003.945678196635089694147290015292'
-    sop_uid = '1.3.6.1.4.1.14519.5.2.1.3671.4004.233818514332124445394742500894'
+    series_uid = '1.3.6.1.4.1.14519.5.2.1.8421.4012.101411629986802258841165081521'
+    sop_uid = '1.3.6.1.4.1.14519.5.2.1.4591.4003.327865519682719362018854760324'
     study_uid, series_uid, instance_uid, bucket_name = GetSeries(
-        'SeriesInstanceUID', series_uid)
+        'SOPInstanceUID', sop_uid)
     # bucket_name = 'idc-tcia-tcga-blca'
     # study_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.292170230498352399648594035286'
     # series_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.316228581410299389630475076825'
@@ -252,7 +252,7 @@ if __name__ == '__main__':
         in_folder = os.path.realpath(in_folders[i])
         if download_:
             download_parallel(
-                project_id, bucket_name, study_uid, series_uid, in_folder, 88)
+                project_id, bucket_name, study_uid, series_uid, in_folder, 16)
         out_folder = os.path.join(out_folders, str(i + 1))
         if os.path.exists(out_folder):
             shutil.rmtree(out_folder)
