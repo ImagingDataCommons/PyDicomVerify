@@ -54,7 +54,7 @@ def get_anatomy_info(anatomy_info, by_statistics: bool = True):
     return (bpe, ars)
 
 
-def quey_anatomy_from_tables(dcm_meta_table_name: str, dcm_auxiliary_table: str) -> dict:
+def query_anatomy_from_tables(dcm_meta_table_name: str, dcm_auxiliary_table: str) -> dict:
     anatomy_query = """
 WITH 
     T1 AS (

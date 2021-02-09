@@ -4,7 +4,7 @@ import os
 import shutil
 from rightdicom.dcmfix.study_dependent_patches import *
 from gcloud.BigQueryStuff import *
-def QueryReferencedStudySequence():
+def QueryReferencedStudySequence(source_table: str):
     q = """
     WITH UIDTABLE AS (
     SELECT  SOPINSTANCEUID, SOPCLASSUID FROM `{0}`),
@@ -28,7 +28,8 @@ def QueryReferencedStudySequence():
             FROM REFUIDTABLE FULL OUTER JOIN UIDTABLE ON UIDTABLE.SOPINSTANCEUID = REFUIDTABLE.REFERENCEDSOPINSTANCEUID 
             WHERE REFUIDTABLE.SOPINSTANCEUID IS NOT NULL AND UIDTABLE.SOPCLASSUID IS NOT NULL
             ORDER BY UIDTABLE.SOPINSTANCEUID DESC
-    """.format('canceridc-data.idc_views.dicom_all')
+    """.format(source_table)
+    # print(q)
     res = query_string_with_result(q)
     ref_sop_class_uids = {}
     if res is not None:

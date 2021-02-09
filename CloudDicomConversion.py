@@ -92,8 +92,10 @@ from multiprocessing import Manager
 from anatomy_query import (
     # FUNCTIONS
     get_anatomy_info,
-    quey_anatomy_from_tables,
+    query_anatomy_from_tables,
+    fix_SOPReferencedMacro,
 )
+from ref_query import QueryReferencedStudySequence
 # ---------------- Global Vars --------------------------:
 max_number_of_study_processes = 1
 max_number_of_fix_processes = MAX_NUMBER_OF_THREADS
@@ -101,6 +103,7 @@ max_number_of_up_down_load_processes = MAX_NUMBER_OF_THREADS
 max_number_of_bq_processes = MAX_NUMBER_OF_THREADS
 max_number_of_frameset_processes = MAX_NUMBER_OF_THREADS
 max_number_of_conversion_processes = MAX_NUMBER_OF_THREADS
+ref_info = None
 fix_report_tq = None
 issue_report_tq = None
 org_report_tq = None
@@ -175,6 +178,7 @@ def FixFile(dicom_file: str, dicom_fixed_file: str,
     # log_mine = []
     VER(dicom_file, log_david_pre, char_set=char_set)
     add_anatomy(ds, anatomy[0], anatomy[1], log_fix)
+    fix_SOPReferencedMacro(ds, log_fix, ref_info)
     fix_dicom(ds, log_fix)
     # fix_report = PrintLog(log_fix)
     pydicom.write_file(dicom_fixed_file, ds)
@@ -880,6 +884,7 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
     global issue_report_tq
     global org_report_tq
     global defect_report_tq
+    global ref_info
     if len(fix_queries) != 0:
         BuildQueries1(
             fix_report_tq,
@@ -1160,7 +1165,7 @@ def main(number_of_processes: int = None,
                 'idc_tcia_mvp_wave0',
                 'idc_tcia_dicom_metadata'),
         )
-    general_dataset_name = 'afshin_results_00_' + in_dicoms.BigQuery.Dataset
+    general_dataset_name = 'afshin_results_01_' + in_dicoms.BigQuery.Dataset
     fx_dicoms = DataInfo(
         Datalet('idc-tcia',      # Bucket
                 'us',
@@ -1236,7 +1241,7 @@ def main(number_of_processes: int = None,
         mf_dicoms.Bucket.Dataset,
         False)
     max_number = 2 ** 63 - 1
-    # max_number = 100
+    # max_number = 10
     if max_number < 2 ** 63 - 1:
         limit_q = 'LIMIT 50000'
     else:
@@ -1261,22 +1266,57 @@ def main(number_of_processes: int = None,
                         COLLECTION_TABLE.SOPINSTANCEUID = DICOMS.SOPINSTANCEUID
     """.format(in_dicoms.BigQuery.GetBigQueryStyleTableAddress(), limit_q,
                BigQueryInputCollectionInfo.GetBigQueryStyleTableAddress())
+    # study_query ="""
+    # WITH INSTS AS (
+    # SELECT 
+    #     FX.STUDYINSTANCEUID,
+    #     FX.SeriesInstanceUID,
+    #     FX.SOPINSTANCEUID,
+    #     MF.SOPInstanceUID AS KID_ID
+    # FROM `idc-tcia.afshin_results_00_idc_tcia_mvp_wave0.MULTIFRAME` AS MF 
+    # JOIN `idc-tcia.afshin_results_00_idc_tcia_mvp_wave0.ORIGINATED_FROM` AS ORG
+    # ON ORG.CHILD_SOPInstanceUID = MF.MediaStorageSOPInstanceUID
+    # JOIN `idc-tcia.afshin_results_00_idc_tcia_mvp_wave0.FIXED` AS FX 
+    # ON FX.SOPInstanceUID = ORG.PARENT_SOPInstanceUID),
+    # T1 AS (
+    #     SELECT DISTINCT(SeriesInstanceUID) 
+    #     FROM INSTS LIMIT 100
+    # )
+    # SELECT  
+    #         STUDYINSTANCEUID,
+    #         INSTS.SERIESINSTANCEUID,
+    #         INSTS.SOPINSTANCEUID,
+    #         KEYWORD,
+    #         META.GCS_Bucket
+    # FROM `idc-tcia.afshin_results_00_idc_tcia_mvp_wave0.ISSUE` AS ISSUE_T
+    # JOIN INSTS ON INSTS.KID_ID  = ISSUE_T.SOPInstanceUID
+    # JOIN `idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_auxilliary_metadata` AS META 
+    # ON META.SOPInstanceUID = INSTS.SOPInstanceUID
+    # JOIN T1 ON T1.SeriesInstanceUID = INSTS.SeriesInstanceUID
+    # WHERE TYPE='Error' AND UPPER(DCM_TABLE_NAME) LIKE '%MULTIFRAME' AND (KEYWORD = 'FrameType' OR KEYWORD = 'FrameType')
+
+    # """
 
     global anatomy_info
-    anatomy_info = quey_anatomy_from_tables(
+    logger = logging.getLogger(__name__)
+    logger.info('Now we query anatomy info')
+    anatomy_info = query_anatomy_from_tables(
         '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata`',
         '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_auxilliary_metadata`')
+    logger.info('Now we query ref sequence info')
+    ref_info = QueryReferencedStudySequence(
+        'idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata')
     uids: dict = {}
     # q_dataset_uid = '{}.{}.{}'.format(
     #     in_dicoms.BigQuery.ProjectID,
     #     in_dicoms.BigQuery.Dataset,
     #     in_dicoms.BigQuery.DataObject
     #     )
-    logger = logging.getLogger(__name__)
     max_number_of_studies = max_number
     max_number_of_series = max_number
     max_number_of_intances = max_number
     start_time = time.time()
+    logger.info('Now we query all studies to be fix/converted')
     studies = query_string_with_result(study_query)
     number_of_all_inst = studies.total_rows
     performance_history = []

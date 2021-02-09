@@ -92,9 +92,9 @@ def generalfix_RemoveEmptyCodes(
         for ddss, k in kw_to_be_removed:
             if k in ddss:
                 a = ddss[k]
-                print('{} is present and going to be removed'.format(k))
+                # print('{} is present and going to be removed'.format(k))
             else:
-                print('{} is not present and going to continue anyway'.format(k))
+                # print('{} is not present and going to continue anyway'.format(k))
                 continue
             if iod_dict is None or k not in iod_dict:
                 type_ = None
