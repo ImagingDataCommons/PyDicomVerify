@@ -224,21 +224,18 @@ def GetSeries(keyword: str, value: str):
     return (stuid, seuid, sopuid, cln_id)
 
 
-if __name__ == '__main__':
-    freeze_support()
+def fix_convert_series(attribute:str , value):
     project_id = 'idc-tcia'
     in_folders = ['../Tmp/in']
     out_folders = '../Tmp/out'
     out_folders = os.path.realpath(out_folders)
-    series_uid = '1.3.6.1.4.1.14519.5.2.1.8421.4012.101411629986802258841165081521'
-    sop_uid = '1.3.6.1.4.1.14519.5.2.1.4591.4003.327865519682719362018854760324'
     study_uid, series_uid, instance_uid, bucket_name = GetSeries(
-        'SOPInstanceUID', sop_uid)
+        attribute, value)
     # bucket_name = 'idc-tcia-tcga-blca'
     # study_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.292170230498352399648594035286'
     # series_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.316228581410299389630475076825'
     # instance_uid = '1.3.6.1.4.1.14519.5.2.1.6354.4016.161670751003027974162100121182'
-
+    in_folders[0] = '{}/{}/{}'.format(in_folders[0], study_uid, series_uid)
     log = []
     log_ver = []
     fix_: bool = True
@@ -275,6 +272,9 @@ if __name__ == '__main__':
                         python_char_set = python_encoding[dicom_char_set]
                     else:
                         python_char_set = 'ascii'
+                else:
+                    python_char_set = 'ascii'
+                
                 # try:
                 fx_files = ctools.Find(fix_folder, max_depth=1,
                                                 cond_function=ctools.is_dicom)
@@ -293,3 +293,14 @@ if __name__ == '__main__':
         for f in files:
             (v_file_pre, m_file_pre) = VER(
                 f, out_folder, log_ver, char_set=python_char_set)
+
+if __name__ == '__main__':
+    freeze_support()
+    sopuids = [
+        '1.3.6.1.4.1.14519.5.2.1.3023.4017.209704513302973727718328582207', 
+        '1.3.6.1.4.1.14519.5.2.1.1357.4011.281397539124178351223598058296', 
+        '1.3.6.1.4.1.14519.5.2.1.7695.1700.517751118054315065905894958987', 
+    ]
+    for i, uid in enumerate(sopuids, 1):
+        print('{}/{}) {}'.format(i, len(sopuids), uid))
+        fix_convert_series('SOPINSTANCEUID', uid)

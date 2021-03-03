@@ -9,7 +9,7 @@ import conversion as convtool
 from anatomy_query import (
     # FUNCTIONS
     get_anatomy_info,
-    query_anatomy_from_tables,
+    quey_anatomy_from_tables,
 )
 from gcloud.BigQueryStuff import (
     # FUNCTIONS
@@ -270,9 +270,9 @@ def DownloadAndFixOneInstance(kw, value):
     download_ : bool = True
     global anatomy_info
     global ref_info
-    ref_info = QueryReferencedStudySequence('canceridc-data.idc_views.dicom_all')
+    ref_info = QueryReferencedStudySequence()
     anatomy_info = {}
-    anatomy_info = query_anatomy_from_tables(
+    anatomy_info = quey_anatomy_from_tables(
         '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata`',
     '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_auxilliary_metadata`')
     for i in range(0, len(in_folders)):

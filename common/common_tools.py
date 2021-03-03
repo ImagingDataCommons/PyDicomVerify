@@ -45,10 +45,12 @@ def RecursiveFind(address, approvedlist, current_depth:int, max_depth = 0,
                 approvedlist.append(filename)
 
 
-def RunExe(arg_list, stderr_file, stdout_file, outlog=None,
+def RunExe(arg_list, stderr_file='', stdout_file='', outlog=None,
            errlog=None, env_vars=None, log=[],
-           char_encoding: str = 'ascii'):
+           char_encoding: str = 'ascii', log_command=False, log_std_out=False,
+           log_std_err=False):
     # print(str(arg_list))
+    logger = logging.getLogger(__name__)
     out_text = ""
     for a in arg_list:
         has_ws = False
@@ -60,6 +62,7 @@ def RunExe(arg_list, stderr_file, stdout_file, outlog=None,
             out_text += "\"{}\" ".format(a)
         else:
             out_text += "{} ".format(a)
+    logger.info('Running command: \n\t\t{}'.format(out_text))
     log.append(out_text)
     curr_env = os.environ.copy()
     if env_vars is not None:
@@ -73,6 +76,7 @@ def RunExe(arg_list, stderr_file, stdout_file, outlog=None,
         arg_list, shell = False, stdout = subprocess.PIPE,
         stderr = subprocess.PIPE, env=curr_env)
     _error = proc.stderr
+    
     if len(stderr_file) != 0:
         WriteStringToFile(
             stderr_file, _error.decode(char_encoding, 'backslashreplace'))
@@ -86,6 +90,10 @@ def RunExe(arg_list, stderr_file, stdout_file, outlog=None,
     if errlog is not None:
         errlog.extend(
             re.split("\n",  _error.decode(char_encoding, 'backslashreplace')))
+    if log_std_out:
+        logger.info('Commnad standard output:\n {}'.format(_output))
+    if log_std_err:
+        logger.info('Commnad standard error:\n {}'.format(_error))
     return proc.returncode
 
 

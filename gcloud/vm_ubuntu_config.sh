@@ -56,7 +56,7 @@ echo export GOOGLE_APPLICATION_CREDENTIALS=$Key_file >> "$(realpath ~/.bashrc)"
 sudo apt install xutils-dev
 dicom3_folder="$HOME/dicom3tools"
 rm -rfv $dicom3_folder
-dicom3_address="https://www.dclunie.com/dicom3tools/workinprogress/dicom3tools_1.00.snapshot.20200806153050.tar.bz2"
+dicom3_address="http://dclunie.com/dicom3tools/workinprogress/dicom3tools_1.00.snapshot.20201208085311.tar.bz2"
 file_name=${dicom3_address##*/}
 ws_name=$(echo $dicom3_address | grep -o '[0-9]\{8,\}')
 dl_folder="$dicom3_folder/$ws_name/downloaded"

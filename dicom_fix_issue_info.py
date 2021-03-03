@@ -593,7 +593,7 @@ class DicomFileInfo:
         return out.format(content)
 
     @staticmethod
-    def get_chaset_val_from_dataset(ds: Dataset = None) -> str:
+    def get_charset_val_from_dataset(ds: Dataset = None) -> str:
         python_char_set = 'ascii'
         if isinstance(ds, Dataset) and ds is not None:
             if "SpecificCharacterSet" in ds:
