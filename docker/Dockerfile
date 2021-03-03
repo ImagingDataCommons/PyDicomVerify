@@ -108,7 +108,7 @@ RUN mkdir "${HIDICOM_DIR}" \
 && git init \
 && git remote add -f origin https://github.com/afshinmessiah/highdicom.git \
 && git pull origin dev_pixelmed_converstion_00 \
-&& git checkout dev_pixelmed_converstion_00
+&& git checkout dev_pixelmed_converstion_00 \
 && pip3 install -e . \
 && cd -
 RUN mkdir "${FIXCODE_DIR}" \
