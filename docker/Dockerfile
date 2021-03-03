@@ -103,12 +103,11 @@ RUN pip install google-cloud-storage \
 
 ENV  FIXCODE_DIR 'fix'
 ENV  HIDICOM_DIR 'highdicom'
-RUN mkdir "${FIXCODE_DIR}" \
+RUN mkdir "${HIDICOM_DIR}" \
 && cd "${HIDICOM_DIR}" \
 && git init \
 && git remote add -f origin https://github.com/afshinmessiah/highdicom.git \
 && git pull origin dev_pixelmed_converstion_00 \
-&& cd high_dicom \
 && pip install -e . \
 && cd -
 RUN mkdir "${FIXCODE_DIR}" \
