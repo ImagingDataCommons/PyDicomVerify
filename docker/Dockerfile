@@ -102,8 +102,8 @@ RUN pip3 install google-cloud-storage \
 && pip3 install googleapis-common-protos 
 
 ENV  FIXCODE_DIR 'fix'
-RUN pip3 install git+https:https://github.com/afshinmessiah/highdicom.git@dev_pixelmed_converstion_00
-ENV  HIDICOM_DIR 'highdicom'
+RUN pip3 install git+https://github.com/afshinmessiah/highdicom.git@dev_pixelmed_converstion_00
+# ENV  HIDICOM_DIR 'highdicom'
 # RUN mkdir "${HIDICOM_DIR}" \
 # && cd "${HIDICOM_DIR}" \
 # && git init \
