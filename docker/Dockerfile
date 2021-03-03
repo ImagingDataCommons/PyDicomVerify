@@ -73,7 +73,6 @@ RUN apt-get update && apt-get install -yq --no-install-recommends \
  && apt-get update \
  && apt-get install -yq --no-install-recommends \
     google-cloud-sdk \
-
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
@@ -105,7 +104,7 @@ RUN pip install google-cloud-storage \
 ENV  FIXCODE_DIR 'fix'
 ENV  HIDICOM_DIR 'highdicom'
 RUN mkdir "${FIXCODE_DIR}" \
-&& cd "${FIXCODE_DIR}" \
+&& cd "${HIDICOM_DIR}" \
 && git init \
 && git remote add -f origin https://github.com/afshinmessiah/highdicom.git \
 && git pull origin dev_pixelmed_converstion_00 \
