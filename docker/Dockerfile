@@ -87,19 +87,31 @@ RUN apt update \
 
 
 # gcloud stuff -----------
-RUN pip3 install google-cloud-storage \
-&& pip3 install google-cloud-bigquery \
-&& pip3 install dicomweb-client \
-&& pip3 install google-auth-oauthlib \
-&& pip3 install google-api-core  \
-&& pip3 install google-api-python-client  \
-&& pip3 install google-auth  \
-&& pip3 install google-auth-httplib2  \
-&& pip3 install google-cloud-core  \
-&& pip3 install google-cloud-datastore  \
-&& pip3 install google-crc32c  \
-&& pip3 install google-resumable-media  \
-&& pip3 install googleapis-common-protos 
+# RUN pip3 install google-cloud-storage \
+# && pip3 install google-cloud-bigquery \
+# && pip3 install dicomweb-client \
+# && pip3 install google-auth-oauthlib \
+# && pip3 install google-api-core  \
+# && pip3 install google-api-python-client==1.10.0  \
+# && pip3 install google-auth  \
+# && pip3 install google-auth-httplib2  \
+# && pip3 install google-cloud-core  \
+# && pip3 install google-cloud-datastore  \
+# && pip3 install google-crc32c  \
+# && pip3 install google-resumable-media  \
+# && pip3 install googleapis-common-protos 
+
+RUN pip3 install google-api-core==1.22.0 \
+&& pip3 install google-api-python-client==1.10.0 \
+&& pip3 install google-auth==1.20.0 \
+&& pip3 install google-auth-httplib2==0.0.4 \
+&& pip3 install google-cloud-bigquery==1.26.1 \
+&& pip3 install google-cloud-core==1.4.3 \
+&& pip3 install google-cloud-datastore==1.13.2 \
+&& pip3 install google-cloud-storage==1.31.2 \
+&& pip3 install google-crc32c==1.0.0 \
+&& pip3 install google-resumable-media==1.1.0 \
+&& pip3 install googleapis-common-protos==1.52.0
 
 ENV  FIXCODE_DIR 'fix'
 RUN pip3 install git+https://github.com/afshinmessiah/highdicom.git@dev_pixelmed_converstion_00
