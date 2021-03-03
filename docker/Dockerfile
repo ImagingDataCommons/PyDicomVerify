@@ -87,19 +87,19 @@ RUN apt update \
 
 
 # gcloud stuff -----------
-RUN pip install google-cloud-storage \
-&& pip install google-cloud-bigquery \
-&& pip install dicomweb-client \
-&& pip install google-auth-oauthlib \
-&& pip install google-api-core  \
-&& pip install google-api-python-client  \
-&& pip install google-auth  \
-&& pip install google-auth-httplib2  \
-&& pip install google-cloud-core  \
-&& pip install google-cloud-datastore  \
-&& pip install google-crc32c  \
-&& pip install google-resumable-media  \
-&& pip install googleapis-common-protos 
+RUN pip3 install google-cloud-storage \
+&& pip3 install google-cloud-bigquery \
+&& pip3 install dicomweb-client \
+&& pip3 install google-auth-oauthlib \
+&& pip3 install google-api-core  \
+&& pip3 install google-api-python-client  \
+&& pip3 install google-auth  \
+&& pip3 install google-auth-httplib2  \
+&& pip3 install google-cloud-core  \
+&& pip3 install google-cloud-datastore  \
+&& pip3 install google-crc32c  \
+&& pip3 install google-resumable-media  \
+&& pip3 install googleapis-common-protos 
 
 ENV  FIXCODE_DIR 'fix'
 ENV  HIDICOM_DIR 'highdicom'
@@ -108,7 +108,8 @@ RUN mkdir "${HIDICOM_DIR}" \
 && git init \
 && git remote add -f origin https://github.com/afshinmessiah/highdicom.git \
 && git pull origin dev_pixelmed_converstion_00 \
-&& pip install -e . \
+&& git checkout dev_pixelmed_converstion_00
+&& pip3 install -e . \
 && cd -
 RUN mkdir "${FIXCODE_DIR}" \
 && cd "${FIXCODE_DIR}" \

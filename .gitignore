@@ -1,9 +1,10 @@
 # Byte-compiled / optimized / DLL files
-__pycache__/*
-*.mypy_cache/*
+__pycache__**
+*.mypy_cache**
+.mypy_cachedo
 *.py[cod]
 *$py.class
-Logs/*
+Logs**
 *.out
 # C extensions
 *.so
@@ -12,9 +13,9 @@ Logs/*
 
 
 #IntelliJ
-.idea/*
+.idea**
 
 #Visual Studio Code
-.vscode/*
+.vscode**
 .DS_Store
 
