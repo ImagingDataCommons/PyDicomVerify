@@ -30,7 +30,7 @@ def QueryReferencedStudySequence(source_table: str):
             ORDER BY UIDTABLE.SOPINSTANCEUID DESC
     """.format(source_table)
     # print(q)
-    res = query_string_with_result(q)
+    res = query_string_with_result(q, project_name='idc-dev-etl')
     ref_sop_class_uids = {}
     if res is not None:
         for row in res:

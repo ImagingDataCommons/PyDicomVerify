@@ -47,9 +47,9 @@ tables: dict = {
 }
 
 
-def create_table(table_id, schema):
+def create_table(table_id, schema, project_id: str = None):
     logger = logging.getLogger(__name__)
-    client = bigquery.Client()
+    client = bigquery.Client(project=project_id)
     t = bigquery.Table(table_id, schema)
     try:
         client.get_table(t)
@@ -60,11 +60,11 @@ def create_table(table_id, schema):
         logger.info('Table {} is created'.format(table_id))
 
 
-def delete_bq_dataset(dataset_id):
+def delete_bq_dataset(dataset_id, project_id: str = None):
     logger = logging.getLogger(__name__)
-    client = bigquery.Client()
+    client = bigquery.Client(project=project_id)
     client.delete_dataset(dataset_id, delete_contents=True)
-    if bq_dataset_exists(dataset_id):
+    if bq_dataset_exists(dataset_id, project_id):
         logger.info(
             'Bigquery dataset {} was not deleted successfully'.format(
                 dataset_id))
@@ -89,9 +89,9 @@ def list_bq_dataset_names(proj_id: str, ):
     return output
 
 
-def create_bq_dataset(dataset_id, region: str):
+def create_bq_dataset(dataset_id, region: str, project_id: str = None):
     logger = logging.getLogger(__name__)
-    client = bigquery.Client()
+    client = bigquery.Client(project=project_id)
     dataset = bigquery.Dataset(dataset_id)
     dataset.location = region
     dataset = client.create_dataset(dataset)  # Make an API request.
@@ -99,9 +99,9 @@ def create_bq_dataset(dataset_id, region: str):
         client.project, dataset.dataset_id))
 
 
-def bq_dataset_exists(dataset_id) -> bool:
+def bq_dataset_exists(dataset_id, project_id: str = None) -> bool:
     logger = logging.getLogger(__name__)
-    client = bigquery.Client()
+    client = bigquery.Client(project=project_id)
     try:
         client.get_dataset(dataset_id)  # Make an API request.
         logger.debug("Bigquery dataset {} already exists".format(dataset_id))
@@ -111,9 +111,10 @@ def bq_dataset_exists(dataset_id) -> bool:
         return False
 
 
-def query_string(q: str, table_name: str = '', silent: bool = True):
+def query_string(q: str, table_name: str = '',
+                 silent: bool = True, project_id: str = None):
     logger = logging.getLogger(__name__)
-    client = bigquery.Client()
+    client = bigquery.Client(project=project_id)
     job_config = bigquery.QueryJobConfig(priority=bigquery.QueryPriority.BATCH)
     try:
         # if table_name != '':
@@ -190,10 +191,10 @@ def stream_insert(table_id: str, rows_to_insert: list, schema):
         logger.error(err, exc_info=True)
 
 
-def query_string_with_result(q: str):
+def query_string_with_result(q: str, project_name: str = None):
      # print(q)
     logger = logging.getLogger(__name__)
-    client = bigquery.Client()
+    client = bigquery.Client(project_name)
     try:
         query_job = client.query(q)
         return query_job.result()
@@ -205,12 +206,13 @@ def query_string_with_result(q: str):
 
 
 def create_all_tables(dataset_id: str, dataset_region: str,
-                      rmove_if_exists: bool = False):
-    if bq_dataset_exists(dataset_id) and rmove_if_exists:
-        delete_bq_dataset(dataset_id)
-    create_bq_dataset(dataset_id, dataset_region)
+                      rmove_if_exists: bool = False, 
+                      project_id: str = None):
+    if bq_dataset_exists(dataset_id, project_id) and rmove_if_exists:
+        delete_bq_dataset(dataset_id, project_id)
+    create_bq_dataset(dataset_id, dataset_region, project_id=project_id)
     
-    client = bigquery.Client()
+    client = bigquery.Client(project=project_id)
     clear_tables = """
         IF EXISTS (SELECT  RT.ROUTINE_NAME
             FROM   `{0}`.INFORMATION_SCHEMA.ROUTINES  AS RT

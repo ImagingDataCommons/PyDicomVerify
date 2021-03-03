@@ -269,13 +269,13 @@ def BuildQueries(table_q_info: table_quota, qs: list, dataset_id: str,
             elem_q = q  # for the next round
             rn = 0
             if processes is None:
-                query_string(out_q[-1], '')
+                query_string(out_q[-1], '', project_id='idc-tcia')
             else:
                 # logger.info('putting in queue')
                 processes.queue.put(
                     (
                         query_string,
-                        (out_q[-1], '')
+                        (out_q[-1], '', True, 'idc-tcia')
                     )
                 )
     header = header_ptrn.format(table_q_info.get_table(), '{}')
@@ -1317,7 +1317,8 @@ def main(number_of_processes: int = None,
     max_number_of_intances = max_number
     start_time = time.time()
     logger.info('Now we query all studies to be fix/converted')
-    studies = query_string_with_result(study_query)
+    studies = query_string_with_result(
+        study_query, project_name=in_dicoms.BigQuery.ProjectID)
     number_of_all_inst = studies.total_rows
     performance_history = []
     number_of_inst_processed = 1

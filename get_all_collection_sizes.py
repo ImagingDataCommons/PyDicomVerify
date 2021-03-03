@@ -31,7 +31,7 @@ collection_query = """
                     COLLECTION_TABLE.SOPINSTANCEUID = DICOMS.SOPINSTANCEUID 
 """.format('`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata`', 
            '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_auxilliary_metadata`')
-q_results = query_string_with_result(collection_query)
+q_results = query_string_with_result(collection_query, project_name='idc-dev-etl')
 all_sizes = {}
 whole_siz = 0.0
 ths = pl.ThreadPool(pl.MAX_NUMBER_OF_THREADS, 'size')

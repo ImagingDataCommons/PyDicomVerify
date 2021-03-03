@@ -2,5 +2,8 @@
 // https://github.com/microsoft/vscode-dev-containers/tree/v0.158.0/containers/docker-from-docker
 {
 	"name": "mf-docker",
-	"dockerFile": "../docker/Dockerfile",
+    "build":{
+        "dockerfile": "../docker/Dockerfile",
+    }
+
 }

@@ -104,6 +104,8 @@ def download_parallel(project_id: str, bucket_name: str, st_uid: str,
     os.makedirs(destination_dir)
     ps = pl.ProcessPool(min(len(bl_names), process_number), 'down')
     for i, bl_name in enumerate(bl_names, 1):
+        if i > 30:
+            break
         file_name = '{:05d}.dcm'.format(i)
         ps.queue.put(
             (
@@ -209,7 +211,7 @@ def GetSeries(keyword: str, value: str):
         keyword, value,
         '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_auxilliary_metadata`')
     
-    studies = query_string_with_result(study_query)
+    studies = query_string_with_result(study_query, project_name='idc-dev-etl')
     stuid = None
     seuid = None
     sopuid = None

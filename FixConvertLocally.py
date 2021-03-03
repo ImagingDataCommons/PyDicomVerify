@@ -269,25 +269,25 @@ def BuildQueries(table_q_info: table_quota, qs: list, dataset_id: str,
             elem_q = q  # for the next round
             rn = 0
             if processes is None:
-                query_string(out_q[-1], '')
+                query_string(out_q[-1], '', project_id='idc-tcia')
             else:
                 # logger.info('putting in queue')
                 processes.queue.put(
                     (
                         query_string,
-                        (out_q[-1], '')
+                        (out_q[-1], '', True, 'idc-tcia')
                     )
                 )
     header = header_ptrn.format(table_q_info.get_table(), '{}')
     out_q.append(header.format(elem_q))
     if processes is None:
-        query_string(out_q[-1], '')
+        query_string(out_q[-1], '', project)
     else:
         # logger.info('putting in queue')
         processes.queue.put(
                     (
                         query_string,
-                        (out_q[-1], '')
+                        (out_q[-1], '', True, 'idc-tcia')
                     )
                 )
     if return_:
@@ -829,10 +829,10 @@ def partition_series(series_dict: dict, from_the_last: int):
 
 def main():
     series_paths = [
-        '/Users/afshin/Documents/work/Tmp/in/1.3.6.1.4.1.14519.5.2.1.1357.4011.599277854519315291094834984976/1.3.6.1.4.1.14519.5.2.1.1357.4011.335385811943069724469579113670',
-        '/Users/afshin/Documents/work/Tmp/in/1.3.6.1.4.1.14519.5.2.1.3023.4017.246199836259881483055596634768/1.3.6.1.4.1.14519.5.2.1.3023.4017.720525569168415113913096578859',
-        '/Users/afshin/Documents/work/Tmp/in/1.3.6.1.4.1.14519.5.2.1.4591.4003.140730945904429213927161894305/1.3.6.1.4.1.14519.5.2.1.4591.4003.486167804750109627510369135709',
-        '/Users/afshin/Documents/work/Tmp/in/1.3.6.1.4.1.14519.5.2.1.7695.1700.171220893861098819813996410099/1.3.6.1.4.1.14519.5.2.1.7695.1700.641077247274927806246916358599',
+        '/workspaces/Tmp/in/1.3.6.1.4.1.14519.5.2.1.1357.4011.599277854519315291094834984976/1.3.6.1.4.1.14519.5.2.1.1357.4011.335385811943069724469579113670',
+        '/workspaces/Tmp/in/1.3.6.1.4.1.14519.5.2.1.3023.4017.246199836259881483055596634768/1.3.6.1.4.1.14519.5.2.1.3023.4017.720525569168415113913096578859',
+        '/workspaces/Tmp/in/1.3.6.1.4.1.14519.5.2.1.4591.4003.140730945904429213927161894305/1.3.6.1.4.1.14519.5.2.1.4591.4003.486167804750109627510369135709',
+        '/workspaces/Tmp/in/1.3.6.1.4.1.14519.5.2.1.7695.1700.171220893861098819813996410099/1.3.6.1.4.1.14519.5.2.1.7695.1700.641077247274927806246916358599',
     ]
 
 
@@ -890,7 +890,8 @@ def main():
         'idc_tcia_auxilliary_metadata')
     create_all_tables('{}.{}'.format(
         fx_dicoms.BigQuery.ProjectID, fx_dicoms.BigQuery.Dataset),
-        fx_dicoms.BigQuery.CloudRegion, True)
+        fx_dicoms.BigQuery.CloudRegion, True, 
+        project_id=fx_dicoms.BigQuery.ProjectID)
     db_dataset_address =\
         fx_dicoms.BigQuery.GetBigQueryStyleDatasetAddress(False)
     global fix_report_tq

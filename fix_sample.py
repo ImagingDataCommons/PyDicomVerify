@@ -234,7 +234,7 @@ def GetSeries(keyword: str, value: str):
         keyword, value,
         '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_auxilliary_metadata`')
     
-    studies = query_string_with_result(study_query)
+    studies = query_string_with_result(study_query, project_name='idc-dev-etl')
     stuid = None
     seuid = None
     sopuid = None

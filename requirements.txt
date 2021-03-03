@@ -5,3 +5,4 @@ Pillow==7.1.2
 pydicom==2.0.0
 smmap==3.0.4
 XlsxWriter==1.2.8
+psutil==5.8.0

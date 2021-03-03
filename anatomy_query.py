@@ -142,7 +142,7 @@ ORDER BY
     CodeMeaning,
     CodingSchemeDesignator
     """.format(dcm_meta_table_name, dcm_auxiliary_table)
-    anatomies = query_string_with_result(anatomy_query)
+    anatomies = query_string_with_result(anatomy_query, project_name='idc-tcia')
     anatomy_info = {}
     for row in anatomies:
         st_uid = row.STUDYINSTANCEUID
