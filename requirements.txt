@@ -1,6 +1,5 @@
 gitdb==4.0.5
 GitPython==3.1.2
-highdicom==0.3.0
 numpy==1.18.4
 Pillow==7.1.2
 pydicom==2.0.0
