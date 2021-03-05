@@ -196,4 +196,4 @@ ORDER BY StudyInstanceUID, SeriesInstanceUID
             json.dump(
                 {json_var: vec_data}, fp, indent=4)
 
-# query_all('series', 'data', -1, 1000)
+query_all('gs_jsons/series', 'data', 20, 1000)

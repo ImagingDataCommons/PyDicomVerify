@@ -1,8 +1,5 @@
 import pydicom.datadict as Dic
 from pydicom.datadict import tag_for_keyword
-from pydicom.dataelem import(
-    # CLASSES
-    DataElement,)
 from pydicom.dataset import(
     # CLASSES
     Dataset,)
@@ -19,6 +16,7 @@ from rightdicom.dcmvfy.mesgtext_cc import(
     ErrorInfo,
     ErrorType,)
 from numpy import uint32
+from rightdicom.dcmvfy.data_elementx import DataElementX
 
 
 def LogElementAndModule(module: str, element: str) -> str:
@@ -312,7 +310,7 @@ def fix_ByAddingEmptyAttrib(ds: Dataset, element:str) -> str:
     ttag = tag_for_keyword(element)
     if ttag is not None:
         vr = Dic.dictionary_VR(ttag)
-        element = DataElement(ttag, vr, '')
+        element = DataElementX(ttag, vr, '')
         element.value = element.empty_value
         ds[ttag] = element
         reason += "fixed by adding empty attribute"

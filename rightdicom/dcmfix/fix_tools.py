@@ -10,11 +10,8 @@ import rightdicom.dcmvfy.validate_vr as validate_vr
 from pydicom.dataelem import(
     # FUNCTIONS
     DataElement_from_raw,
-    # CLASSES
-    DataElement,
     # VARIABLES
-    RawDataElement,
-    RawDataElement,)
+    RawDataElement)
 from pydicom.dataset import(
     # CLASSES
     Dataset,)
@@ -37,7 +34,7 @@ from rightdicom.dcmvfy.mesgtext_cc import(
 from rightdicom.dcmfix._iods import IOD_MODULE_MAP
 from rightdicom.dcmfix._modules import MODULE_ATTRIBUTE_MAP
 from rightdicom.dcmfix._sops import sopclassuid2hyphenated
-
+from rightdicom.dcmvfy.data_elementx import DataElementX
 
 
 def find_attribute_in_iod(ds, keyword: str) -> dict:
@@ -68,7 +65,7 @@ def get_full_attrib_list(ds) -> dict:
     return output
 
 
-def put_attribute_in_path(ds: Dataset, path: list, a: DataElement):
+def put_attribute_in_path(ds: Dataset, path: list, a: DataElementX):
     if not path:
         if a.tag not in ds:
             ds[a.tag] = a
@@ -82,7 +79,7 @@ def put_attribute_in_path(ds: Dataset, path: list, a: DataElement):
                 item = inner_sq.value[0]
             else:
                 item = Dataset()
-                new_element = DataElement(tg, vr, Sequence([item]))
+                new_element = DataElementX(tg, vr, Sequence([item]))
                 ds[tg] = new_element
             put_attribute_in_path(item, path, a)
                 
@@ -100,7 +97,7 @@ DefaultErrorMsg=''):
     return index
 
 
-def subfix_UpdateOrInsertCodeAttribute(seqelem:DataElement, index:int, kw:str,
+def subfix_UpdateOrInsertCodeAttribute(seqelem:DataElementX, index:int, kw:str,
     value:str) -> str:
     text_fun = lambda ds, att: '{}: {}\t'.format(att, ds[att])
     out_msg = ''
@@ -113,12 +110,12 @@ def subfix_UpdateOrInsertCodeAttribute(seqelem:DataElement, index:int, kw:str,
         out_msg = "{} = <{}> was added".format(kw, value)
         newtag = Dictionary.tag_for_keyword(kw)
         newvr = Dictionary.dictionary_VR(newtag)
-        elem = DataElement(newtag, newvr, value)
+        elem = DataElementX(newtag, newvr, value)
         seqelem.value[index].add(elem)
     return out_msg
 
 
-def subfix_UpdateSRTCodes(seqelem:DataElement, log:list) -> bool:
+def subfix_UpdateSRTCodes(seqelem:DataElementX, log:list) -> bool:
     fixed = False
     msg = mesgtext_cc.ErrorInfo("General Fix - Upadate old snomed codes to SCT")
     items_to_be_deleted = []
@@ -192,7 +189,7 @@ def subfix_UpdateSRTCodes(seqelem:DataElement, log:list) -> bool:
     return fixed
 
 
-def subfix_checkandfixBasicCodeSeq(seqelem:DataElement, log:list) -> bool:
+def subfix_checkandfixBasicCodeSeq(seqelem:DataElementX, log:list) -> bool:
     fixed = False
     msg = mesgtext_cc.ErrorInfo("General Fix - Remove empty code seq ")
     items_to_be_deleted = []
@@ -258,7 +255,7 @@ def subfix_checkandfixBasicCodeSeq(seqelem:DataElement, log:list) -> bool:
                 kw = "CodingSchemeDesignator"
                 new_tag = Dictionary.tag_for_keyword(kw)
                 new_vr = Dictionary.dictionary_VR(new_tag)
-                new_elem = DataElement(new_tag, new_vr, "99LOCAL")
+                new_elem = DataElementX(new_tag, new_vr, "99LOCAL")
                 item[kw] = new_elem
                 msg.fix = "An element of CodingSchemeDesignator with value "\
                         "<99LOCAL> in item {} of {} was added".format(
@@ -296,7 +293,7 @@ def subfix_FindAndReplaceAttribValue(
                 if elem.tag != ttag:
                     continue
             if type(elem) == pydicom.dataelem.RawDataElement:
-                elem = pydicom.dataelem.DataElement_from_raw(elem)
+                elem = pydicom.dataelem.DataElementX_from_raw(elem)
             if type(elem.value) == MultiValue:
                 v = elem.value
             else:
@@ -332,7 +329,7 @@ def subfix_FindAndReplaceAttribValue(
     return replaced_global
 
 
-def subfix_CodeSeqItem2txt(seq_elem:DataElement, index:int) -> str:
+def subfix_CodeSeqItem2txt(seq_elem:DataElementX, index:int) -> str:
     code_kws = ['CodeValue', "CodeMeaning", "CodingSchemeDesignator",
     "LongCodeValue", "URNCodeValue", "CodingSchemeVersion"]
     code_state = ''
@@ -349,7 +346,7 @@ def subfix_CodeSeqItem2txt(seq_elem:DataElement, index:int) -> str:
     return code_state
 
 
-def subfix_HasTrailingNulls(elem: DataElement) -> bool:
+def subfix_HasTrailingNulls(elem: DataElementX) -> bool:
     fixed = False
     if elem.is_empty:
         return False
@@ -427,7 +424,7 @@ def subfix_AddOrChangeAttrib(ds:Dataset, log:list, error_regexp:str,
         else:
             vr = Dictionary.dictionary_VR(t)
             vm = 1
-            elem = DataElement(t, vr, value)
+            elem = DataElementX(t, vr, value)
             ds[keyword] = elem
             fixed = True
     return fixed
@@ -440,7 +437,7 @@ def subfix_AddMissingAttrib(ds:Dataset, log:list, keyword:str, value) -> bool:
     return subfix_AddOrChangeAttrib(ds, log, regexp, fix_m, keyword, value)
 
 
-def subfix_ReplaceSlashWithBackslash(attrib:DataElement, log:list) -> bool:
+def subfix_ReplaceSlashWithBackslash(attrib:DataElementX, log:list) -> bool:
     fixed = False
     msg = mesgtext_cc.ErrorInfo(
         'General Fix -', '')
@@ -476,7 +473,7 @@ def LoopOverAllAtribsAndRemoveIfConditionIsTrue(ds: Dataset, cond, log:list, err
     for key, a in ds.items():
         a = ds[key]
         if type(a) == pydicom.dataelem.RawDataElement:
-            a = pydicom.dataelem.DataElement_from_raw(a)
+            a = pydicom.dataelem.DataElementX_from_raw(a)
         if type(a.value) == Sequence:
             for item in a.value:
                 fixed = fixed or LoopOverAllAtribsAndRemoveIfConditionIsTrue(
@@ -533,8 +530,8 @@ def CodeSeqItemGenerator(code_value: str, code_meaning: str,
     cv = Dictionary.tag_for_keyword('CodeValue')
     cm = Dictionary.tag_for_keyword('CodeMeaning')
     cs = Dictionary.tag_for_keyword('CodingSchemeDesignator')
-    output[cv] = DataElement(cv, Dictionary.dictionary_VR(cv), code_value)
-    output[cm] = DataElement(cm, Dictionary.dictionary_VR(cm), code_meaning)
-    output[cs] = DataElement(
+    output[cv] = DataElementX(cv, Dictionary.dictionary_VR(cv), code_value)
+    output[cm] = DataElementX(cm, Dictionary.dictionary_VR(cm), code_meaning)
+    output[cs] = DataElementX(
         cs, Dictionary.dictionary_VR(cs), coding_shceme_designator)
     return output

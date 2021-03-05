@@ -61,7 +61,9 @@ def ElementPresentInPath(ds: Dataset, tagname: str) -> bool:
     if tagname in ds:
         return True
     if type(ds) == Sequence:
-        print("")
+        for inner_item in ds:
+            return ElementPresentInPath(inner_item, tagname)
+
     for d in ds.items():
         current_elem = d[1]
         current_value = current_elem.value

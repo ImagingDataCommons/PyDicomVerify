@@ -1826,7 +1826,9 @@ def get_not_used_list(ds: Dataset, notused: list, notrecognized: list):
         try:
             used = a.used_in_verification
         except(BaseException):
-            print(a.value)
+            print(
+                'The attribute is not DataElementX'
+                ' type it is {} type --> {}'.format(type(a), a))
         if not used and isRepeatingGroup(key):
             tt = getRepeatingBase(key)
             if getRepeatingBase(tt) in ds:

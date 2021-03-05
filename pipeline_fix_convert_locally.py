@@ -916,12 +916,8 @@ def create_dicomstores(dataset_name: str):
         mf_dicoms.BigQuery.DataObject)
 
 
-def main(dataset_name):
-    series_paths = [
-        '/workspaces/Tmp/in/1.3.6.1.4.1.14519.5.2.1.1357.4011.599277854519315291094834984976/1.3.6.1.4.1.14519.5.2.1.1357.4011.335385811943069724469579113670',
-        '/workspaces/Tmp/in/1.3.6.1.4.1.14519.5.2.1.3023.4017.246199836259881483055596634768/1.3.6.1.4.1.14519.5.2.1.3023.4017.720525569168415113913096578859',
-        '/workspaces/Tmp/in/1.3.6.1.4.1.14519.5.2.1.7695.1700.171220893861098819813996410099/1.3.6.1.4.1.14519.5.2.1.7695.1700.641077247274927806246916358599',
-    ]
+def main(dataset_name, series_list: list):
+    
     fx_dicoms, mf_dicoms = create_datainfos(dataset_name)
 
     home = os.path.expanduser("~")
@@ -965,14 +961,19 @@ def main(dataset_name):
         rm(fx_local_series_path)
     if os.path.exists(mf_local_study_path):
         rm(mf_local_study_path)
-    for in_local_series_path in series_paths:
-        files = [os.path.join(in_local_series_path, i) for i in os.listdir(
-            in_local_series_path) if i.endswith('.dcm')]
+    for in_local_series_path in series_list:
+        # files = [os.path.join(in_local_series_path, i) for i in os.listdir(
+        #     in_local_series_path) if i.endswith('.dcm')]
+
         outs = fix_convert_one_sereis(
-            files,
+            in_local_series_path['SERIES_PATH'],
             fx_local_series_path,
             mf_local_study_path,
-            fx_dicoms, mf_dicoms, {}, input_table_name)
+            fx_dicoms, mf_dicoms, {}, input_table_name,
+            in_local_series_path['COLLECTION_ID'],
+            in_local_series_path['INSTANCES'],
+            in_local_series_path['SeriesInstanceUID'],
+            in_local_series_path['StudyInstanceUID'])
         fq, isq, orq, flq, fs, ms = outs
         fix_queries.extend(fq)
         issue_queries.extend(isq)
@@ -1026,9 +1027,12 @@ def main(dataset_name):
 #     chunk *= 2
 #     main(th, ch)
 if __name__ == '__main__':
+    with open('gitexcluded_local/0001.json') as jfile:
+        jcontent = json.load(jfile)
+    series = jcontent['data']
     status_logger = Periodic(log_status, None, 60)
     status_logger.start()
     try:
-        main('afshin_terra_test00')
+        main('afshin_terra_test00', series)
     finally:
         status_logger.kill_timer()

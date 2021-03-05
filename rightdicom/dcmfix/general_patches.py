@@ -10,8 +10,6 @@ from pydicom.datadict import (
 from pydicom.dataelem import (
     # FUNCTIONS
     DataElement_from_raw,
-    # CLASSES
-    DataElement,
     # VARIABLES
     RawDataElement,
     msg,
@@ -57,6 +55,7 @@ from rightdicom.dcmvfy.sopclc_h import (
     MRImageStorageSOPClassUID,
     PETImageStorageSOPClassUID,
 )
+from rightdicom.dcmvfy.data_elementx import DataElementX
 iod_dict = None
 
 def generalfix_RemoveEmptyCodes(
@@ -214,7 +213,7 @@ def generalfix_CheckAndFixModality(ds:Dataset, log:list) -> bool:
     else:
         modality = ''
     if modality == '' or modality != modality_sop[sop_class]:
-        ds [mod_tg]= DataElement(
+        ds [mod_tg]= DataElementX(
             mod_tg, dictionary_VR(mod_tg), modality_sop[sop_class])
         msg = ErrorInfo()
         msg.msg = 'General Fix - {}'.format("<Modality> is wrong or absent")
@@ -235,7 +234,7 @@ def generalfix_AddPresentationLUTShape(ds:Dataset, log:list) -> bool:
     if pres_lut_shape_tg in ds:
         pres_lut_shape_a = ds[pres_lut_shape_tg]
     else:
-        pres_lut_shape_a = DataElement(
+        pres_lut_shape_a = DataElementX(
             pres_lut_shape_tg, dictionary_VR(pres_lut_shape_tg), '')
     old_pls = pres_lut_shape_a.value
     if photo_in_v == 'MONOCHROME2' and old_pls != 'IDENTITY':
@@ -320,7 +319,7 @@ def generalfix_VM1(ds, log):
         if (a.VR == 'SQ'):
             continue
         concat = '/'.join(a.value)
-        ds[key] = DataElement(key, a.VR, concat)
+        ds[key] = DataElementX(key, a.VR, concat)
         fixed = True
         err = "<{}> {}".format(
             a.keyword, validate_vr.tag2str(a.tag))
@@ -449,7 +448,7 @@ def generalfix_DS_Precision(ds, log):
     # if pres_lut_shape_tg in ds:
     #     pres_lut_shape_a = ds[pres_lut_shape_tg]
     # else:
-    #     pres_lut_shape_a = DataElement(
+    #     pres_lut_shape_a = DataElementX(
     #         pres_lut_shape_tg, dictionary_VR(pres_lut_shape_tg), '')
     # old_pls = pres_lut_shape_a.value
     # if photo_in_v == 'MONOCHROME2' and old_pls != 'IDENTITY':

@@ -96,6 +96,7 @@ def download_parallel(project_id: str, bucket_name: str, st_uid: str,
     bl_lists = list_blobs(project_id, bucket_name, prefix)
     for bl in bl_lists:
         bl_names.append(bl.name)
+        print(bl.name)
     logger.info('Number of blobs to be downloaded {}'.format(len(bl_names)))
     if len(bl_names) == 0:
         return
@@ -283,6 +284,7 @@ def fix_convert_series(attribute:str , value):
         else:
             fx_files = in_files
             fix_folder = in_folder
+        print('before coversion')
         SOPClassList = convtool.ConvertByHighDicomNew(fix_folder, out_folder, log)
         for n, f in enumerate(SOPClassList, 0):
             output_file_pattern = "hd{:03d}.dcm"

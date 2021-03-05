@@ -9,7 +9,7 @@ from pydicom.dataset import(
     # CLASSES
     Dataset,
 )
-from pydicom.dataelem import DataElement
+from rightdicom.dcmvfy.data_elementx import DataElementX
 from rightdicom.dcmfix.fix_tools import (
     # FUNCTIONS
     subfix_AddMissingAttrib,
@@ -245,7 +245,7 @@ def fix_ReferencedImageSequence(ds, log: list) -> bool:
                 "<SOPInstanceUID> instead of <ReferencedSOPInstanceUID>".format(i + 1, len(val))
             msg.fix = "fixed by changing the attribute into <ReferencedSOPInstanceUID>"
             log.append(msg.getWholeMessage())
-            item[ref_inst_tg] = DataElement(
+            item[ref_inst_tg] = DataElementX(
                 ref_inst_tg, 'UI', item['SOPInstanceUID'].value) 
             del item['SOPInstanceUID']
             fixed = True
@@ -255,7 +255,7 @@ def fix_ReferencedImageSequence(ds, log: list) -> bool:
                 "<SOPClassUID> instead of <ReferencedSOPClassUID>".format(i + 1, len(val))
             msg.fix = "fixed by changing the attribute into <ReferencedSOPClassUID>"
             log.append(msg.getWholeMessage())
-            item[ref_cls_tg] = DataElement(
+            item[ref_cls_tg] = DataElementX(
                 ref_cls_tg, 'UI', item['SOPClassUID'].value) 
             del item['SOPClassUID']
             fixed = True

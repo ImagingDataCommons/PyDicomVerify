@@ -1,4 +1,5 @@
-from pydicom import Dataset, DataElement
+from pydicom import Dataset
+from rightdicom.dcmvfy.data_elementx import DataElementX
 from pydicom.datadict import tag_for_keyword, keyword_for_tag, dictionary_VR
 from pydicom.sequence import Sequence as DicomSequence
 from rightdicom.dcmvfy.mesgtext_cc import (
@@ -30,7 +31,7 @@ def add_anatomy(ds: Dataset,
         new_bpe, new_ars = CorrectAnatomicInfo(old_bpe, old_ars)
     
     if old_bpe != new_bpe and new_bpe is not None:
-        bpe_a = DataElement(bpe, dictionary_VR(bpe), new_bpe)
+        bpe_a = DataElementX(bpe, dictionary_VR(bpe), new_bpe)
         old_bpe_txt = old_bpe if bpe not in ds else ds[bpe].value
         ds[bpe] = bpe_a
         msg = ErrorInfo()
@@ -47,7 +48,7 @@ def add_anatomy(ds: Dataset,
             old_item_text = 'None'
         new_item = CodeSeqItemGenerator(
             str(code_value), code_meaning, coding_scheme_designator)
-        ars_a = DataElement(ars, 'SQ', DicomSequence([new_item,]))
+        ars_a = DataElementX(ars, 'SQ', DicomSequence([new_item,]))
         ds[ars] = ars_a
         msg = ErrorInfo()
         msg.msg = 'General Fix - {}'.format(
@@ -157,7 +158,7 @@ def AddLaterality(ds: Dataset, log: list):
     if AddImageLateralityForBoth:
         kw = 'ImageLaterality'
         tg = tag_for_keyword(kw)
-        imglaterality = DataElement(tg, 'CS', 'B')
+        imglaterality = DataElementX(tg, 'CS', 'B')
         ds[tg] = imglaterality
         msg = ErrorInfo()
         msg.msg = 'General Fix - {}'.format(
