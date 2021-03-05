@@ -5,7 +5,17 @@ import shutil
 from gcloud.BigQueryStuff import *
 import json
 
-def query_all() -> dict:
+def query_all(json_file: str = 'testfile', 
+              json_var: str = 'data' ,
+              mx_number_of_series_in_file: int = -1,
+              mx_number_of_series: int = -1) -> dict:
+    logger = logging.getLogger(__name__)
+    parent = os.path.dirname(json_file)
+    if parent and not os.path.exists(parent):
+        os.makedirs(parent)
+    Limit = ''
+    if mx_number_of_series > 0:
+        Limit = 'LIMIT {}'.format(mx_number_of_series)
     query = """
 WITH DISTINGUISHED AS(
         SELECT  SOPInstanceUID,
@@ -143,11 +153,10 @@ GROUP BY
         DISTINGUISHED.StudyInstanceUID, 
         DISTINGUISHED.SeriesInstanceUID
 ORDER BY StudyInstanceUID, SeriesInstanceUID
-    """
-    # print(query)
-    input_var_name = 'xxx'
-    json_file_name = 'test'
-    client = bigquery.Client()
+{}
+    """.format(Limit)
+    logger.info(query)
+    client = bigquery.Client('idc-tcia')
     query_job = client.query(query)
     q_results = query_job.result()
     content = ''
@@ -166,25 +175,25 @@ ORDER BY StudyInstanceUID, SeriesInstanceUID
             data1['SERIES_PATH'] = row.SERIES_PATH
             vec_data.append(data1)
             size = len(
-                json.dumps({input_var_name: vec_data}, indent=4)) * sz_factor
+                json.dumps({json_var: vec_data}, indent=4)) * sz_factor
             size_1 = len(
-                json.dumps({input_var_name: vec_data[0:-1]}, indent=4)) * sz_factor            
-            if size > 0.99 * size_limit:
-                filename = '{}_{:03d}.json'.format(
-                    json_file_name, file_counter)
+                json.dumps({json_var: vec_data[0:-1]}, indent=4)) * sz_factor            
+            if size > 0.99 * size_limit or (mx_number_of_series_in_file > 0 and 
+                len(vec_data) > mx_number_of_series_in_file):
+                filename = '{}_{:08d}.json'.format(
+                    json_file, file_counter)
                 with open(filename, 'w') as fp:
                     json.dump(
-                        {input_var_name: vec_data[0:-1]}, fp, indent=4)
+                        {json_var: vec_data[0:-1]}, fp, indent=4)
                 sz = os.path.getsize(filename)
                 sz_factor = sz / size_1
                 file_counter += 1
+                print('number of series: {}'.format(len(vec_data)))
                 vec_data = [vec_data[-1]]
         
-        filename = '{}_{:03d}.json'.format(json_file_name, file_counter)
+        filename = '{}_{:08d}.json'.format(json_file, file_counter)
         with open(filename, 'w') as fp:
             json.dump(
-                {input_var_name: vec_data}, fp, indent=4)
-query_all()
+                {json_var: vec_data}, fp, indent=4)
 
-
-    
+# query_all('series', 'data', -1, 1000)

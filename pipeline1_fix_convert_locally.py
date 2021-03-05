@@ -420,11 +420,13 @@ def get_rows_and_insert_ids(q_list: list, insert_id_start: int):
 
 
 def fix_convert_one_sereis(
-        in_local_series_path: str,
+        original_files: list,
         fx_local_series_path: str,
         mf_local_study_path: str,
-        in_gc_info, fx_gc_info, mf_gc_info, anatomy: tuple,
+        fx_gc_info, mf_gc_info, anatomy: tuple,
+        in_bgq_table_name: str,
         in_collection_name: str = '',
+        in_instance_uid: list = [],
         in_series_uid: str = '',
         in_study_uid: str = '',
        ):
@@ -434,14 +436,13 @@ def fix_convert_one_sereis(
     except AttributeError:
         fix_convert_one_sereis.counter = 1
     
-    if len(in_local_series_path) == 0:
+    if len(original_files) == 0:
         logger.debug('The input is empty')
-        return([], [], [], [], 0, 0, 0, 0, 0, 0)
+        return([], [], [], [], 0, 0)
     current_pid = os.getpid()
     insert_id = int('1{:05d}{:04d}00000'.format(
         current_pid,fix_convert_one_sereis.counter)
         )
-    in_table_name = in_gc_info.BigQuery.GetBigQueryStyleTableAddress(False)
     fx_table_name = fx_gc_info.BigQuery.GetBigQueryStyleTableAddress(False)
     mf_table_name = mf_gc_info.BigQuery.GetBigQueryStyleTableAddress(False)
     single_frames = []
@@ -451,14 +452,10 @@ def fix_convert_one_sereis(
     flaw_queries = []
 
     defective_study_series = []
-    downloaded_files_size = 0
     fixed_files_size = 0
     mf_files_size = 0
-    upload_files_size = 0
-    original_files = [
-        os.path.join(in_local_series_path, f) for f in os.listdir(
-        in_local_series_path) if f.endswith('.dcm')
-        ]
+    in_local_series_path = os.path.dirname(original_files[0])
+    
     if not os.path.exists(fx_local_series_path):
         os.makedirs(fx_local_series_path)
     if not os.path.exists(mf_local_study_path):
@@ -466,31 +463,14 @@ def fix_convert_one_sereis(
 
     
     for obj in original_files:
-        # success = download_blob(
-        #     in_gc_info.Bucket.ProjectID,
-        #     obj.bucket_name
-        #     obj.blob_address,
-        #     obj.file_path)
-        # logger.debug('Start downloading {}'.format(obj.file_path))
-        # downloaded_files_size += os.path.getsize(obj.file_path)
-        # if not success:
-        #     flaw_queries.append(flaw_query_form.format(
-        #             obj.bucket_name, obj.study_uid,
-        #             obj.series_uid, obj.instance_uid,
-        #             'DOWNLOAD')
-        #         )
-        #     rm((in_series_dir,), False)
-        #     return([], [], [], flaw_queries, 0, 0,
-        #             downloaded_files_size, fixed_files_size,
-        #             mf_files_size, upload_files_size)
-        # I'm using downloaded file uids for fix files
+        
         fx_file_path = obj.replace(in_local_series_path, fx_local_series_path)
         (fix_q, iss_q, org_q, flaw,
         fx_instance_uid, fx_series_uid,
         fx_study_uid) = fix_one_instance(
             obj,
             fx_file_path,
-            in_table_name, fx_table_name, anatomy,
+            in_bgq_table_name, fx_table_name, anatomy,
             in_collection_name, in_series_uid, in_study_uid)
         bgq_db_id = fx_gc_info.BigQuery.GetBigQueryStyleDatasetAddress(False)
         fix_report_table_id = '{}.{}'.format(bgq_db_id, 'FIX_REPORT')
@@ -519,9 +499,7 @@ def fix_convert_one_sereis(
     # The code is not gonna proceed to conversion if there is any fix issue
     if len(flaw_queries) != 0:
         # rm((in_local_series_path, fx_local_series_path), False)
-        return([], [], [], flaw_queries, 0, 0,
-                downloaded_files_size, fixed_files_size,
-                mf_files_size, upload_files_size)
+        return([], [], [], flaw_queries, 0, 0)
     # Now I want to extract framesets from fixed sereis:
     
     (fsets, mf_series_uid, mf_series_dir) = frameset_for_one_series(
@@ -585,11 +563,12 @@ def fix_convert_one_sereis(
                 issue_queries.extend(q_iss)
     # Now I can remove the series:
     # rm((in_series_dir, fx_series_dir, mf_series_dir), False)
-    logging.info('fixed = {}, converted = {} orig = {}'.format(len(in_local_series_path), number_of_all_converted_mf, len(origin_queries)))
+    logging.info('fixed = {}, converted = {} orig = {}'.format(
+        len(in_local_series_path),
+        number_of_all_converted_mf,
+        len(origin_queries)))
     return(fix_queries, issue_queries, origin_queries, flaw_queries,
-            len(fsets), number_of_all_converted_mf,
-            downloaded_files_size, fixed_files_size,
-            mf_files_size, upload_files_size)
+            len(fsets), number_of_all_converted_mf)
 
 
 def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
@@ -695,6 +674,12 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
             )
             q_sz += 1
     tic = time.time()
+    fix_queries = []
+    issue_queries = []
+    origin_queries = []
+    flaw_queries = []
+    frameset_number = 0
+    multiframe_number = 0
     for ii, job_let in enumerate(jobs, 1):
         logger.info('{}/{} of job bunches'.format(ii, len(jobs)))
         processes = ProcessPool(proc_num, 'd+f+c+u')
@@ -827,92 +812,43 @@ def partition_series(series_dict: dict, from_the_last: int):
     return(fist_part, second_part)
 
 
-def main():
-    series_paths = [
-        '/workspaces/Tmp/in/1.3.6.1.4.1.14519.5.2.1.1357.4011.599277854519315291094834984976/1.3.6.1.4.1.14519.5.2.1.1357.4011.335385811943069724469579113670',
-        '/workspaces/Tmp/in/1.3.6.1.4.1.14519.5.2.1.3023.4017.246199836259881483055596634768/1.3.6.1.4.1.14519.5.2.1.3023.4017.720525569168415113913096578859',
-        '/workspaces/Tmp/in/1.3.6.1.4.1.14519.5.2.1.4591.4003.140730945904429213927161894305/1.3.6.1.4.1.14519.5.2.1.4591.4003.486167804750109627510369135709',
-        '/workspaces/Tmp/in/1.3.6.1.4.1.14519.5.2.1.7695.1700.171220893861098819813996410099/1.3.6.1.4.1.14519.5.2.1.7695.1700.641077247274927806246916358599',
-    ]
-
-
-
-
-    home = os.path.expanduser("~")
-    pid = os.getpid()
-    local_tmp_folder = os.path.join(home, "Tmp-{:05d}".format(pid))
-    in_dicoms = DataInfo(
+def create_datainfos(dataset_name: str = 'test_dataset00') -> tuple:
+    fx = DataInfo(
         Datalet('idc-tcia',      # Bucket
                 'us',
-                '', ''),
-        Datalet('idc-dev-etl',      # Dicom Store
-                'us-central1',
-                'idc_tcia_mvp_wave0',
-                'idc_tcia'),
-        Datalet('idc-dev-etl',      # Bigquery
-                'us-central1',
-                'idc_tcia_mvp_wave0',
-                'idc_tcia_dicom_metadata'),
-        )
-    general_dataset_name = 'afshin_terra_00_' + in_dicoms.BigQuery.Dataset
-    fx_dicoms = DataInfo(
-        Datalet('idc-tcia',      # Bucket
-                'us',
-                general_dataset_name,
+                dataset_name,
                 'FIXED'),
         Datalet('idc-tcia',      # Dicom Store
                 'us',
-                general_dataset_name,
+                dataset_name,
                 'FIXED'),
         Datalet('idc-tcia',      # Bigquery
                 'us',
-                general_dataset_name,
+                dataset_name,
                 'FIXED')
         )
-    mf_dicoms = DataInfo(
+    mf = DataInfo(
         Datalet('idc-tcia',      # Bucket
                 'us',
-                general_dataset_name,
+                dataset_name,
                 'MULTIFRAME'),
         Datalet('idc-tcia',      # Dicom Store
                 'us',
-                general_dataset_name,
+                dataset_name,
                 'MULTIFRAME'),
         Datalet('idc-tcia',      # Bigquery
                 'us',
-                general_dataset_name,
+                dataset_name,
                 'MULTIFRAME')
         )
-    BigQueryInputCollectionInfo = Datalet(
-        'idc-dev-etl',      # Bigquery
-        'us',
-        'idc_tcia_mvp_wave0',
-        'idc_tcia_auxilliary_metadata')
+    return (fx, mf)
+
+def create_bucket_tables(dataset_name: str):
+    fx_dicoms, mf_dicoms = create_datainfos(dataset_name)
     create_all_tables('{}.{}'.format(
         fx_dicoms.BigQuery.ProjectID, fx_dicoms.BigQuery.Dataset),
         fx_dicoms.BigQuery.CloudRegion, True, 
         project_id=fx_dicoms.BigQuery.ProjectID)
-    db_dataset_address =\
-        fx_dicoms.BigQuery.GetBigQueryStyleDatasetAddress(False)
-    global fix_report_tq
-    global issue_report_tq
-    global org_report_tq
-    global defect_report_tq
-    fix_report_tq = table_quota(
-        1500, '{}.{}'.format(
-            db_dataset_address, 'FIX_REPORT'), schema_fix)
-    issue_report_tq = table_quota(
-        1500, '{}.{}'.format(
-            db_dataset_address, 'ISSUE'), schema_issue)
-    org_report_tq = table_quota(
-        1500, '{}.{}'.format(
-            db_dataset_address, 'ORIGINATED_FROM'),
-        schema_originated_from)
-    defect_report_tq = table_quota(
-        1500, '{}.{}'.format(
-            db_dataset_address, 'DEFECTIVE'),
-        schema_originated_from)
-
     create_bucket(
         fx_dicoms.Bucket.ProjectID,
         fx_dicoms.Bucket.Dataset,
@@ -921,28 +857,10 @@ def main():
         mf_dicoms.Bucket.ProjectID,
         mf_dicoms.Bucket.Dataset,
         False)
-    in_local_series_path = series_paths[0]
-    fx_local_series_path = '/Users/afshin/Documents/work/Tmp/fx'
-    mf_local_study_path = '/Users/afshin/Documents/work/Tmp/mf'
-    if os.path.exists(fx_local_series_path):
-        rm(fx_local_series_path)
-    if os.path.exists(mf_local_study_path):
-        rm(mf_local_study_path)
-    fix_convert_one_sereis(
-        in_local_series_path,
-        fx_local_series_path,
-        mf_local_study_path,
-        in_dicoms, fx_dicoms, mf_dicoms, {})
-    ctools.RunExe([
-        'gsutil', 'cp', '-r', fx_local_series_path, 
-        'gs://{}/{}'.format(fx_dicoms.Bucket.Dataset,
-        fx_dicoms.Bucket.DataObject) ],
-        log_std_out=True, log_std_err=True)
-    ctools.RunExe([
-        'gsutil', 'cp', '-r', mf_local_study_path, 
-        'gs://{}/{}'.format(mf_dicoms.Bucket.Dataset,
-            mf_dicoms.Bucket.DataObject) ],
-        log_std_out=True, log_std_err=True)
+
+
+def create_dicomstores(dataset_name: str):
+    fx_dicoms, mf_dicoms = create_datainfos(dataset_name)
     # --> recreated dicomstores
     recreate_dicom_store(
         fx_dicoms.DicomStore.ProjectID,
@@ -996,7 +914,109 @@ def main():
         mf_dicoms.BigQuery.ProjectID,
         mf_dicoms.BigQuery.Dataset,
         mf_dicoms.BigQuery.DataObject)
+
+
+def main(dataset_name):
+    series_paths = [
+        '/workspaces/Tmp/in/1.3.6.1.4.1.14519.5.2.1.1357.4011.599277854519315291094834984976/1.3.6.1.4.1.14519.5.2.1.1357.4011.335385811943069724469579113670',
+        '/workspaces/Tmp/in/1.3.6.1.4.1.14519.5.2.1.3023.4017.246199836259881483055596634768/1.3.6.1.4.1.14519.5.2.1.3023.4017.720525569168415113913096578859',
+        '/workspaces/Tmp/in/1.3.6.1.4.1.14519.5.2.1.7695.1700.171220893861098819813996410099/1.3.6.1.4.1.14519.5.2.1.7695.1700.641077247274927806246916358599',
+    ]
+    fx_dicoms, mf_dicoms = create_datainfos(dataset_name)
+
+    home = os.path.expanduser("~")
+    pid = os.getpid()
+    local_tmp_folder = os.path.join(home, "Tmp-{:05d}".format(pid))
+
+    # dataset_name = 'afshin_terra_00_' + in_dicoms.BigQuery.Dataset
+
+    
+    db_dataset_address =\
+        fx_dicoms.BigQuery.GetBigQueryStyleDatasetAddress(False)
+
+    fix_report_tq = table_quota(
+        1500, '{}.{}'.format(
+            db_dataset_address, 'FIX_REPORT'), schema_fix)
+    issue_report_tq = table_quota(
+        1500, '{}.{}'.format(
+            db_dataset_address, 'ISSUE'), schema_issue)
+    org_report_tq = table_quota(
+        1500, '{}.{}'.format(
+            db_dataset_address, 'ORIGINATED_FROM'),
+        schema_originated_from)
+    defect_report_tq = table_quota(
+        1500, '{}.{}'.format(
+            db_dataset_address, 'DEFECTIVE'),
+        schema_originated_from)
+    create_bucket_tables(dataset_name)
+
+    fix_queries = []
+    issue_queries = []
+    origin_queries = []
+    flaw_queries = []
+    frameset_number = 0
+    multiframe_number = 0
+    
+    input_table_name = 'canceridc-data.idc_views.dicom_all'
+    
+    fx_local_series_path = '/Users/afshin/Documents/work/Tmp/fx'
+    mf_local_study_path = '/Users/afshin/Documents/work/Tmp/mf'
+    if os.path.exists(fx_local_series_path):
+        rm(fx_local_series_path)
+    if os.path.exists(mf_local_study_path):
+        rm(mf_local_study_path)
+    for in_local_series_path in series_paths:
+        files = [os.path.join(in_local_series_path, i) for i in os.listdir(
+            in_local_series_path) if i.endswith('.dcm')]
+        outs = fix_convert_one_sereis(
+            files,
+            fx_local_series_path,
+            mf_local_study_path,
+            fx_dicoms, mf_dicoms, {}, input_table_name)
+        fq, isq, orq, flq, fs, ms = outs
+        fix_queries.extend(fq)
+        issue_queries.extend(isq)
+        origin_queries.extend(orq)
+        flaw_queries.extend(flq)
+        frameset_number += fs
+        multiframe_number += ms
+    dataset_id = '{}.{}'.format(
+        fx_dicoms.BigQuery.ProjectID,
+        fx_dicoms.BigQuery.Dataset)
+    if len(fix_queries) != 0:
+        BuildQueries1(
+            fix_report_tq,
+            fix_queries,
+            dataset_id, False)
+    if len(issue_queries) != 0:
+        BuildQueries1(
+            issue_report_tq,
+            issue_queries,
+            dataset_id, False)
+    if len(origin_queries) != 0:
+        BuildQueries1(
+            org_report_tq,
+            origin_queries,
+            dataset_id, False)
+
+    if len(flaw_queries) != 0:
+        BuildQueries(
+            org_report_tq,
+            flaw_queries,
+            dataset_id, False)
+    ctools.RunExe([
+        'gsutil', 'cp', '-r', fx_local_series_path, 
+        'gs://{}/{}'.format(fx_dicoms.Bucket.Dataset,
+        fx_dicoms.Bucket.DataObject) ],
+        log_std_out=True, log_std_err=True)
+    ctools.RunExe([
+        'gsutil', 'cp', '-r', mf_local_study_path, 
+        'gs://{}/{}'.format(mf_dicoms.Bucket.Dataset,
+            mf_dicoms.Bucket.DataObject) ],
+        log_std_out=True, log_std_err=True)
+    
     # Wait unitl populating bigquery stops
+    create_dicomstores(dataset_name)
     status_logger.kill_timer()
 # th = list(range(8, 256, 8))
 # th = 88
@@ -1009,6 +1029,6 @@ if __name__ == '__main__':
     status_logger = Periodic(log_status, None, 60)
     status_logger.start()
     try:
-        main()
+        main('afshin_terra_test00')
     finally:
         status_logger.kill_timer()
