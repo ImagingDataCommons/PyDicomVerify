@@ -73,9 +73,12 @@ task test_task
     python3 <<CODE
     import os
     print('~{json_file}')
-    # print('~{sep = "\n"  sereise_file_firstsamples}')
     folders = [ os.path.dirname(f) for f in ['~{sep = "\', \'"  sereise_file_firstsamples}']]
-
+    for f in folders:
+        ff = os.listdir(f)
+        print('----->',f)
+        for i, fff in enumerate(ff):
+            print(i, ')', fff)
     
     CODE
     >>>
