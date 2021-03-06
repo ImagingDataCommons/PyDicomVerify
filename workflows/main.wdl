@@ -71,8 +71,12 @@ task test_task
     command
     <<<
     python3 <<CODE
+    import os
     print('~{json_file}')
-    print('~{sep = "\n"  sereise_file_firstsamples}')
+    # print('~{sep = "\n"  sereise_file_firstsamples}')
+    folders = [ os.path.dirname(f) for f in ['~{sep = "\', \'"  sereise_file_firstsamples}']]
+
+    
     CODE
     >>>
     runtime {
