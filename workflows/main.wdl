@@ -28,12 +28,14 @@ workflow  main{
         File json_file = input_series.json[i]
         scatter (j in range(length(inputs[i])))
         {
-            Array[File] series_files= inputs[i][j].SERIES_PATH     
+            Array[File] series_files= inputs[i][j].SERIES_PATH 
+            File series_file_firstsample = series_files[0]
         }
-        Array[File] flat_series_file = flatten(series_files)
+        
         call test_task
         { 
             input: series_file_list=series_files,
+            sereise_file_firstsamples=series_file_firstsample,
             json_file=json_file
         }
         # Object OutputSt = { 
@@ -57,20 +59,20 @@ task test_task
 {
     input { 
         Array[Array[File]] series_file_list
+        Array[File] sereise_file_firstsamples
         File json_file
     }
     String ct_interpolation = 'linear'
     String output_dtype = "int"
     Float prob_logit_0 = 0.0
     Float prob_logit_1 = 0.0
-    Array[Array[File]] series_file_list_trans = transpose(series_file_list)
-    Array[File] sample_sereis_file = series_file_list_trans[0]
+    
 
     command
     <<<
     python3 <<CODE
     print('~{json_file}')
-    print('~{sep = "\n"  sample_sereis_file}'')
+    print('~{sep = "\n"  sereise_file_firstsamples}')
     CODE
     >>>
     runtime {
