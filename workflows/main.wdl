@@ -66,7 +66,7 @@ task test_task
     <<<
     python3 <<CODE
     print('~{json_file}')
-    # pirnt('~{sereis_file_list}')
+    pirnt('~{sep=", " sereis_file_list}')
     CODE
     >>>
     runtime {
