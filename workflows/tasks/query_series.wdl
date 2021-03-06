@@ -215,8 +215,8 @@ task query_series
     query_all(
         '~{json_file_name}',
         '~{json_var_name}',
-        '~{series_chunk_size}',
-        '~{max_series_to_query}')  
+        ~{series_chunk_size},
+        ~{max_series_to_query})  
     CODE
     >>>
     runtime
