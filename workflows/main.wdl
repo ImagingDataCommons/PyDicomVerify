@@ -68,7 +68,6 @@ task test_task
     print('~{json_file}')
     # pirnt('~{sereis_file_list}')
     CODE
-    
     >>>
     runtime {
         docker: "afshinmha/dicom-multiframe-conversion:latest"
