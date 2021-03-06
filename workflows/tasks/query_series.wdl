@@ -87,7 +87,7 @@ task query_series
                         CAST(ImagePositionPatient[SAFE_OFFSET(1)] AS FLOAT64 ),
                         CAST(ImagePositionPatient[SAFE_OFFSET(2)] AS FLOAT64 )
                         ) AS ImagePositionPatient,
-            FROM `canceridc-data.idc_views.dicom_all` AS ORG
+            FROM \`canceridc-data.idc_views.dicom_all\` AS ORG
             WHERE
                     SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.2" OR
                     SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.4" OR
