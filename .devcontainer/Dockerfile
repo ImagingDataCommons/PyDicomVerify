@@ -1,7 +1,7 @@
 # Update the VARIANT arg in devcontainer.json to pick a Java version >= 11
 ARG VARIANT=11
-# FROM broadinstitute/cromwell:54
-FROM broadinstitute/womtool:54
+FROM  broadinstitute/cromwell:54
+# FROM broadinstitute/womtool:54
 
 # Options for setup script
 ARG INSTALL_ZSH="true"
@@ -18,3 +18,14 @@ RUN apt-get update \
 
 # Allow for a consistant java home location for settings - image is changing over time
 RUN if [ ! -d "/docker-java-home" ]; then ln -s "${JAVA_HOME}" /docker-java-home; fi
+RUN cd /app/ \
+&& wget https://github.com/broadinstitute/cromwell/releases/download/58/womtool-58.jar \
+&& cd -
+
+RUN apt update \
+&& yes | apt-get install apt-transport-https ca-certificates curl gnupg2 software-properties-common  \
+&& curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -  \
+&& add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable"  \
+&& apt-cache policy docker-ce  \
+&& apt update \
+&& yes | apt install docker-ce 
