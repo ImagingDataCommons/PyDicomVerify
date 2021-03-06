@@ -9,7 +9,6 @@ task query_series
         Int series_chunk_size = -1
         Int max_series_to_query = -1
     }
-    Array[String] tmp = prefix('output_', range(length(patient_id)))
     command
     <<<
     python3 <<CODE
