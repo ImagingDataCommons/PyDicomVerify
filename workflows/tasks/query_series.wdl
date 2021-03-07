@@ -66,10 +66,10 @@ task create_dicomstores
         String dataset_name
     }
     command
+    <<<
     cd /fix/
     git pull origin master
     cd -
-    <<<
     python3 <<CODE
     import sys
     sys.path.insert(1, '/fix/')
