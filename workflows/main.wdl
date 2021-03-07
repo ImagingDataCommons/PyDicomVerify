@@ -4,6 +4,7 @@ workflow  main{
     input {
         Int number_of_series_in_chunk = -1
         Int whole_number_of_series_to_qurey = -1
+        String input_bgq_table_name
         String dest_bucket_name
     }
     String json_file = 'sereies_info'
@@ -21,7 +22,9 @@ workflow  main{
         Array[Object] inputs = tmp[json_var]
 
     }
-    # Array[Object] flattened_inputs = flatten(inputs)
+    call sub_.create_datasets first_task{
+        input: dataset_name=dest_bucket_name
+    }
     
     scatter (i in range(length(inputs)))
     {
@@ -32,18 +35,22 @@ workflow  main{
             File series_file_firstsample = series_files[0]
         }
         
-        call test_task
+        call convert_all_series
         { 
             input: series_file_list=series_files,
             sereise_file_firstsamples=series_file_firstsample,
-            json_file=json_file
+            json_file=json_file,
+            source_bgq_table_name=input_bgq_table_name,
+            destination_bucket_name=dest_bucket_name
+
         }
         # Object OutputSt = { 
             
         # } 
-
     }
-   
+    call create_dicomstores as third_task{
+        input: dataset_name=dest_bucket_name
+    }
     # output {
     #     Array[Object] wf_output =  OutputSt
     #     # Array[File] w_output1 = flatten(deep_prognosis_task.files_1)
@@ -55,22 +62,22 @@ workflow  main{
     allowNestedInputs: true
     }
 }
-task test_task
+task convert_all_series
 {
     input { 
         Array[Array[File]] series_file_list
         Array[File] sereise_file_firstsamples
         File json_file
+        String source_bgq_table_name
+        String destination_bucket_name
     }
-    String ct_interpolation = 'linear'
-    String output_dtype = "int"
-    Float prob_logit_0 = 0.0
-    Float prob_logit_1 = 0.0
-    
 
     command
     <<<
     python3 <<CODE
+    import sys
+    sys.path.insert(1, '/fix/')
+    from query_fix_convert_inputs import main_fix_multiframe_convert
     import os
     print('~{json_file}')
     folders = [ os.path.dirname(f) for f in ['~{sep = "\', \'"  sereise_file_firstsamples}']]
@@ -79,6 +86,11 @@ task test_task
         print('----->',f)
         for i, fff in enumerate(ff):
             print(i, ')', fff)
+    main_fix_multiframe_convert(
+        '~{json_file}',
+        folders, 
+        '~{source_bgq_table_name}',
+        '~{destination_bucket_name}')
     
     CODE
     >>>

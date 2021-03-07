@@ -11,6 +11,8 @@ task query_series
     }
     command
     <<<
+    cd /fix/
+    git pull origin master
     python3 <<CODE
     import sys
     sys.path.insert(1, '/fix/')
@@ -29,5 +31,48 @@ task query_series
     }
     output{
         Array[File] json = glob(json_file_name + '*.json')
+    }
+}
+task create_datasets:
+{
+    input
+    {
+        String dataset_name
+    }
+    command
+    <<<
+    python3 <<CODE
+    import sys
+    sys.path.insert(1, '/fix/')
+    from query_fix_convert_inputs import query_all
+    from pipeline_fix_convert_locally import create_bucket_tables
+    create_bucket_tables('~{dataset_name}')
+    CODE
+    >>>
+    runtime
+    {
+        docker: "afshinmha/dicom-multiframe-conversion:latest"
+        memory: "1GB"
+    }
+}
+task create_dicomstores:
+{
+    input
+    {
+        String dataset_name
+    }
+    command
+    <<<
+    python3 <<CODE
+    import sys
+    sys.path.insert(1, '/fix/')
+    from pipeline_fix_convert_locally import create_dicomstores
+    create_dicomstores('~{dataset_name}')
+    CODE
+    >>>
+    runtime
+    {
+        docker: "afshinmha/dicom-multiframe-conversion:latest"
+        memory: "1GB"
     }
 }

@@ -1022,27 +1022,31 @@ def fix_convert_all(dataset_name,
     
     # Wait unitl populating bigquery stops
     
-def main_fix_multiframe_convert(json_file: str, series_folders: list):
+def main_fix_multiframe_convert(
+        json_file: str,
+        series_folders: list,
+        input_table_name: str,
+        result_bucket_name: str
+        ):
     with open(json_file) as jfile:
         jcontent = json.load(jfile)
     series = jcontent['data']
     status_logger = Periodic(log_status, None, 60)
     status_logger.start()
     try:
-        dataset_name = 'afshin_terra_test00'
-        create_bucket_tables(dataset_name)
-        input_table_name = 'canceridc-data.idc_views.dicom_all'
+        
+        create_bucket_tables(result_bucket_name)
         fx_local_series_path = 'gitexcluded_fx/'
         mf_local_study_path = 'gitexcluded_mf/'
         fix_convert_all(
-            dataset_name, 
+            result_bucket_name, 
             series,
             input_table_name,
             series_folders,
             fx_local_series_path,
             mf_local_study_path
         )
-        create_dicomstores(dataset_name)
+        create_dicomstores(result_bucket_name)
         status_logger.kill_timer()
 
     finally:
@@ -1053,7 +1057,10 @@ def main_fix_multiframe_convert(json_file: str, series_folders: list):
 #     with open(j_file_name) as jfile:
 #         jcontent = json.load(jfile)
 #     series = jcontent['data']
+#     result_bucket_name = 'afshin_terra_test00'
+#     input_table_name = 'canceridc-data.idc_views.dicom_all'
 #     folders = []
 #     for se in series:
 #         folders.append(os.path.dirname(se['SERIES_PATH'][0]))
-#     main_fix_multiframe_convert(j_file_name, folders)
+#     main_fix_multiframe_convert(
+#         j_file_name, folders, input_table_name, result_bucket_name)
