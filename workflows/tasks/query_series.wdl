@@ -14,7 +14,7 @@ task query_series
     python3 <<CODE
     import sys
     sys.path.insert(1, '/fix/')
-    # from query_fix_convert_inputs import query_all
+    from query_fix_convert_inputs import query_all
     import logging
     import logging.config
     import os
