@@ -22,7 +22,7 @@ workflow  main{
         Array[Object] inputs = tmp[json_var]
 
     }
-    call sub_.create_datasets first_task{
+    call sub_.create_datasets as first_task{
         input: dataset_name=dest_bucket_name
     }
     
@@ -48,7 +48,7 @@ workflow  main{
             
         # } 
     }
-    call create_dicomstores as third_task{
+    call sub_.create_dicomstores as third_task{
         input: dataset_name=dest_bucket_name
     }
     # output {

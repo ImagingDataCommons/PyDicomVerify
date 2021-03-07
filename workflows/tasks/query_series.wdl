@@ -33,7 +33,7 @@ task query_series
         Array[File] json = glob(json_file_name + '*.json')
     }
 }
-task create_datasets:
+task create_datasets
 {
     input
     {
@@ -55,7 +55,7 @@ task create_datasets:
         memory: "1GB"
     }
 }
-task create_dicomstores:
+task create_dicomstores
 {
     input
     {
