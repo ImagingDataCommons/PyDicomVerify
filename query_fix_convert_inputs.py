@@ -6,9 +6,9 @@ from gcloud.BigQueryStuff import *
 import json
 
 def query_all(json_file: str = 'testfile', 
-              json_var: str = 'data' ,
-              mx_number_of_series_in_file: int = -1,
-              mx_number_of_series: int = -1) -> dict:
+                json_var: str = 'data' ,
+                mx_number_of_series_in_file: int = -1,
+                mx_number_of_series: int = -1) -> dict:
     logger = logging.getLogger(__name__)
     parent = os.path.dirname(json_file)
     if parent and not os.path.exists(parent):
@@ -156,7 +156,7 @@ ORDER BY StudyInstanceUID, SeriesInstanceUID
 {}
     """.format(Limit)
     logger.info(query)
-    client = bigquery.Client('idc-tcia')
+    client = bigquery.Client()
     query_job = client.query(query)
     q_results = query_job.result()
     content = ''
