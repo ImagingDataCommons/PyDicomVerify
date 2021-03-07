@@ -634,10 +634,12 @@ def create_datainfos(dataset_name: str = 'test_dataset00') -> tuple:
 def create_bucket_tables(dataset_name: str):
     logger = logging.getLogger(__name__)
     fx_dicoms, mf_dicoms = create_datainfos(dataset_name)
+    print('creating all tables')
     create_all_tables('{}.{}'.format(
         fx_dicoms.BigQuery.ProjectID, fx_dicoms.BigQuery.Dataset),
         fx_dicoms.BigQuery.CloudRegion, True, 
         project_id=fx_dicoms.BigQuery.ProjectID)
+    print('creating all fx_bucket')
     if not exists_bucket(fx_dicoms.Bucket.ProjectID, fx_dicoms.Bucket.Dataset):
         create_bucket(
             fx_dicoms.Bucket.ProjectID,
@@ -647,6 +649,7 @@ def create_bucket_tables(dataset_name: str):
         logger.warning(
             'The bucket {} already exists. Possible occurence of mix-up'.format(
                 fx_dicoms.Bucket.Dataset))
+    print('creating all mf_bucket')
     if not exists_bucket(mf_dicoms.Bucket.ProjectID, mf_dicoms.Bucket.Dataset):
         create_bucket(
             mf_dicoms.Bucket.ProjectID,
