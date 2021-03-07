@@ -916,17 +916,15 @@ def create_dicomstores(dataset_name: str):
         mf_dicoms.BigQuery.DataObject)
 
 
-def main(dataset_name, series_list: list):
-    
+def fix_convert_all(dataset_name, 
+         series_list: list,
+         input_table_name: str,
+         in_local_series_paths: list,
+         fx_local_series_path: str,
+         mf_local_study_path: str
+         ):
+
     fx_dicoms, mf_dicoms = create_datainfos(dataset_name)
-
-    home = os.path.expanduser("~")
-    pid = os.getpid()
-    local_tmp_folder = os.path.join(home, "Tmp-{:05d}".format(pid))
-
-    # dataset_name = 'afshin_terra_00_' + in_dicoms.BigQuery.Dataset
-
-    
     db_dataset_address =\
         fx_dicoms.BigQuery.GetBigQueryStyleDatasetAddress(False)
 
@@ -944,7 +942,6 @@ def main(dataset_name, series_list: list):
         1500, '{}.{}'.format(
             db_dataset_address, 'DEFECTIVE'),
         schema_originated_from)
-    create_bucket_tables(dataset_name)
 
     fix_queries = []
     issue_queries = []
@@ -953,27 +950,34 @@ def main(dataset_name, series_list: list):
     frameset_number = 0
     multiframe_number = 0
     
-    input_table_name = 'canceridc-data.idc_views.dicom_all'
     
-    fx_local_series_path = '/Users/afshin/Documents/work/Tmp/fx'
-    mf_local_study_path = '/Users/afshin/Documents/work/Tmp/mf'
     if os.path.exists(fx_local_series_path):
         rm(fx_local_series_path)
     if os.path.exists(mf_local_study_path):
         rm(mf_local_study_path)
-    for in_local_series_path in series_list:
-        # files = [os.path.join(in_local_series_path, i) for i in os.listdir(
-        #     in_local_series_path) if i.endswith('.dcm')]
-
-        outs = fix_convert_one_sereis(
-            in_local_series_path['SERIES_PATH'],
+    for series_info, series_path in zip(series_list, in_local_series_paths):
+        files = [os.path.join(series_path, i) for i in os.listdir(
+            series_path) if i.endswith('.dcm')]
+        fx_series_folder = '{}/{}/dicom/{}/{}'.format(
             fx_local_series_path,
+            fx_dicoms.Bucket.DataObject,
+            series_info['StudyInstanceUID'],
+            series_info['SeriesInstanceUID']
+            )
+        mf_study_folder = '{}/{}/dicom/{}'.format(
             mf_local_study_path,
+            mf_dicoms.Bucket.DataObject,
+            series_info['StudyInstanceUID'],
+            )
+        outs = fix_convert_one_sereis(
+            files,
+            fx_series_folder,
+            mf_study_folder,
             fx_dicoms, mf_dicoms, {}, input_table_name,
-            in_local_series_path['COLLECTION_ID'],
-            in_local_series_path['INSTANCES'],
-            in_local_series_path['SeriesInstanceUID'],
-            in_local_series_path['StudyInstanceUID'])
+            series_info['COLLECTION_ID'],
+            series_info['INSTANCES'],
+            series_info['SeriesInstanceUID'],
+            series_info['StudyInstanceUID'])
         fq, isq, orq, flq, fs, ms = outs
         fix_queries.extend(fq)
         issue_queries.extend(isq)
@@ -1017,22 +1021,39 @@ def main(dataset_name, series_list: list):
         log_std_out=True, log_std_err=True)
     
     # Wait unitl populating bigquery stops
-    create_dicomstores(dataset_name)
-    status_logger.kill_timer()
-# th = list(range(8, 256, 8))
-# th = 88
-# th = 35
-# chunk = [100]
-# for ch in chunk:
-#     chunk *= 2
-#     main(th, ch)
-if __name__ == '__main__':
-    with open('gitexcluded_local/0001.json') as jfile:
+    
+def main_fix_multiframe_convert(json_file: str, series_folders: list):
+    with open(json_file) as jfile:
         jcontent = json.load(jfile)
     series = jcontent['data']
     status_logger = Periodic(log_status, None, 60)
     status_logger.start()
     try:
-        main('afshin_terra_test00', series)
+        dataset_name = 'afshin_terra_test00'
+        create_bucket_tables(dataset_name)
+        input_table_name = 'canceridc-data.idc_views.dicom_all'
+        fx_local_series_path = 'gitexcluded_fx/'
+        mf_local_study_path = 'gitexcluded_mf/'
+        fix_convert_all(
+            dataset_name, 
+            series,
+            input_table_name,
+            series_folders,
+            fx_local_series_path,
+            mf_local_study_path
+        )
+        create_dicomstores(dataset_name)
+        status_logger.kill_timer()
+
     finally:
         status_logger.kill_timer()
+
+# if __name__ == '__main__':
+#     j_file_name =  'gitexcluded_local/0001.json'
+#     with open(j_file_name) as jfile:
+#         jcontent = json.load(jfile)
+#     series = jcontent['data']
+#     folders = []
+#     for se in series:
+#         folders.append(os.path.dirname(se['SERIES_PATH'][0]))
+#     main_fix_multiframe_convert(j_file_name, folders)
