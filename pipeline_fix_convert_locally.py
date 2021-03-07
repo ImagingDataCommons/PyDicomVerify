@@ -466,7 +466,7 @@ def fix_convert_one_sereis(
             fbase = in_instance_uid[i]
         else:
             fbase = os.path.basename(obj)
-        fx_file_path = os.path.join(fx_local_series_path, fbase)
+        fx_file_path = os.path.join(fx_local_series_path, fbase + '.dcm')
         (fix_q, iss_q, org_q, flaw,
         fx_instance_uid, fx_series_uid,
         fx_study_uid) = fix_one_instance(
