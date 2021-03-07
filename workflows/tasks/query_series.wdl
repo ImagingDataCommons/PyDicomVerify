@@ -15,8 +15,10 @@ task query_series
     git pull origin master
     cd -
     python3 <<CODE
+    print('before adding the fix to path')
     import sys
     sys.path.insert(1, '/fix/')
+    print('added fix to path')
     from query_fix_convert_inputs import query_all
     query_all(
         '~{json_file_name}',
@@ -46,11 +48,14 @@ task create_datasets
     git pull origin master
     cd -
     python3 <<CODE
+    print('before adding the fix to path')
     import sys
     sys.path.insert(1, '/fix/')
-    from query_fix_convert_inputs import query_all
+    print('added fix to path and before import create_bucket_tables')
     from pipeline_fix_convert_locally import create_bucket_tables
+    print('after import create_bucket_tables before call')
     create_bucket_tables('~{dataset_name}')
+    print('aftetr call')
     CODE
     >>>
     runtime
