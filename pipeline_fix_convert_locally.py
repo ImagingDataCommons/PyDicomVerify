@@ -1035,7 +1035,6 @@ def main_fix_multiframe_convert(
     status_logger.start()
     try:
         
-        create_bucket_tables(result_bucket_name)
         fx_local_series_path = 'gitexcluded_fx/'
         mf_local_study_path = 'gitexcluded_mf/'
         fix_convert_all(
@@ -1046,21 +1045,22 @@ def main_fix_multiframe_convert(
             fx_local_series_path,
             mf_local_study_path
         )
-        create_dicomstores(result_bucket_name)
         status_logger.kill_timer()
 
     finally:
         status_logger.kill_timer()
 
-# if __name__ == '__main__':
-#     j_file_name =  'gitexcluded_local/0001.json'
-#     with open(j_file_name) as jfile:
-#         jcontent = json.load(jfile)
-#     series = jcontent['data']
-#     result_bucket_name = 'afshin_terra_test00'
-#     input_table_name = 'canceridc-data.idc_views.dicom_all'
-#     folders = []
-#     for se in series:
-#         folders.append(os.path.dirname(se['SERIES_PATH'][0]))
-#     main_fix_multiframe_convert(
-#         j_file_name, folders, input_table_name, result_bucket_name)
+if __name__ == '__main__':
+    j_file_name =  'gitexcluded_local/0001.json'
+    with open(j_file_name) as jfile:
+        jcontent = json.load(jfile)
+    series = jcontent['data']
+    result_bucket_name = 'afshin_terra_test00'
+    input_table_name = 'canceridc-data.idc_views.dicom_all'
+    folders = []
+    for se in series:
+        folders.append(os.path.dirname(se['SERIES_PATH'][0]))
+    create_bucket_tables(result_bucket_name)
+    main_fix_multiframe_convert(
+        j_file_name, folders, input_table_name, result_bucket_name)
+    create_dicomstores(result_bucket_name)

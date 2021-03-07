@@ -11,7 +11,7 @@ from pydicom import Dataset
 from pydicom.charset import python_encoding
 from gcloud.BigQueryStuff import *
 git_url = 'https://github.com/afshinmessiah/PyDicomVerify/{}'
-repo = git.Repo(search_parent_directories=True)
+repo = git.Repo(os.path.dirname(os.path.abspath(__file__)))
 commit = repo.head.object.hexsha
 iod_names = [
         "CRImage",
