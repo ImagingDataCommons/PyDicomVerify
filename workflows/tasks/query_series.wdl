@@ -15,14 +15,6 @@ task query_series
     import sys
     sys.path.insert(1, '/fix/')
     from query_fix_convert_inputs import query_all
-    import logging
-    import logging.config
-    import os
-    import shutil
-    from gcloud.BigQueryStuff import *
-    import json
-
-    
     query_all(
         '~{json_file_name}',
         '~{json_var_name}',
