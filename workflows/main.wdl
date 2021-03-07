@@ -74,6 +74,9 @@ task convert_all_series
 
     command
     <<<
+    cd /fix/
+    git pull origin master
+    cd -
     python3 <<CODE
     import sys
     sys.path.insert(1, '/fix/')
