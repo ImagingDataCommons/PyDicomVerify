@@ -454,7 +454,6 @@ def fix_convert_one_sereis(
     defective_study_series = []
     fixed_files_size = 0
     mf_files_size = 0
-    in_local_series_path = os.path.dirname(original_files[0])
     
     if not os.path.exists(fx_local_series_path):
         os.makedirs(fx_local_series_path)
@@ -462,9 +461,12 @@ def fix_convert_one_sereis(
         os.makedirs(mf_local_study_path)
 
     
-    for obj in original_files:
-        
-        fx_file_path = obj.replace(in_local_series_path, fx_local_series_path)
+    for i, obj in enumerate(original_files):
+        if i < len(in_instance_uid):
+            fbase = in_instance_uid[i]
+        else:
+            fbase = os.path.basename(obj)
+        fx_file_path = os.path.join(fx_local_series_path, fbase)
         (fix_q, iss_q, org_q, flaw,
         fx_instance_uid, fx_series_uid,
         fx_study_uid) = fix_one_instance(
@@ -564,7 +566,7 @@ def fix_convert_one_sereis(
     # Now I can remove the series:
     # rm((in_series_dir, fx_series_dir, mf_series_dir), False)
     logging.info('fixed = {}, converted = {} orig = {}'.format(
-        len(in_local_series_path),
+        len(original_files),
         number_of_all_converted_mf,
         len(origin_queries)))
     return(fix_queries, issue_queries, origin_queries, flaw_queries,
