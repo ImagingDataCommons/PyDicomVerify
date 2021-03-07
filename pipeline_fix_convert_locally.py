@@ -960,15 +960,13 @@ def fix_convert_all(dataset_name,
     for series_info, series_path in zip(series_list, in_local_series_paths):
         files = [os.path.join(series_path, i) for i in os.listdir(
             series_path) if i.endswith('.dcm')]
-        fx_series_folder = '{}/{}/dicom/{}/{}'.format(
+        fx_series_folder = '{}/dicom/{}/{}'.format(
             fx_local_series_path,
-            fx_dicoms.Bucket.DataObject,
             series_info['StudyInstanceUID'],
             series_info['SeriesInstanceUID']
             )
-        mf_study_folder = '{}/{}/dicom/{}'.format(
+        mf_study_folder = '{}/dicom/{}'.format(
             mf_local_study_path,
-            mf_dicoms.Bucket.DataObject,
             series_info['StudyInstanceUID'],
             )
         outs = fix_convert_one_sereis(
