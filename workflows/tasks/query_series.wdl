@@ -64,7 +64,7 @@ task create_datasets
         memory: "1GB"
     }
     output{
-        Array[File] json = glob('Logs/' + '*.log')
+        Array[File] logs = glob('Logs/' + '*.log')
     }
 }
 task create_dicomstores
@@ -91,6 +91,6 @@ task create_dicomstores
         memory: "1GB"
     }
     output{
-        Array[File] json = glob('Logs/' + '*.log')
+        Array[File] logs = glob('Logs/' + '*.log')
     }
 }

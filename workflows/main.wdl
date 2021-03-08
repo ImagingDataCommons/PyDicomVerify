@@ -51,13 +51,12 @@ workflow  main{
     call sub_.create_dicomstores as third_task{
         input: dataset_name=dest_bucket_name
     }
-    # output {
-    #     Array[Object] wf_output =  OutputSt
-    #     # Array[File] w_output1 = flatten(deep_prognosis_task.files_1)
-    #     # Array[File] w_output2 = flatten(deep_prognosis_task.files_2)
-    #     # File jj = jjjjsss
-    #     # File inn = innnppp
-    # }
+    
+    output {
+        Array[File] firsttask =  first_task.logs
+        Array[File] thirdttask =  third_task.logs
+        Array[File] conversion = flatten(convert_all_series.logs)
+    }
     meta {
     allowNestedInputs: true
     }
@@ -101,8 +100,8 @@ task convert_all_series
         docker: "afshinmha/dicom-multiframe-conversion:latest"
         memory: "16GB"
     }
-    output {
-        Object out_ = read_json("output.json")
+    output{
+        Array[File] logs = glob('Logs/' + '*.log')
     }
     meta {
         author: "Afshin"
