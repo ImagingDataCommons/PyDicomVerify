@@ -118,7 +118,9 @@ flaw_query_form = '''(
             )
             '''
 # Logger setup --------------------------------------------------------
+current_folder = os.path.dirname(__file__)
 def namer(name=''):
+
     pid = os.getpid()
     if name == '':
         dt_string = datetime.now().strftime("[%d-%m-%Y][%H-%M-%S]")
@@ -137,7 +139,7 @@ file_name = namer()
 folder = os.path.dirname(file_name)
 if not os.path.exists(folder):
     os.makedirs(folder)
-with open('log_config.json') as json_file:
+with open(os.path.join(current_folder, 'log_config.json')) as json_file:
     logger_config_dict = json.load(json_file)
 logger_config_dict["handlers"]['file']['filename'] = file_name
 # with open('log_config.json', 'w') as json_file:
