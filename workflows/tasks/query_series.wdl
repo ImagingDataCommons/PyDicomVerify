@@ -30,7 +30,7 @@ task query_series
     runtime
     {
         docker: "afshinmha/dicom-multiframe-conversion:latest"
-        memory: "1GB"
+        memory: "4GB"
     }
     output{
         Array[File] json = glob(json_file_name + '*.json')
@@ -61,7 +61,7 @@ task create_datasets
     runtime
     {
         docker: "afshinmha/dicom-multiframe-conversion:latest"
-        memory: "1GB"
+        memory: "4GB"
     }
     output{
         Array[File] logs = glob('Logs/' + '*.log')
@@ -88,7 +88,7 @@ task create_dicomstores
     runtime
     {
         docker: "afshinmha/dicom-multiframe-conversion:latest"
-        memory: "1GB"
+        memory: "4GB"
     }
     output{
         Array[File] logs = glob('Logs/' + '*.log')

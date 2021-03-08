@@ -98,7 +98,7 @@ task convert_all_series
     >>>
     runtime {
         docker: "afshinmha/dicom-multiframe-conversion:latest"
-        memory: "16GB"
+        memory: "8GB"
     }
     output{
         Array[File] logs = glob('Logs/' + '*.log')
