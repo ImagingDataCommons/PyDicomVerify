@@ -63,6 +63,9 @@ task create_datasets
         docker: "afshinmha/dicom-multiframe-conversion:latest"
         memory: "1GB"
     }
+    output{
+        Array[File] json = glob('Logs/' + '*.log')
+    }
 }
 task create_dicomstores
 {
@@ -86,5 +89,8 @@ task create_dicomstores
     {
         docker: "afshinmha/dicom-multiframe-conversion:latest"
         memory: "1GB"
+    }
+    output{
+        Array[File] json = glob('Logs/' + '*.log')
     }
 }
