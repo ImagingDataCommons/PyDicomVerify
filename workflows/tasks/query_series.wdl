@@ -65,6 +65,7 @@ task create_datasets
     }
     output{
         Array[File] logs = glob('Logs/' + '*.log')
+        String created_dataset = dataset_name
     }
 }
 task create_dicomstores

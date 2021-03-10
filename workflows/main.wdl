@@ -41,7 +41,7 @@ workflow  main{
             sereise_file_firstsamples=series_file_firstsample,
             json_file=json_file,
             source_bgq_table_name=input_bgq_table_name,
-            destination_bucket_name=dest_bucket_name
+            destination_bucket_name=first_task.created_dataset
 
         }
         # Object OutputSt = { 
@@ -49,13 +49,13 @@ workflow  main{
         # } 
     }
     call sub_.create_dicomstores as third_task{
-        input: dataset_name=dest_bucket_name
+        input: dataset_name = convert_all_series.filled_bucket_name[0]
     }
     
     output {
         Array[File] firsttask =  first_task.logs
-        Array[File] thirdttask =  third_task.logs
         Array[File] conversion = flatten(convert_all_series.logs)
+        Array[File] thirdttask =  third_task.logs
     }
     meta {
     allowNestedInputs: true
@@ -102,6 +102,7 @@ task convert_all_series
     }
     output{
         Array[File] logs = glob('Logs/' + '*.log')
+        String filled_bucket_name = destination_bucket_name
     }
     meta {
         author: "Afshin"
