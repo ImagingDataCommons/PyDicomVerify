@@ -755,69 +755,69 @@ def fix_convert_all(dataset_name,
     multiframe_number = 0
     
     
-    if os.path.exists(fx_local_series_path):
-        rm(fx_local_series_path)
-    if os.path.exists(mf_local_study_path):
-        rm(mf_local_study_path)
-    for series_info, series_path in zip(series_list, in_local_series_paths):
-        files = [os.path.join(series_path, i) for i in os.listdir(
-            series_path) if i.endswith('.dcm')]
-        fx_series_folder = '{}/dicom/{}/{}'.format(
-            fx_local_series_path,
-            series_info['StudyInstanceUID'],
-            series_info['SeriesInstanceUID']
-            )
-        mf_study_folder = '{}/dicom/{}'.format(
-            mf_local_study_path,
-            series_info['StudyInstanceUID'],
-            )
-        outs = fix_convert_one_sereis(
-            files,
-            fx_series_folder,
-            mf_study_folder,
-            fx_dicoms, mf_dicoms, {}, input_table_name,
-            series_info['COLLECTION_ID'],
-            series_info['INSTANCES'],
-            series_info['SeriesInstanceUID'],
-            series_info['StudyInstanceUID'])
-        fq, isq, orq, flq, fs, ms = outs
-        fix_queries.extend(fq)
-        issue_queries.extend(isq)
-        origin_queries.extend(orq)
-        flaw_queries.extend(flq)
-        frameset_number += fs
-        multiframe_number += ms
-    dataset_id = '{}.{}'.format(
-        fx_dicoms.BigQuery.ProjectID,
-        fx_dicoms.BigQuery.Dataset)
-    if len(fix_queries) != 0:
-        BuildQueries1(
-            fix_report_tq,
-            fix_queries,
-            dataset_id, False)
-    if len(issue_queries) != 0:
-        BuildQueries1(
-            issue_report_tq,
-            issue_queries,
-            dataset_id, False)
-    if len(origin_queries) != 0:
-        BuildQueries1(
-            org_report_tq,
-            origin_queries,
-            dataset_id, False)
+    # if os.path.exists(fx_local_series_path):
+    #     rm(fx_local_series_path)
+    # if os.path.exists(mf_local_study_path):
+    #     rm(mf_local_study_path)
+    # for series_info, series_path in zip(series_list, in_local_series_paths):
+    #     files = [os.path.join(series_path, i) for i in os.listdir(
+    #         series_path) if i.endswith('.dcm')]
+    #     fx_series_folder = '{}/dicom/{}/{}'.format(
+    #         fx_local_series_path,
+    #         series_info['StudyInstanceUID'],
+    #         series_info['SeriesInstanceUID']
+    #         )
+    #     mf_study_folder = '{}/dicom/{}'.format(
+    #         mf_local_study_path,
+    #         series_info['StudyInstanceUID'],
+    #         )
+    #     outs = fix_convert_one_sereis(
+    #         files,
+    #         fx_series_folder,
+    #         mf_study_folder,
+    #         fx_dicoms, mf_dicoms, {}, input_table_name,
+    #         series_info['COLLECTION_ID'],
+    #         series_info['INSTANCES'],
+    #         series_info['SeriesInstanceUID'],
+    #         series_info['StudyInstanceUID'])
+    #     fq, isq, orq, flq, fs, ms = outs
+    #     fix_queries.extend(fq)
+    #     issue_queries.extend(isq)
+    #     origin_queries.extend(orq)
+    #     flaw_queries.extend(flq)
+    #     frameset_number += fs
+    #     multiframe_number += ms
+    # dataset_id = '{}.{}'.format(
+    #     fx_dicoms.BigQuery.ProjectID,
+    #     fx_dicoms.BigQuery.Dataset)
+    # if len(fix_queries) != 0:
+    #     BuildQueries1(
+    #         fix_report_tq,
+    #         fix_queries,
+    #         dataset_id, False)
+    # if len(issue_queries) != 0:
+    #     BuildQueries1(
+    #         issue_report_tq,
+    #         issue_queries,
+    #         dataset_id, False)
+    # if len(origin_queries) != 0:
+    #     BuildQueries1(
+    #         org_report_tq,
+    #         origin_queries,
+    #         dataset_id, False)
 
-    if len(flaw_queries) != 0:
-        BuildQueries(
-            org_report_tq,
-            flaw_queries,
-            dataset_id, False)
+    # if len(flaw_queries) != 0:
+    #     BuildQueries(
+    #         org_report_tq,
+    #         flaw_queries,
+    #         dataset_id, False)
     ctools.RunExe([
-        'gsutil', 'cp', '-r', os.path.join(fx_local_series_path, '*'), 
+        'gsutil' ,'cp', '-r', fx_local_series_path, #os.path.join(fx_local_series_path, 'dicom'), 
         'gs://{}/{}'.format(fx_dicoms.Bucket.Dataset,
         fx_dicoms.Bucket.DataObject) ],
         log_std_out=True, log_std_err=True)
     ctools.RunExe([
-        'gsutil', 'cp', '-r', os.path.join(mf_local_study_path, '*'), 
+        'gsutil' ,'cp', '-r', mf_local_study_path, #os.path.join(mf_local_study_path, 'dicom'), 
         'gs://{}/{}'.format(mf_dicoms.Bucket.Dataset,
             mf_dicoms.Bucket.DataObject) ],
         log_std_out=True, log_std_err=True)
@@ -863,6 +863,6 @@ def main_fix_multiframe_convert(
 #     for se in series:
 #         folders.append(os.path.dirname(se['SERIES_PATH'][0]))
 #     create_bucket_tables(result_bucket_name)
-    # main_fix_multiframe_convert(
-    #     j_file_name, folders, input_table_name, result_bucket_name)
-    # create_dicomstores(result_bucket_name)
+#     main_fix_multiframe_convert(
+#         j_file_name, folders, input_table_name, result_bucket_name)
+#     create_dicomstores(result_bucket_name)

@@ -76,24 +76,23 @@ def RunExe(arg_list, stderr_file='', stdout_file='', outlog=None,
         arg_list, shell = False, stdout = subprocess.PIPE,
         stderr = subprocess.PIPE, env=curr_env)
     _error = proc.stderr
-    
+    _output = proc.stdout
+    err_decoded = _error.decode(char_encoding, 'backslashreplace')
+    out_decoded = _output.decode(char_encoding, 'backslashreplace')
     if len(stderr_file) != 0:
         WriteStringToFile(
-            stderr_file, _error.decode(char_encoding, 'backslashreplace'))
-    _output = proc.stdout
+            stderr_file, err_decoded)
     if len(stdout_file) != 0:
         WriteStringToFile(
-            stdout_file, _output.decode(char_encoding, 'backslashreplace'))
+            stdout_file, out_decoded)
     if outlog is not None:
-        outlog.extend(
-            re.split("\n",  _output.decode(char_encoding, 'backslashreplace')))
+        outlog.extend(re.split("\n",  out_decoded))
     if errlog is not None:
-        errlog.extend(
-            re.split("\n",  _error.decode(char_encoding, 'backslashreplace')))
+        errlog.extend(re.split( "\n",  err_decoded))
     if log_std_out:
-        logger.info('Commnad standard output:\n {}'.format(_output))
+        logger.info('Commnad standard output:\n {}'.format(err_decoded))
     if log_std_err:
-        logger.info('Commnad standard error:\n {}'.format(_error))
+        logger.info('Commnad standard error:\n {}'.format(out_decoded))
     return proc.returncode
 
 
