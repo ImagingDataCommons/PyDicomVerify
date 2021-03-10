@@ -79,7 +79,7 @@ task convert_all_series
     python3 <<CODE
     import sys
     sys.path.insert(1, '/fix/')
-    from query_fix_convert_inputs import main_fix_multiframe_convert
+    from pipeline_fix_convert_locally import main_fix_multiframe_convert
     import os
     print('~{json_file}')
     folders = [ os.path.dirname(f) for f in ['~{sep = "\', \'"  sereise_file_firstsamples}']]
