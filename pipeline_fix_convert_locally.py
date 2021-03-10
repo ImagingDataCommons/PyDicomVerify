@@ -812,12 +812,12 @@ def fix_convert_all(dataset_name,
             flaw_queries,
             dataset_id, False)
     ctools.RunExe([
-        'gsutil', 'cp', '-r', os.path.join(fx_local_series_path, 'dicom'), 
+        'gsutil', 'cp', '-r', os.path.join(fx_local_series_path, '*'), 
         'gs://{}/{}'.format(fx_dicoms.Bucket.Dataset,
         fx_dicoms.Bucket.DataObject) ],
         log_std_out=True, log_std_err=True)
     ctools.RunExe([
-        'gsutil', 'cp', '-r', os.path.join(mf_local_study_path, 'dicom'), 
+        'gsutil', 'cp', '-r', os.path.join(mf_local_study_path, '*'), 
         'gs://{}/{}'.format(mf_dicoms.Bucket.Dataset,
             mf_dicoms.Bucket.DataObject) ],
         log_std_out=True, log_std_err=True)
