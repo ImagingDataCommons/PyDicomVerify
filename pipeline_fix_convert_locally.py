@@ -404,7 +404,7 @@ def get_rows_and_insert_ids(q_list: list, insert_id_start: int):
 
 def fix_convert_one_sereis(
         original_files: list,
-        fx_local_series_path: str,
+        fx_local_study_path: str,
         mf_local_study_path: str,
         fx_gc_info, mf_gc_info, anatomy: tuple,
         in_bgq_table_name: str,
@@ -438,8 +438,8 @@ def fix_convert_one_sereis(
     fixed_files_size = 0
     mf_files_size = 0
     
-    if not os.path.exists(fx_local_series_path):
-        os.makedirs(fx_local_series_path)
+    if not os.path.exists(fx_local_study_path):
+        os.makedirs(fx_local_study_path)
     if not os.path.exists(mf_local_study_path):
         os.makedirs(mf_local_study_path)
 
@@ -449,7 +449,7 @@ def fix_convert_one_sereis(
             fbase = in_instance_uid[i]
         else:
             fbase = os.path.basename(obj)
-        fx_file_path = os.path.join(fx_local_series_path, fbase + '.dcm')
+        fx_file_path = os.path.join(fx_local_study_path, fbase + '.dcm')
         (fix_q, iss_q, org_q, flaw,
         fx_instance_uid, fx_series_uid,
         fx_study_uid) = fix_one_instance(
@@ -483,7 +483,7 @@ def fix_convert_one_sereis(
                 (fx_study_uid, fx_series_uid))
     # The code is not gonna proceed to conversion if there is any fix issue
     if len(flaw_queries) != 0:
-        # rm((in_local_series_path, fx_local_series_path), False)
+        # rm((in_local_series_path, fx_local_study_path), False)
         return([], [], [], flaw_queries, 0, 0)
     # Now I want to extract framesets from fixed sereis:
     
@@ -724,7 +724,7 @@ def fix_convert_all(dataset_name,
          series_list: list,
          input_table_name: str,
          in_local_series_paths: list,
-         fx_local_series_path: str,
+         fx_local_study_path: str,
          mf_local_study_path: str
          ):
 
@@ -755,15 +755,15 @@ def fix_convert_all(dataset_name,
     multiframe_number = 0
     
     
-    if os.path.exists(fx_local_series_path):
-        rm(fx_local_series_path)
+    if os.path.exists(fx_local_study_path):
+        rm(fx_local_study_path)
     if os.path.exists(mf_local_study_path):
         rm(mf_local_study_path)
     for series_info, series_path in zip(series_list, in_local_series_paths):
         files = [os.path.join(series_path, i) for i in os.listdir(
             series_path) if i.endswith('.dcm')]
         fx_series_folder = '{}/dicom/{}/{}'.format(
-            fx_local_series_path,
+            fx_local_study_path,
             series_info['StudyInstanceUID'],
             series_info['SeriesInstanceUID']
             )
@@ -811,16 +811,6 @@ def fix_convert_all(dataset_name,
             org_report_tq,
             flaw_queries,
             dataset_id, False)
-    ctools.RunExe([
-        'gsutil' ,'cp', '-r', fx_local_series_path, #os.path.join(fx_local_series_path, 'dicom'), 
-        'gs://{}/{}'.format(fx_dicoms.Bucket.Dataset,
-        fx_dicoms.Bucket.DataObject) ],
-        log_std_out=True, log_std_err=True)
-    ctools.RunExe([
-        'gsutil' ,'cp', '-r', mf_local_study_path, #os.path.join(mf_local_study_path, 'dicom'), 
-        'gs://{}/{}'.format(mf_dicoms.Bucket.Dataset,
-            mf_dicoms.Bucket.DataObject) ],
-        log_std_out=True, log_std_err=True)
     
     # Wait unitl populating bigquery stops
     
@@ -828,7 +818,9 @@ def main_fix_multiframe_convert(
         json_file: str,
         series_folders: list,
         input_table_name: str,
-        result_bucket_name: str
+        result_bucket_name: str,
+        fx_local_study_path: str,
+        mf_local_study_path: str
         ):
     with open(json_file) as jfile:
         jcontent = json.load(jfile)
@@ -837,14 +829,13 @@ def main_fix_multiframe_convert(
     status_logger.start()
     try:
         
-        fx_local_series_path = 'gitexcluded_fx/'
-        mf_local_study_path = 'gitexcluded_mf/'
+        
         fix_convert_all(
             result_bucket_name, 
             series,
             input_table_name,
             series_folders,
-            fx_local_series_path,
+            fx_local_study_path,
             mf_local_study_path
         )
         status_logger.kill_timer()
@@ -859,10 +850,24 @@ def main_fix_multiframe_convert(
 #     series = jcontent['data']
 #     result_bucket_name = 'afshin_terra_test00'
 #     input_table_name = 'canceridc-data.idc_views.dicom_all'
+#     fx_local_study_path = 'gitexcluded_fx/'
+#     mf_local_study_path = 'gitexcluded_mf/'
 #     folders = []
 #     for se in series:
 #         folders.append(os.path.dirname(se['SERIES_PATH'][0]))
 #     create_bucket_tables(result_bucket_name)
 #     main_fix_multiframe_convert(
-#         j_file_name, folders, input_table_name, result_bucket_name)
+#         j_file_name, folders, input_table_name, result_bucket_name,
+#         fx_local_study_path, mf_local_study_path
+#         )
+#     ctools.RunExe([
+#         'gsutil' ,'cp', '-r', fx_local_study_path, #os.path.join(fx_local_study_path, 'dicom'), 
+#         'gs://{}/{}'.format(fx_dicoms.Bucket.Dataset,
+#         fx_dicoms.Bucket.DataObject) ],
+#         log_std_out=True, log_std_err=True)
+#     ctools.RunExe([
+#         'gsutil' ,'cp', '-r', mf_local_study_path, #os.path.join(mf_local_study_path, 'dicom'), 
+#         'gs://{}/{}'.format(mf_dicoms.Bucket.Dataset,
+#             mf_dicoms.Bucket.DataObject) ],
+#         log_std_out=True, log_std_err=True)
 #     create_dicomstores(result_bucket_name)
