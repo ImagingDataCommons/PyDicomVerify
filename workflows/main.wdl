@@ -70,8 +70,7 @@ task convert_all_series
         String source_bgq_table_name
         String destination_bucket_name
     }
-    String fx_study_local_folder = 'data_fx'
-    String mf_study_local_folder = 'data_mf'
+    String study_local_folder = 'data_results'
     command
     <<<
     cd /fix/
@@ -94,10 +93,10 @@ task convert_all_series
         folders, 
         '~{source_bgq_table_name}',
         '~{destination_bucket_name}',
-        '~{fx_study_local_folder}',
-        '~{mf_study_local_folder}'
+        '~{study_local_folder}',
         )
     CODE
+    gsutil -m cp -r ~{study_local_folder}/* gs://~{destination_bucket_name}
     >>>
     runtime {
         docker: "afshinmha/dicom-multiframe-conversion:latest"
