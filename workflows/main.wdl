@@ -98,8 +98,6 @@ task convert_all_series
         '~{mf_study_local_folder}'
         )
     CODE
-    gsutil -m cp -r ~{fx_study_local_folder}/dicom gs://~{destination_bucket_name}/FIXED
-    gsutil -m cp -r ~{mf_study_local_folder}/dicom gs://~{destination_bucket_name}/MULTIFRAME
     >>>
     runtime {
         docker: "afshinmha/dicom-multiframe-conversion:latest"
