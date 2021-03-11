@@ -16,22 +16,18 @@ workflow  main{
         max_series_to_query=whole_number_of_series_to_qurey
     }
 
-    scatter(j in range(length(input_series.json)))
-    {
-        Object tmp = read_json(input_series.json[j])
-        Array[Object] inputs = tmp[json_var]
-
-    }
     call sub_.create_datasets as first_task{
         input: dataset_name=dest_bucket_name
     }
     
-    scatter (i in range(length(inputs)))
+    scatter (i in range(length(input_series.json)))
     {
-        File json_file = input_series.json[i]
-        scatter (j in range(length(inputs[i])))
+        File j_file = input_series.json[i]
+        Object tmp = read_json(j_file)
+        Array[Object] inputs = tmp[json_var]
+        scatter (j in range(length(inputs)))
         {
-            Array[File] series_files= inputs[i][j].SERIES_PATH 
+            Array[File] series_files= inputs[j].SERIES_PATH 
             File series_file_firstsample = series_files[0]
         }
         
