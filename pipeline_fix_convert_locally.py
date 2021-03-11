@@ -724,8 +724,7 @@ def fix_convert_all(dataset_name,
          series_list: list,
          input_table_name: str,
          in_local_series_paths: list,
-         fx_local_study_path: str,
-         mf_local_study_path: str
+         local_data_path: str
          ):
 
     fx_dicoms, mf_dicoms = create_datainfos(dataset_name)
@@ -754,7 +753,8 @@ def fix_convert_all(dataset_name,
     frameset_number = 0
     multiframe_number = 0
     
-    
+    fx_local_study_path = os.path.join(local_data_path, fx_dicoms.Bucket.DataObject)
+    mf_local_study_path = os.path.join(local_data_path, mf_dicoms.Bucket.DataObject)
     if os.path.exists(fx_local_study_path):
         rm(fx_local_study_path)
     if os.path.exists(mf_local_study_path):
@@ -819,8 +819,7 @@ def main_fix_multiframe_convert(
         series_folders: list,
         input_table_name: str,
         result_bucket_name: str,
-        fx_local_study_path: str,
-        mf_local_study_path: str
+        local_data_path: str
         ):
     with open(json_file) as jfile:
         jcontent = json.load(jfile)
@@ -835,39 +834,31 @@ def main_fix_multiframe_convert(
             series,
             input_table_name,
             series_folders,
-            fx_local_study_path,
-            mf_local_study_path
+            local_data_path
         )
         status_logger.kill_timer()
 
     finally:
         status_logger.kill_timer()
 
-# if __name__ == '__main__':
-#     j_file_name =  'gitexcluded_local/0001.json'
-#     with open(j_file_name) as jfile:
-#         jcontent = json.load(jfile)
-#     series = jcontent['data']
-#     result_bucket_name = 'afshin_terra_test00'
-#     input_table_name = 'canceridc-data.idc_views.dicom_all'
-#     fx_local_study_path = 'gitexcluded_fx/'
-#     mf_local_study_path = 'gitexcluded_mf/'
-#     folders = []
-#     for se in series:
-#         folders.append(os.path.dirname(se['SERIES_PATH'][0]))
-#     create_bucket_tables(result_bucket_name)
-#     main_fix_multiframe_convert(
-#         j_file_name, folders, input_table_name, result_bucket_name,
-#         fx_local_study_path, mf_local_study_path
-#         )
-#     ctools.RunExe([
-#         'gsutil' ,'cp', '-r', fx_local_study_path, #os.path.join(fx_local_study_path, 'dicom'), 
-#         'gs://{}/{}'.format(fx_dicoms.Bucket.Dataset,
-#         fx_dicoms.Bucket.DataObject) ],
-#         log_std_out=True, log_std_err=True)
-#     ctools.RunExe([
-#         'gsutil' ,'cp', '-r', mf_local_study_path, #os.path.join(mf_local_study_path, 'dicom'), 
-#         'gs://{}/{}'.format(mf_dicoms.Bucket.Dataset,
-#             mf_dicoms.Bucket.DataObject) ],
-#         log_std_out=True, log_std_err=True)
-#     create_dicomstores(result_bucket_name)
+if __name__ == '__main__':
+    j_file_name =  'gitexcluded_local/0001.json'
+    with open(j_file_name) as jfile:
+        jcontent = json.load(jfile)
+    series = jcontent['data']
+    result_bucket_name = 'afshin_terra_test01'
+    input_table_name = 'canceridc-data.idc_views.dicom_all'
+    local_study_path = 'gitexcluded_data_res'
+    folders = []
+    for se in series:
+        folders.append(os.path.dirname(se['SERIES_PATH'][0]))
+    create_bucket_tables(result_bucket_name)
+    main_fix_multiframe_convert(
+        j_file_name, folders, input_table_name, result_bucket_name,
+        local_study_path
+        )
+    ctools.RunExe([
+        'gsutil' ,'cp', '-r', local_study_path + '/*', #os.path.join(fx_local_study_path, 'dicom'), 
+        'gs://{}'.format(result_bucket_name)],
+        log_std_out=True, log_std_err=True)
+    create_dicomstores(result_bucket_name)
