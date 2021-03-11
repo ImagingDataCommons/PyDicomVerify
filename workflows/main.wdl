@@ -35,7 +35,7 @@ workflow  main{
         { 
             input: series_file_list=series_files,
             sereise_file_firstsamples=series_file_firstsample,
-            json_file=json_file,
+            json_file=j_file,
             source_bgq_table_name=input_bgq_table_name,
             destination_bucket_name=first_task.created_dataset
 
