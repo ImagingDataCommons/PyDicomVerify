@@ -404,7 +404,7 @@ def get_rows_and_insert_ids(q_list: list, insert_id_start: int):
 
 def fix_convert_one_sereis(
         original_files: list,
-        fx_local_study_path: str,
+        fx_local_series_path: str,
         mf_local_study_path: str,
         fx_gc_info, mf_gc_info, anatomy: tuple,
         in_bgq_table_name: str,
@@ -433,13 +433,16 @@ def fix_convert_one_sereis(
     fix_queries = []
     origin_queries = []
     flaw_queries = []
-
+    blob_address_form = '{}/dicom/{}/{}/{{}}.dcm'.format(
+        fx_gc_info.Bucket.DataObject,
+        in_study_uid,
+        in_series_uid)
     defective_study_series = []
     fixed_files_size = 0
     mf_files_size = 0
     
-    if not os.path.exists(fx_local_study_path):
-        os.makedirs(fx_local_study_path)
+    if not os.path.exists(fx_local_series_path):
+        os.makedirs(fx_local_series_path)
     if not os.path.exists(mf_local_study_path):
         os.makedirs(mf_local_study_path)
 
@@ -449,7 +452,7 @@ def fix_convert_one_sereis(
             fbase = in_instance_uid[i]
         else:
             fbase = os.path.basename(obj)
-        fx_file_path = os.path.join(fx_local_study_path, fbase + '.dcm')
+        fx_file_path = os.path.join(fx_local_series_path, fbase + '.dcm')
         (fix_q, iss_q, org_q, flaw,
         fx_instance_uid, fx_series_uid,
         fx_study_uid) = fix_one_instance(
@@ -475,15 +478,28 @@ def fix_convert_one_sereis(
             # if not success:
             origin_queries.extend(org_q)
             single_frames.append(fx_file_path)
+            blob_address = blob_address_form.format(in_instance_uid[i])
             logger.debug(
-                'Start uploading the fixed file {}'.format(obj))
+                'Start uploading the fixed file {}'.format(fx_file_path))
+            success = upload_blob(
+                fx_gc_info.Bucket.ProjectID,
+                fx_gc_info.Bucket.Dataset,
+                blob_address,
+                fx_file_path)
+            if not success:
+                flaw_queries.append(flaw_query_form.format(
+                    fx_gc_info.Bucket.Dataset, in_study_uid,
+                    in_series_uid, in_instance_uid[i],
+                    'UPLOAD')
+                )
+            
         else:
             flaw_queries.append(flaw)
             defective_study_series.append(
                 (fx_study_uid, fx_series_uid))
     # The code is not gonna proceed to conversion if there is any fix issue
     if len(flaw_queries) != 0:
-        # rm((in_local_series_path, fx_local_study_path), False)
+        # rm((in_local_series_path, fx_local_series_path), False)
         return([], [], [], flaw_queries, 0, 0)
     # Now I want to extract framesets from fixed sereis:
     
@@ -540,14 +556,23 @@ def fix_convert_one_sereis(
                     pr_ch.child_series_instance_uid,
                     pr_ch.child_sop_instance_uid, )
                 q_iss = mf_issues.GetQuery()
-                # rows, ids, insert_id = get_rows_and_insert_ids(
-                #     q_iss, insert_id)
-                # success = stream_insert_with_ids_with_ids(
-                #     issue_report_table_id, rows, schema_issue)
-                # if not success:
                 issue_queries.extend(q_iss)
+                mf_blob_path = '{}/dicom/{}/{}/{}.dcm'.format(
+                        mf_gc_info.Bucket.DataObject,
+                        pr_ch.child_study_instance_uid,
+                        pr_ch.child_series_instance_uid,
+                        pr_ch.child_sop_instance_uid)
+                success = upload_blob(
+                    mf_gc_info.Bucket.ProjectID,
+                    mf_gc_info.Bucket.Dataset,
+                    mf_blob_path, pr_ch.child_dicom_file)
+                if not success:
+                    flaw_queries.append(flaw_query_form.format(
+                        mf_gc_info.Bucket.Dataset, pr_ch.study_uid,
+                        pr_ch.series_uid, pr_ch.instance_uid,
+                        'UPLOAD'))
     # Now I can remove the series:
-    # rm((in_series_dir, fx_series_dir, mf_series_dir), False)
+    rm((fx_local_series_path, mf_series_dir), True)
     logging.info('fixed = {}, converted = {} orig = {}'.format(
         len(original_files),
         number_of_all_converted_mf,
@@ -841,24 +866,24 @@ def main_fix_multiframe_convert(
     finally:
         status_logger.kill_timer()
 
-# if __name__ == '__main__':
-#     j_file_name =  'gitexcluded_local/0001.json'
-#     with open(j_file_name) as jfile:
-#         jcontent = json.load(jfile)
-#     series = jcontent['data']
-#     result_bucket_name = 'afshin_terra_test01'
-#     input_table_name = 'canceridc-data.idc_views.dicom_all'
-#     local_study_path = 'gitexcluded_data_res'
-#     folders = []
-#     for se in series:
-#         folders.append(os.path.dirname(se['SERIES_PATH'][0]))
-#     create_bucket_tables(result_bucket_name)
-#     main_fix_multiframe_convert(
-#         j_file_name, folders, input_table_name, result_bucket_name,
-#         local_study_path
-#         )
-#     ctools.RunExe([
-#         'gsutil' ,'cp', '-r', local_study_path + '/*', #os.path.join(fx_local_study_path, 'dicom'), 
-#         'gs://{}'.format(result_bucket_name)],
-#         log_std_out=True, log_std_err=True)
-#     create_dicomstores(result_bucket_name)
+if __name__ == '__main__':
+    j_file_name =  'gitexcluded_local/0001.json'
+    with open(j_file_name) as jfile:
+        jcontent = json.load(jfile)
+    series = jcontent['data']
+    result_bucket_name = 'afshin_terra_test00'
+    input_table_name = 'canceridc-data.idc_views.dicom_all'
+    local_study_path = 'gitexcluded_data_res'
+    folders = []
+    for se in series:
+        folders.append(os.path.dirname(se['SERIES_PATH'][0]))
+    create_bucket_tables(result_bucket_name)
+    main_fix_multiframe_convert(
+        j_file_name, folders, input_table_name, result_bucket_name,
+        local_study_path
+        )
+    # ctools.RunExe([
+    #     'gsutil' ,'cp', '-r', local_study_path + '/*', #os.path.join(fx_local_study_path, 'dicom'), 
+    #     'gs://{}'.format(result_bucket_name)],
+    #     log_std_out=True, log_std_err=True)
+    create_dicomstores(result_bucket_name)
