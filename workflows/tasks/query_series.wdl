@@ -57,6 +57,7 @@ task create_datasets
     create_bucket_tables('~{dataset_name}')
     print('aftetr call')
     CODE
+    gsutil cp -r Logs/* gs://~{dataset_name}/Logs/create_datasets
     >>>
     runtime
     {
@@ -64,7 +65,6 @@ task create_datasets
         memory: "4GB"
     }
     output{
-        Array[File] logs = glob('Logs/' + '*.log')
         String created_dataset = dataset_name
     }
 }
@@ -85,6 +85,7 @@ task create_dicomstores
     from pipeline_fix_convert_locally import create_dicomstores
     create_dicomstores('~{dataset_name}')
     CODE
+    gsutil cp -r Logs/* gs://~{dataset_name}/Logs/create_dicomstores
     >>>
     runtime
     {

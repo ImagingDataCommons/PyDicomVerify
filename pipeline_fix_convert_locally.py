@@ -122,10 +122,9 @@ flaw_query_form = '''(
 current_folder = os.path.dirname(__file__)
 def namer(name=''):
 
-    pid = os.getpid()
     if name == '':
-        dt_string = datetime.now().strftime("[%d-%m-%Y][%H-%M-%S]")
-        file_name = './Logs/log{}pid{:05d}.log'.format(dt_string, pid)
+        dt_string = datetime.now().strftime("[%d-%m-%Y]")
+        file_name = './Logs/{}.log'.format(dt_string)
     else:
         dt_string = datetime.now().strftime("[%d-%m-%Y][%H-%M-%S.%f]")
         base = os.path.basename(name)
@@ -785,32 +784,32 @@ def fix_convert_all(dataset_name,
             series_info['StudyInstanceUID'],
             )
         # I am using a single process to avoid running down on RAM
-        # processes = ProcessPool(1, 'single_proce')
-        # processes.queue.put((
-        #     fix_convert_one_sereis,
-        #     (
-        #         files,
-        #         fx_series_folder,
-        #         mf_study_folder,
-        #         fx_dicoms, mf_dicoms, {}, input_table_name,
-        #         series_info['COLLECTION_ID'],
-        #         series_info['INSTANCES'],
-        #         series_info['SeriesInstanceUID'],
-        #         series_info['StudyInstanceUID']),
-        # ))
-        # processes.queue.join()
-        # processes.kill_them_all()
-        # argus, outs = processes.output[0]
+        processes = ProcessPool(1, 'single_proce')
+        processes.queue.put((
+            fix_convert_one_sereis,
+            (
+                files,
+                fx_series_folder,
+                mf_study_folder,
+                fx_dicoms, mf_dicoms, {}, input_table_name,
+                series_info['COLLECTION_ID'],
+                series_info['INSTANCES'],
+                series_info['SeriesInstanceUID'],
+                series_info['StudyInstanceUID']),
+        ))
+        processes.queue.join()
+        processes.kill_them_all(60 * 5)
+        argus, outs = processes.output[0]
 
-        outs = fix_convert_one_sereis(
-            files,
-            fx_series_folder,
-            mf_study_folder,
-            fx_dicoms, mf_dicoms, {}, input_table_name,
-            series_info['COLLECTION_ID'],
-            series_info['INSTANCES'],
-            series_info['SeriesInstanceUID'],
-            series_info['StudyInstanceUID'])
+        # outs = fix_convert_one_sereis(
+        #     files,
+        #     fx_series_folder,
+        #     mf_study_folder,
+        #     fx_dicoms, mf_dicoms, {}, input_table_name,
+        #     series_info['COLLECTION_ID'],
+        #     series_info['INSTANCES'],
+        #     series_info['SeriesInstanceUID'],
+        #     series_info['StudyInstanceUID'])
         fq, isq, orq, flq, fs, ms = outs
         fix_queries.extend(fq)
         issue_queries.extend(isq)

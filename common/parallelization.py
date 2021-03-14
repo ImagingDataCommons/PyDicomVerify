@@ -445,7 +445,7 @@ class ProcessPool:
         none_indeces = []
         while True:
             try:
-                result = self._res_queue.get(timeout)
+                result = self._res_queue.get_nowait()
                 collected += 1
             except queue.Empty:
                 if output_count is not None:

@@ -37,7 +37,8 @@ workflow  main{
             sereise_file_firstsamples=series_file_firstsample,
             json_file=j_file,
             source_bgq_table_name=input_bgq_table_name,
-            destination_bucket_name=first_task.created_dataset
+            destination_bucket_name=first_task.created_dataset,
+            task_index=i
 
         }
         # Object OutputSt = { 
@@ -48,11 +49,11 @@ workflow  main{
         input: dataset_name = convert_all_series.filled_bucket_name[0]
     }
     
-    output {
-        Array[File] firsttask =  first_task.logs
-        Array[File] conversion = flatten(convert_all_series.logs)
-        Array[File] thirdttask =  third_task.logs
-    }
+    # output {
+    #     Array[File] firsttask =  first_task.logs
+    #     Array[File] conversion = flatten(convert_all_series.logs)
+    #     Array[File] thirdttask = third_task.logs
+    # }
     meta {
     allowNestedInputs: true
     }
@@ -65,6 +66,7 @@ task convert_all_series
         File json_file
         String source_bgq_table_name
         String destination_bucket_name
+        Int task_index
     }
     String study_local_folder = 'data_results'
     command
@@ -91,15 +93,23 @@ task convert_all_series
         '~{destination_bucket_name}',
         '~{study_local_folder}',
         )
+
+    log_folder = 'Logs'
+    logs = [(os.path.join(log_folder, i),
+             os.path.join(log_folder, 'task[{:06d}]{}'.format(~{task_index},i))
+            ) for i in os.listdir(log_folder)]
+    for src, dst in logs:
+        os.rename(src, dst)
+
     CODE
-    # gsutil -m cp -r ~{study_local_folder}/* gs://~{destination_bucket_name}
+    gsutil cp -r Logs/* gs://~{destination_bucket_name}/Logs/convert_all_series
     >>>
     runtime {
         docker: "afshinmha/dicom-multiframe-conversion:latest"
         memory: "8GB"
+        disks: "local-disk 30 HDD"
     }
     output{
-        Array[File] logs = glob('Logs/' + '*.log')
         String filled_bucket_name = destination_bucket_name
     }
     meta {
