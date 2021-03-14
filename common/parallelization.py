@@ -425,7 +425,7 @@ class ProcessPool:
     def queue(self):
         return self._queue
 
-    def kill_them_all(self):
+    def kill_them_all(self, timeout=5):
         logger = logging.getLogger(__name__)
         logger.debug('closing all processs')
         for t in self._process_pool:
@@ -445,7 +445,7 @@ class ProcessPool:
         none_indeces = []
         while True:
             try:
-                result = self._res_queue.get_nowait()
+                result = self._res_queue.get(timeout)
                 collected += 1
             except queue.Empty:
                 if output_count is not None:
@@ -468,7 +468,7 @@ class ProcessPool:
             )
         logger.debug('data were collected waiting for processses to join')
         for t in self._process_pool:
-            t.join(5)
+            t.join(timeout)
         logger.debug('Processses joined successfully -  now closing them all')
         for t in self._process_pool:
             try:

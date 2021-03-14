@@ -10,6 +10,7 @@ import time
 import common.common_tools as ctools
 import conversion as conv
 from collections.abc import Callable
+from multiprocessing import freeze_support
 from common.parallelization import (
     # CLASSES
     Periodic,
@@ -142,13 +143,13 @@ if not os.path.exists(folder):
 with open(os.path.join(current_folder, 'log_config.json')) as json_file:
     logger_config_dict = json.load(json_file)
 logger_config_dict["handlers"]['file']['filename'] = file_name
-# with open('log_config.json', 'w') as json_file:
-#     json.dump(logger_config_dict, json_file, indent=4)
+
 logging.config.dictConfig(logger_config_dict)
 hs = logging.RootLogger.root.handlers
 for h in hs:
     if h.name == 'file':
         h.namer = namer
+# install_mp_handler()
 logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.CRITICAL)
 # -----------------------------------------------------------------------
 
@@ -283,7 +284,7 @@ def BuildQueries(table_q_info: table_quota, qs: list, dataset_id: str,
     header = header_ptrn.format(table_q_info.get_table(), '{}')
     out_q.append(header.format(elem_q))
     if processes is None:
-        query_string(out_q[-1], '', project)
+        query_string(out_q[-1], '', project_id='idc-tcia')
     else:
         # logger.info('putting in queue')
         processes.queue.put(
@@ -465,17 +466,8 @@ def fix_convert_one_sereis(
         issue_report_table_id = '{}.{}'.format(bgq_db_id, 'ISSUE')
         orig_report_table_id = '{}.{}'.format(bgq_db_id, 'ORIGINATED_FROM')
         if flaw == '':
-            # rows, ids, insert_id = get_rows_and_insert_ids(fix_q, insert_id)
-            # success = stream_insert_with_ids_with_ids(fix_report_table_id, rows, schema_fix)
-            # if not success:
             fix_queries.extend(fix_q)
-            # rows, ids, insert_id = get_rows_and_insert_ids(iss_q, insert_id)
-            # success = stream_insert_with_ids_with_ids(issue_report_table_id, rows, schema_issue)
-            # if not success:
             issue_queries.extend(iss_q)
-            # rows, ids, insert_id = get_rows_and_insert_ids(org_q, insert_id)
-            # success = stream_insert_with_ids_with_ids(orig_report_table_id, rows, schema_originated_from)
-            # if not success:
             origin_queries.extend(org_q)
             single_frames.append(fx_file_path)
             blob_address = blob_address_form.format(in_instance_uid[i])
@@ -543,10 +535,6 @@ def fix_convert_one_sereis(
                 mf_files_size += os.path.getsize(pr_ch.child_dicom_file)
                 number_of_all_converted_mf += 1
                 org_q = pr_ch.GetQuery(fx_table_name, mf_table_name)
-                # rows, ids, insert_id = get_rows_and_insert_ids(org_q, insert_id)
-                # success = stream_insert_with_ids_with_ids(
-                #     orig_report_table_id, rows, schema_originated_from)
-                # if not success:
                 origin_queries.extend(org_q)
                 multiframe_log = []
                 VER(pr_ch.child_dicom_file, multiframe_log, char_set=char_set)
@@ -796,6 +784,24 @@ def fix_convert_all(dataset_name,
             mf_local_study_path,
             series_info['StudyInstanceUID'],
             )
+        # I am using a single process to avoid running down on RAM
+        # processes = ProcessPool(1, 'single_proce')
+        # processes.queue.put((
+        #     fix_convert_one_sereis,
+        #     (
+        #         files,
+        #         fx_series_folder,
+        #         mf_study_folder,
+        #         fx_dicoms, mf_dicoms, {}, input_table_name,
+        #         series_info['COLLECTION_ID'],
+        #         series_info['INSTANCES'],
+        #         series_info['SeriesInstanceUID'],
+        #         series_info['StudyInstanceUID']),
+        # ))
+        # processes.queue.join()
+        # processes.kill_them_all()
+        # argus, outs = processes.output[0]
+
         outs = fix_convert_one_sereis(
             files,
             fx_series_folder,
@@ -867,6 +873,7 @@ def main_fix_multiframe_convert(
         status_logger.kill_timer()
 
 if __name__ == '__main__':
+    freeze_support()
     j_file_name =  'gitexcluded_local/0001.json'
     with open(j_file_name) as jfile:
         jcontent = json.load(jfile)

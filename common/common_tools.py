@@ -62,7 +62,8 @@ def RunExe(arg_list, stderr_file='', stdout_file='', outlog=None,
             out_text += "\"{}\" ".format(a)
         else:
             out_text += "{} ".format(a)
-    logger.info('Running command: \n\t\t{}'.format(out_text))
+    if log_command:
+        logger.info('Running command: \n\t\t{}'.format(out_text))
     log.append(out_text)
     curr_env = os.environ.copy()
     if env_vars is not None:
