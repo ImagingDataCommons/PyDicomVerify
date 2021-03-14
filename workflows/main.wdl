@@ -102,7 +102,8 @@ task convert_all_series
         os.rename(src, dst)
 
     CODE
-    gsutil cp -r Logs/* gs://~{destination_bucket_name}/Logs/convert_all_series
+    mv Logs convert_all_series && mkdir Logs && mv convert_all_series Logs/
+    gsutil cp -r Logs gs://~{destination_bucket_name}/
     >>>
     runtime {
         docker: "afshinmha/dicom-multiframe-conversion:latest"
