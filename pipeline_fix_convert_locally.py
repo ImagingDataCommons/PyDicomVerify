@@ -15,6 +15,7 @@ from common.parallelization import (
     # CLASSES
     Periodic,
     ProcessPool,
+    TryAfterTimeout,
     # FUNCTIONS
     install_mp_handler,
     # VARIABLES
@@ -142,7 +143,7 @@ if not os.path.exists(folder):
 with open(os.path.join(current_folder, 'log_config.json')) as json_file:
     logger_config_dict = json.load(json_file)
 logger_config_dict["handlers"]['file']['filename'] = file_name
-
+logger_config_dict["root"]["handlers"].append("console")
 logging.config.dictConfig(logger_config_dict)
 hs = logging.RootLogger.root.handlers
 for h in hs:
@@ -784,22 +785,22 @@ def fix_convert_all(dataset_name,
             series_info['StudyInstanceUID'],
             )
         # I am using a single process to avoid running down on RAM
-        processes = ProcessPool(1, 'single_proce')
-        processes.queue.put((
-            fix_convert_one_sereis,
-            (
-                files,
-                fx_series_folder,
-                mf_study_folder,
-                fx_dicoms, mf_dicoms, {}, input_table_name,
-                series_info['COLLECTION_ID'],
-                series_info['INSTANCES'],
-                series_info['SeriesInstanceUID'],
-                series_info['StudyInstanceUID']),
-        ))
-        processes.queue.join()
-        processes.kill_them_all(60 * 5)
-        argus, outs = processes.output[0]
+        # processes = ProcessPool(1, 'single_proce')
+        # processes.queue.put((
+        #     fix_convert_one_sereis,
+        #     (
+        #         files,
+        #         fx_series_folder,
+        #         mf_study_folder,
+        #         fx_dicoms, mf_dicoms, {}, input_table_name,
+        #         series_info['COLLECTION_ID'],
+        #         series_info['INSTANCES'],
+        #         series_info['SeriesInstanceUID'],
+        #         series_info['StudyInstanceUID']),
+        # ))
+        # processes.queue.join()
+        # processes.kill_them_all(60 * 5)
+        # argus, outs = processes.output[0]
 
         # outs = fix_convert_one_sereis(
         #     files,
@@ -810,7 +811,24 @@ def fix_convert_all(dataset_name,
         #     series_info['INSTANCES'],
         #     series_info['SeriesInstanceUID'],
         #     series_info['StudyInstanceUID'])
-        fq, isq, orq, flq, fs, ms = outs
+
+
+        my_process = TryAfterTimeout(
+            fix_convert_one_sereis,
+            (
+                files,
+                fx_series_folder,
+                mf_study_folder,
+                fx_dicoms, mf_dicoms, {}, input_table_name,
+                series_info['COLLECTION_ID'],
+                series_info['INSTANCES'],
+                series_info['SeriesInstanceUID'],
+                series_info['StudyInstanceUID']),
+            timeout_in_sec=3600,
+            max_trial=5
+        )
+        outs = my_process.start()
+        fq, isq, orq, flq, fs, ms = outs[0]
         fix_queries.extend(fq)
         issue_queries.extend(isq)
         origin_queries.extend(orq)
@@ -871,25 +889,25 @@ def main_fix_multiframe_convert(
     finally:
         status_logger.kill_timer()
 
-if __name__ == '__main__':
-    freeze_support()
-    j_file_name =  'gitexcluded_local/0001.json'
-    with open(j_file_name) as jfile:
-        jcontent = json.load(jfile)
-    series = jcontent['data']
-    result_bucket_name = 'afshin_terra_test00'
-    input_table_name = 'canceridc-data.idc_views.dicom_all'
-    local_study_path = 'gitexcluded_data_res'
-    folders = []
-    for se in series:
-        folders.append(os.path.dirname(se['SERIES_PATH'][0]))
-    create_bucket_tables(result_bucket_name)
-    main_fix_multiframe_convert(
-        j_file_name, folders, input_table_name, result_bucket_name,
-        local_study_path
-        )
+# if __name__ == '__main__':
+#     freeze_support()
+#     j_file_name =  'gitexcluded_local/0001.json'
+#     with open(j_file_name) as jfile:
+#         jcontent = json.load(jfile)
+#     series = jcontent['data']
+#     result_bucket_name = 'afshin_terra_test00'
+#     input_table_name = 'canceridc-data.idc_views.dicom_all'
+#     local_study_path = 'gitexcluded_data_res'
+#     folders = []
+#     for se in series:
+#         folders.append(os.path.dirname(se['SERIES_PATH'][0]))
+#     create_bucket_tables(result_bucket_name)
+#     main_fix_multiframe_convert(
+#         j_file_name, folders, input_table_name, result_bucket_name,
+#         local_study_path
+#         )
     # ctools.RunExe([
     #     'gsutil' ,'cp', '-r', local_study_path + '/*', #os.path.join(fx_local_study_path, 'dicom'), 
     #     'gs://{}'.format(result_bucket_name)],
     #     log_std_out=True, log_std_err=True)
-    create_dicomstores(result_bucket_name)
+    # create_dicomstores(result_bucket_name)

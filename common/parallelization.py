@@ -22,17 +22,60 @@ from multiprocessing import (
     cpu_count,
     Lock,
 )
+import signal
 from random import (
     # VARIABLES
     randrange,
 )
 from threading import Thread
 from threading import Lock as ThLock
+import time
 
 
 MAX_NUMBER_OF_THREADS = os.cpu_count() + 1
 MAX_EXEPTION_MESSAGE_LENGTH = 1024
-
+sigs = {
+    signal.SIG_DFL:
+    'SIG_DFL -> This is one of two standard signal handling options; it will simply perform the default function for the signal. For example, on most systems the default action for SIGQUIT is to dump core and exit, while the default action for SIGCHLD is to simply ignore it.',
+    signal.SIG_IGN:
+    'SIG_IGN -> This is another standard signal handler, which will simply ignore the given signal.',
+    signal.SIGABRT:
+    'SIGABRT -> Abort signal from abort(3).',
+    signal.SIGALRM:
+    'SIGALRM -> Timer signal from alarm(2).',
+    signal.SIGBUS:
+    'SIGBUS -> Bus error (bad memory access).',
+    signal.SIGCHLD:
+    'SIGCHLD -> Child process stopped or terminated.',
+    signal.SIGCONT:
+    'SIGCONT -> Continue the process if it is currently stopped',
+    signal.SIGFPE:
+    'SIGFPE -> Floating-point exception. For example, division by zero.',
+    signal.SIGHUP:
+    'SIGHUP -> Hangup detected on controlling terminal or death of controlling process.',
+    signal.SIGILL:
+    'SIGILL -> Illegal instruction.',
+    signal.SIGINT:
+    'SIGINT -> Interrupt from keyboard (CTRL + C).',
+    signal.SIGKILL:
+    'SIGKILL -> Kill signal.',
+    signal.SIGPIPE:
+    'SIGPIPE -> Broken pipe: write to pipe with no readers.',
+    signal.SIGSEGV:
+    'SIGSEGV -> Segmentation fault: invalid memory reference.',
+    signal.SIGTERM:
+    'SIGTERM -> Termination signal.',
+    signal.SIGUSR1:
+    'SIGUSR1 -> User-defined signal 1.',
+    signal.SIGUSR2:
+    'SIGUSR2 -> User-defined signal 2.',
+    signal.SIGWINCH:
+    'SIGWINCH -> Window resize signal',
+    # signal.SIGBREAK:
+    # 'SIGBREAK -> Interrupt from keyboard (CTRL + BREAK).',
+    # signal.SIGCLD:
+    # 'SIGCLD -> Alias to SIGCHLD.',
+}
 class Periodic:
 
     def __init__(self, f, args: list, period_in_sec: int):
@@ -52,6 +95,51 @@ class Periodic:
     def kill_timer(self):
         self._kill_timer = True
 
+
+class TryAfterTimeout:
+
+    def __init__(self, f, args: list, timeout_in_sec: int = 300, max_trial = 10):
+        self._kill_timer: bool = False
+        self._function = f
+        self._args = args
+        self.timeout_in_sec = timeout_in_sec
+        self.worker_process = None
+        self._max_trial = max_trial
+        self._time_interval_between_trials = 5
+        self._trial = 0
+    def job_helper(f, args, output):
+        outs = f(*args)
+        output.append(outs)
+
+    def start(self):
+        logger = logging.getLogger(__name__)
+        logger.info('Starting trial {} to call {}{}'.format(
+            self._trial, self._function, self._args
+        ))
+        manager = multiprocessing.Manager()
+        results = manager.list()
+        self.worker_process = Process(
+            target=TryAfterTimeout.job_helper,
+            args=(self._function, self._args, results))
+        self.worker_process.start()
+        self.worker_process.join(self.timeout_in_sec)
+        sig = self.worker_process.exitcode
+        if sig is None:
+            logger.info(
+                'the function {} took too long and is going to be terminated'.format(
+                    self._function))
+        else:
+            logger.info('process finished with signal {} = {}'.format(sig, sigs[sig]))
+        if self.worker_process.is_alive():
+            self.worker_process.terminate()
+            sig = self.worker_process.exitcode
+        if not (sig == signal.SIG_DFL):
+            if self._trial < self._max_trial:
+                self._trial += 1
+                time.sleep(self._time_interval_between_trials)
+                results = self.start()
+        return results
+        
 
 class StudyThread(Thread):
     number_of_inst_processed: int = 1
@@ -417,7 +505,7 @@ class ProcessPool:
         t = WorkerProcess(
             self._queue, self._res_queue, self._lock, name=th_name,
             status_log_interval=self._processes_count * 20)
-        t.daemon = True
+        t.daemon = False
         t.start()
         return t
 
