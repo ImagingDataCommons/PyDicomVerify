@@ -49,11 +49,9 @@ workflow  main{
         input: dataset_name = convert_all_series.filled_bucket_name[0]
     }
     
-    # output {
-    #     Array[File] firsttask =  first_task.logs
-    #     Array[File] conversion = flatten(convert_all_series.logs)
-    #     Array[File] thirdttask = third_task.logs
-    # }
+    output{
+        String filled_bucket_name = dest_bucket_name
+    }
     meta {
     allowNestedInputs: true
     }
