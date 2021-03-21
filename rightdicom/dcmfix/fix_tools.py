@@ -430,6 +430,26 @@ def subfix_AddOrChangeAttrib(ds:Dataset, log:list, error_regexp:str,
     return fixed
 
 
+def subfix_RemoveAttrib(
+        ds:Dataset, log:list, error_regexp:str, keyword:str) -> bool:
+    fixed = False
+    t = Dictionary.tag_for_keyword(keyword)
+    if t is None:
+        return False
+    desc = Dictionary.dictionary_description(t)
+    ErrorOccured = False
+    log_l = len(log)
+    for i in range(0, log_l):
+        if re.match(error_regexp, log[i]) is not None:
+            msg = mesgtext_cc.ErrorInfo(log[i], "fixed by removing the attribute")
+            log[i] = msg.getWholeMessage()
+            ErrorOccured = True
+    if ErrorOccured:
+        del ds[keyword]
+        fixed = True
+    return fixed
+
+
 def subfix_AddMissingAttrib(ds:Dataset, log:list, keyword:str, value) -> bool:
     fixed = False
     regexp =".*Missing attribute Type.*\<{}\>".format(keyword)

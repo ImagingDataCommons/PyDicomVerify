@@ -16,6 +16,7 @@ from rightdicom.dcmfix.fix_tools import (
     subfix_AddOrChangeAttrib,
     subfix_CodeSeqItem2txt,
     subfix_LookUpRegexInLog,
+    subfix_RemoveAttrib,
     get_full_attrib_list,
     put_attribute_in_path,
 )
@@ -85,9 +86,9 @@ def fix_PatientSex(ds: Dataset, log: list) -> bool:
         old_value = ds[kw].value
     else:
         old_value = ''
-    new_value = "O"
-    fix_m = "fixed by modifying the {} from {} to {}".format(
-        kw, old_value, new_value)
+    new_value = ""
+    fix_m = "fixed by modifying the {} from {} to empty string".format(
+        kw, old_value)
     return subfix_AddOrChangeAttrib(ds, log, error_regex, fix_m, kw, new_value)
 
 
@@ -96,14 +97,7 @@ def fix_PregnancyStatus(ds: Dataset, log: list) -> bool:
     msg = mesgtext_cc.ErrorInfo()
     kw = "PregnancyStatus"
     error_regex = r".*Unrecognized enumerated value .* attribute .*Pregnancy.*Status.*"
-    if kw in ds:
-        old_value = ds[kw].value
-    else:
-        old_value = ''
-    new_value = int(4)
-    fix_m = "fixed by modifying the {} from {} to {} (Unknown)".format(
-        kw, old_value, new_value)
-    return subfix_AddOrChangeAttrib(ds, log, error_regex, fix_m, kw, new_value)
+    return subfix_RemoveAttrib(ds, log, error_regex, kw)
 
 
 def fix_VRForLongitudinalTemporalInformationModified(ds: Dataset,
@@ -204,6 +198,21 @@ def fix_ChangeWindowWidthLessThanOne(ds:Dataset, log:list) -> bool:
     value = "LINEAR_EXACT"
     fix_m = "fixed by modifying the {} to {}".format(kw, value)
     return subfix_AddOrChangeAttrib(ds, log, regexp, fix_m, kw, value)
+
+
+def fix_InsertValue3ForImageType(ds:Dataset, log:list) -> bool:
+    regexp = r'.*A value is required for value 3 in MR Images - attribute .*ImageType.*'
+    kw = "ImageType"
+    value = "OTHER"
+    if not kw in ds:
+        return False
+    v = ds[kw].value
+    if len(v) >= 3:
+        v[2] = value
+    else:
+        v.insert(2, value)
+    fix_m = "fixed by inserting the value 3 of {} to {}".format(kw, value)
+    return subfix_AddOrChangeAttrib(ds, log, regexp, fix_m, kw, v)
 
 
 def fix_ChangePhotometric_Interpretation(ds:Dataset, log:list) -> bool:

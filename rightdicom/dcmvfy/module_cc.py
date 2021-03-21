@@ -62,13 +62,15 @@ def ValidMessage(elementtype: str, module: str, element: str,
 
 
 def fix_by_removing(ds: Dataset, kw: str, check_emptyness=True) -> str:
-    exceptions = ['Laterality']
-    for ex in exceptions:
+    exceptions_not_to_be_removed = ['Laterality']
+    exceptions_to_be_removed = ['PlanarConfiguration']
+
+    for ex in exceptions_not_to_be_removed:
         if ex == kw:
             return ''
     reason = ''
     attrib = ds[kw]
-    if not(not attrib.is_empty and check_emptyness):
+    if attrib.is_empty or not check_emptyness or kw in exceptions_to_be_removed:
         del ds[kw]
         reason = "fixed by removing the attribute. "
     else:

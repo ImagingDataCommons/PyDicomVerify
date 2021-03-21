@@ -81,6 +81,13 @@ def CorrectAnatomicInfo(BodyPartexamined_, AnatomicRegion_):
         if BodyPartexamined_ in BodyPartExamined2SCT:
             ars = BodyPartExamined2SCT[BodyPartexamined_]
             bpe = BodyPartexamined_
+    # change to safer body part examined that doesn't need laterality:
+    if bpe == "KIDNEY":
+        bpe = "ABDOMEN"
+        ars = BodyPartExamined2SCT[bpe]
+    elif bpe == 'LUNG':
+        bpe = "CHESTABDOMEN"
+        ars = BodyPartExamined2SCT[bpe]
     return (bpe, ars)
     
 
@@ -153,19 +160,19 @@ def AddLaterality(ds: Dataset, log: list):
                     AddImageLateralityForBoth = True
             else:
                 return
-    if 'Laterality' in ds:
+    elif 'Laterality' in ds:
         del ds['Laterality']
-    if AddImageLateralityForBoth:
-        kw = 'ImageLaterality'
-        tg = tag_for_keyword(kw)
-        imglaterality = DataElementX(tg, 'CS', 'B')
-        ds[tg] = imglaterality
-        msg = ErrorInfo()
-        msg.msg = 'General Fix - {}'.format(
-                        "<Laterality> doesn't exist or holds wrong value")
-        msg.fix = "fixed by changing the <Laterality>"\
-            "to <{}> with value '{}' for both".format(kw, 'B')
-        log.append(msg.getWholeMessage())
+    # if AddImageLateralityForBoth:
+    #     kw = 'ImageLaterality'
+    #     tg = tag_for_keyword(kw)
+    #     imglaterality = DataElementX(tg, 'CS', 'B')
+    #     ds[tg] = imglaterality
+    #     msg = ErrorInfo()
+    #     msg.msg = 'General Fix - {}'.format(
+    #                     "<Laterality> doesn't exist or holds wrong value")
+    #     msg.fix = "fixed by changing the <Laterality>"\
+    #         "to <{}> with value '{}' for both".format(kw, 'B')
+    #     log.append(msg.getWholeMessage())
 
 
 def fix_SOPReferencedMacro(

@@ -364,14 +364,16 @@ def fix_one_instance(org_file_path: str,
 
 
 def frameset_for_one_series(single_frame_file_path: List[str],
-                            series_folder_prifix: str):
+                            series_folder_prifix: str,
+                            single_frame_series_uid: str):
     logger = logging.getLogger(__name__)
     # All frames set created out of one series must have the same series
     #   instance uid. So I have to create on sereies instance uid and a
     #   destination folder for future multiframe images
     # ------------------------------------------------
     multi_frame_series_uid = generate_uid(
-        prefix="1.3.6.1.4.1.43046.3" + ".1.9.")
+        prefix="1.3.6.1.4.1.43046.3" + ".1.9.",
+        entropy_srcs=[single_frame_series_uid])
     multi_frame_series_folder = os.path.join(
         series_folder_prifix,
         multi_frame_series_uid)
@@ -441,7 +443,7 @@ def fix_convert_one_sereis(
     defective_study_series = []
     fixed_files_size = 0
     mf_files_size = 0
-    
+    upload_time_for_one_instance = 300
     if not os.path.exists(fx_local_series_path):
         os.makedirs(fx_local_series_path)
     if not os.path.exists(mf_local_study_path):
@@ -461,6 +463,7 @@ def fix_convert_one_sereis(
             fx_file_path,
             in_bgq_table_name, fx_table_name, anatomy,
             in_collection_name, in_series_uid, in_study_uid)
+        
         bgq_db_id = fx_gc_info.BigQuery.GetBigQueryStyleDatasetAddress(False)
         fix_report_table_id = '{}.{}'.format(bgq_db_id, 'FIX_REPORT')
         issue_report_table_id = '{}.{}'.format(bgq_db_id, 'ISSUE')
@@ -473,11 +476,27 @@ def fix_convert_one_sereis(
             blob_address = blob_address_form.format(in_instance_uid[i])
             logger.debug(
                 'Start uploading the fixed file {}'.format(fx_file_path))
-            success = upload_blob(
-                fx_gc_info.Bucket.ProjectID,
-                fx_gc_info.Bucket.Dataset,
-                blob_address,
-                fx_file_path)
+            # success = upload_blob(
+            #     fx_gc_info.Bucket.ProjectID,
+            #     fx_gc_info.Bucket.Dataset,
+            #     blob_address,
+            #     fx_file_path)
+            upload_process = TryAfterTimeout(
+                upload_blob,
+                (
+                    fx_gc_info.Bucket.ProjectID,
+                    fx_gc_info.Bucket.Dataset,
+                    blob_address,
+                    fx_file_path
+                ),
+                timeout_in_sec=upload_time_for_one_instance,
+                max_trial=5
+            )
+            outs = upload_process.start()
+            if not outs:
+                success = False
+            else:
+                success = outs[0]
             if not success:
                 flaw_queries.append(flaw_query_form.format(
                     fx_gc_info.Bucket.Dataset, in_study_uid,
@@ -497,7 +516,8 @@ def fix_convert_one_sereis(
     
     (fsets, mf_series_uid, mf_series_dir) = frameset_for_one_series(
         single_frames,
-        mf_local_study_path)
+        mf_local_study_path,
+        fx_series_uid)
     logger.debug('Start conversion process for {} frameset'.format(len(fsets)))
     number_of_all_converted_mf = 0
     if len(fsets) == 0:
@@ -510,9 +530,11 @@ def fix_convert_one_sereis(
         mf_study_uid = fx_study_uid
         char_set = DicomFileInfo.get_charset_val_from_dataset(single_frames[0])
         for fset in fsets:
-
+            frameset_sop_uids = fset.GetSOPInstanceUIDList()
+            frameset_sop_uids.sort()
             mf_instace_uid = generate_uid(
-                prefix="1.3.6.1.4.1.43046.3" + ".1.9."
+                prefix="1.3.6.1.4.1.43046.3" + ".1.9.",
+                entropy_srcs=frameset_sop_uids
             )
             mf_file_path = os.path.join(
                 mf_series_dir, '{}.dcm'.format(mf_instace_uid))
@@ -550,10 +572,25 @@ def fix_convert_one_sereis(
                         pr_ch.child_study_instance_uid,
                         pr_ch.child_series_instance_uid,
                         pr_ch.child_sop_instance_uid)
-                success = upload_blob(
-                    mf_gc_info.Bucket.ProjectID,
-                    mf_gc_info.Bucket.Dataset,
-                    mf_blob_path, pr_ch.child_dicom_file)
+                # success = upload_blob(
+                #     mf_gc_info.Bucket.ProjectID,
+                #     mf_gc_info.Bucket.Dataset,
+                #     mf_blob_path, pr_ch.child_dicom_file)
+                upload_process = TryAfterTimeout(
+                    upload_blob,
+                    (
+                        mf_gc_info.Bucket.ProjectID,
+                        mf_gc_info.Bucket.Dataset,
+                        mf_blob_path, pr_ch.child_dicom_file
+                    ),
+                    timeout_in_sec=upload_time_for_one_instance * len(single_frames),
+                    max_trial=5
+                )
+                outs = upload_process.start()
+                if not outs:
+                    success = False
+                else:
+                    success = outs[0]
                 if not success:
                     flaw_queries.append(flaw_query_form.format(
                         mf_gc_info.Bucket.Dataset, pr_ch.study_uid,
@@ -825,7 +862,7 @@ def fix_convert_all(dataset_name,
                 series_info['SeriesInstanceUID'],
                 series_info['StudyInstanceUID']),
             timeout_in_sec=3600,
-            max_trial=5
+            max_trial=1
         )
         outs = my_process.start()
         fq, isq, orq, flq, fs, ms = outs[0]

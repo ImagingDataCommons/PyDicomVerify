@@ -11,8 +11,10 @@ from pydicom import Dataset
 from pydicom.charset import python_encoding
 from gcloud.BigQueryStuff import *
 git_url = 'https://github.com/afshinmessiah/PyDicomVerify/{}'
-repo = git.Repo(os.path.dirname(os.path.abspath(__file__)))
+current_dir = os.path.dirname(os.path.abspath(__file__))
+repo = git.Repo(current_dir)
 commit = repo.head.object.hexsha
+git_ws = git_url.format('tree/' + commit)
 iod_names = [
         "CRImage",
         "CTImage",
@@ -410,11 +412,9 @@ class DicomFix:
         file2 = m.group(8)
         line2 = m.group(9)
         self.file1_name = os.path.basename(file1)
-        self.file1_link = git_url.format('tree/' + commit) + "/{}#L{}".format(
-            self.file1_name, line1)
+        self.file1_link = "{}#L{}".format(file1, line1).replace(current_dir, git_ws)
         self.file2_name = os.path.basename(file2)
-        self.file2_link = git_url.format('tree/' + commit) + "/{}#L{}".format(
-            self.file2_name, line2)
+        self.file2_link = "{}#L{}".format(file2, line2).replace(current_dir, git_ws)
         element_pattern = r'(Element|attribute|keyword)[=\s]{,5}<([^>]*)>'
         m = re.search(element_pattern, self.issue)
         if m is not None:

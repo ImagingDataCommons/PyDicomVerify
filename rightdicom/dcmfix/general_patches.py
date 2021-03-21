@@ -316,7 +316,7 @@ def generalfix_VM1(ds, log):
             continue
         if a.VM <= 1:
             continue
-        if (a.VR == 'SQ'):
+        if (a.VR != 'LT' or a.VR != 'LO'):
             continue
         concat = '/'.join(a.value)
         ds[key] = DataElementX(key, a.VR, concat)
@@ -419,9 +419,23 @@ def generalfix_DS_Precision(ds, log):
                     fixed = True
     return fixed
 
-
-
-
+def generalfix_RealWorldValueMappingSequence(ds, log):
+    kw = 'RealWorldValueMappingSequence'
+    tg = tag_for_keyword(kw)
+    if tg in ds:
+        v = ds[tg].value
+        for i, item in enumerate(v):
+            in_key = 'LUTLabel'
+            in_tg = tag_for_keyword(in_key)
+            if in_tg not in item:
+                new_el = DataElementX(in_tg, 'SH', 'Unknown')
+                item[in_tg] = new_el
+                err = "<{}> {}".format(in_key, validate_vr.tag2str(in_tg))
+                msg = ErrorInfo(
+                    "General Fix - The item number {} lacks {}".format(i, err),
+                    "fixed by adding a new element with value <{}>".format(
+                        new_el.value))
+                log.append(msg.getWholeMessage())
 
 
 # def generalfix_EditNotUsedTags(ds:Dataset, log:list) -> bool:

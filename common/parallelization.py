@@ -108,14 +108,19 @@ class TryAfterTimeout:
         self._time_interval_between_trials = 5
         self._trial = 0
     def job_helper(f, args, output):
-        outs = f(*args)
-        output.append(outs)
+        logger = logging.getLogger(__name__)
+        try:
+            outs = f(*args)
+            output.append(outs)
+        except BaseException as err:
+            logger.error(err, exc_info=True)
+            raise
 
     def start(self):
         logger = logging.getLogger(__name__)
-        logger.info('Starting trial {} to call {}{}'.format(
-            self._trial, self._function, self._args
-        ))
+        if self._trial > 0:
+            logger.info('Starting trial {}'.format(self._trial))
+            self.write_args()
         manager = multiprocessing.Manager()
         results = manager.list()
         self.worker_process = Process(
@@ -126,12 +131,12 @@ class TryAfterTimeout:
         sig = self.worker_process.exitcode
         if sig is None:
             logger.info(
-                'the function {} took too long and is going to be terminated'.format(
-                    self._function))
-        else:
+                'the function <{}> took too long and is going to be terminated'.format(
+                    self._function.__name__))
+        elif not sig == signal.SIG_DFL:
             logger.info('process finished with signal {} = {}'.format(sig, sigs[sig]))
         if self.worker_process.is_alive():
-            self.worker_process.terminate()
+            self.worker_process.kill()
             sig = self.worker_process.exitcode
         if not (sig == signal.SIG_DFL):
             if self._trial < self._max_trial:
@@ -139,6 +144,24 @@ class TryAfterTimeout:
                 time.sleep(self._time_interval_between_trials)
                 results = self.start()
         return results
+    
+    def write_args(self):
+        logger = logging.getLogger(__name__)
+        arg_labels = inspect.getfullargspec(self._function)
+        msg = ''
+        msg += '\n\t -> Function {} list of arguments:'.format(
+            self._function.__name__)
+        for arg_l, arg in zip(arg_labels[0], self._args):
+            if isinstance(arg, tuple) or isinstance(arg, list):
+                if len(arg) > 0:
+                    arg = arg[0]
+            if isinstance(arg, str):
+                msg += ('\n\t\t\t{} = "{}"'.format(arg_l, arg))
+            else:
+                msg += ('\n\t\t\t{} = {}'.format(arg_l, arg))
+        logger.info(msg)
+    
+    
         
 
 class StudyThread(Thread):
@@ -505,7 +528,7 @@ class ProcessPool:
         t = WorkerProcess(
             self._queue, self._res_queue, self._lock, name=th_name,
             status_log_interval=self._processes_count * 20)
-        t.daemon = False
+        t.daemon = True
         t.start()
         return t
 

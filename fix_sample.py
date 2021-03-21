@@ -9,7 +9,7 @@ import conversion as convtool
 from anatomy_query import (
     # FUNCTIONS
     get_anatomy_info,
-    quey_anatomy_from_tables,
+    query_anatomy_from_tables,
 )
 from gcloud.BigQueryStuff import (
     # FUNCTIONS
@@ -270,9 +270,10 @@ def DownloadAndFixOneInstance(kw, value):
     download_ : bool = True
     global anatomy_info
     global ref_info
-    ref_info = QueryReferencedStudySequence()
+    ref_info = QueryReferencedStudySequence(
+        'idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata')
     anatomy_info = {}
-    anatomy_info = quey_anatomy_from_tables(
+    anatomy_info = query_anatomy_from_tables(
         '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata`',
     '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_auxilliary_metadata`')
     for i in range(0, len(in_folders)):
@@ -317,23 +318,7 @@ def DownloadAndFixOneInstance(kw, value):
 
 if __name__ == '__main__':
     sopuids = [
-        '1.3.6.1.4.1.14519.5.2.1.3023.4017.209704513302973727718328582207', 
-        '1.3.6.1.4.1.14519.5.2.1.1357.4011.281397539124178351223598058296', 
-        '1.3.6.1.4.1.14519.5.2.1.7695.1700.517751118054315065905894958987', 
-        '1.3.6.1.4.1.14519.5.2.1.7695.1700.320920268173347144917922857171', 
-        '1.3.6.1.4.1.14519.5.2.1.4591.4003.320266460157857465796899572176', 
-        '1.3.6.1.4.1.14519.5.2.1.7695.1700.104086005828132894361977889440', 
-        '1.3.6.1.4.1.14519.5.2.1.3023.4017.246024658770497204037525420107', 
-        '1.3.6.1.4.1.14519.5.2.1.1706.4016.104956504013800026071463578618', 
-        '1.3.6.1.4.1.14519.5.2.1.1706.4016.201023326714000639624412829570', 
-        '1.3.6.1.4.1.14519.5.2.1.7695.1700.589383253769829158675407601303', 
-        '1.3.6.1.4.1.14519.5.2.1.7695.1700.265307053861517090156869032024', 
-        '1.3.6.1.4.1.14519.5.2.1.8421.4009.468320073525327856416576257347', 
-        '1.3.6.1.4.1.14519.5.2.1.8421.4019.657240631665032686647487884916', 
-        '1.3.6.1.4.1.14519.5.2.1.2783.4001.106083817550297346660811112826', 
-        '1.3.6.1.4.1.14519.5.2.1.2783.4001.227521395173726890260143595013', 
         '1.3.6.1.4.1.14519.5.2.1.2783.4001.296459728980938767573311222171', 
-        '1.3.6.1.4.1.14519.5.2.1.6354.4025.325770388737145266070938538988', 
     ]
     for i, uid in enumerate(sopuids, 1):
         print('{}/{}) {}'.format(i, len(sopuids), uid))
