@@ -50,7 +50,7 @@ workflow  main{
     }
     
     output{
-        String filled_bucket_name = dest_bucket_name
+        String filled_bucket_name = third_task.created_dicomstores
     }
     meta {
     allowNestedInputs: true
