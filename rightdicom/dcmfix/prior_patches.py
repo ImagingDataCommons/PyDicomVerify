@@ -1,3 +1,5 @@
+import logging
+import logging.config
 import pydicom.datadict as Dictionary
 import rightdicom.dcmvfy.mesgtext_cc as mesgtext_cc
 import rightdicom.dcmvfy.validate_vr as validate_vr
@@ -16,21 +18,25 @@ from rightdicom.dcmvfy.mesgtext_cc import (
 
 
 def priorfix_RemoveIllegalTags(ds: Dataset, parent_kw:str, log:list) -> bool:
+    logger = logging.getLogger(__name__)
     tags_to_be_removed = []
     fixed = False
     for k, a in ds.items():
         try:
             a = ds[k]
-        except KeyError as err:
-            if not k.is_private:
-                if not Dictionary.dictionary_has_tag(k):
-                    ttaagg = validate_vr.tag2str(a.tag)
-                    eerr = mesgtext_cc.ErrorInfo("General Fix - tag {} in {}is not a standard dicom tag".format(
-                        ttaagg, parent_kw),
-                    'fixed by removing the attribute')
-                    log.append(eerr.getWholeMessage())
-                    tags_to_be_removed.append(a.tag)
-                    continue
+        except BaseException as err:
+            ttaagg = validate_vr.tag2str(k)
+            eerr = mesgtext_cc.ErrorInfo(
+                "General Fix - attribute with tag {} in {} is not"
+                " readable by pydicom".format(
+                ttaagg, parent_kw),
+            'fixed by removing the attribute')
+            log.append(eerr.getWholeMessage())
+            loggermsg = 'attribute with tag {} in {} is not '\
+                'readable by pydicom because {}'.format(ttaagg, parent_kw, err)
+            logger.error(loggermsg, stack_info=True)
+            tags_to_be_removed.append(k)
+            continue
         if type(a.value) == Sequence:
             for item in a.value:
                 fixed = fixed or priorfix_RemoveIllegalTags(item, a.keyword, log)

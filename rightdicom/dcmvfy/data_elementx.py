@@ -36,7 +36,7 @@ def ConvertDataset(ds:pydicom.Dataset) -> pydicom.Dataset:
         try:
             elem = ds[key]
             already_coverted = True
-        except KeyError:
+        except BaseException:
             elem = val
             already_coverted = False
         if type(elem.value) == pydicom.Sequence:

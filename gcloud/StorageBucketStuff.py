@@ -44,7 +44,7 @@ def list_blobs(project_id: str, bucket_name: str, prefix: str = None):
                 blobs = storage_client.list_blobs(bucket_obj, timeout=5)
             else:
                 blobs = storage_client.list_blobs(
-                    bucket_obj, prefix=prefix, delimiter='/', timeout=5)
+                    bucket_obj, prefix=prefix, delimiter=None, timeout=5)
             break
         except Exception as err:
             retries += 1
