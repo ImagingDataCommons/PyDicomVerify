@@ -456,13 +456,29 @@ def fix_convert_one_sereis(
         else:
             fbase = os.path.basename(obj)
         fx_file_path = os.path.join(fx_local_series_path, fbase + '.dcm')
+        # (fix_q, iss_q, org_q, flaw,
+        # fx_instance_uid, fx_series_uid,
+        # fx_study_uid) = fix_one_instance(
+        #     obj,
+        #     fx_file_path,
+        #     in_bgq_table_name, fx_table_name, anatomy,
+        #     in_collection_name, in_series_uid, in_study_uid)
+        
+        fix_process = TryAfterTimeout(
+            fix_one_instance,
+            (
+                obj,
+                fx_file_path,
+                in_bgq_table_name, fx_table_name, anatomy,
+                in_collection_name, in_series_uid, in_study_uid
+            ),
+            timeout_in_sec=3600,
+            max_trial=0
+        )
+        outs = fix_process.start()
         (fix_q, iss_q, org_q, flaw,
         fx_instance_uid, fx_series_uid,
-        fx_study_uid) = fix_one_instance(
-            obj,
-            fx_file_path,
-            in_bgq_table_name, fx_table_name, anatomy,
-            in_collection_name, in_series_uid, in_study_uid)
+        fx_study_uid) = outs[0]
         
         bgq_db_id = fx_gc_info.BigQuery.GetBigQueryStyleDatasetAddress(False)
         fix_report_table_id = '{}.{}'.format(bgq_db_id, 'FIX_REPORT')
@@ -518,6 +534,7 @@ def fix_convert_one_sereis(
         single_frames,
         mf_local_study_path,
         fx_series_uid)
+    
     logger.debug('Start conversion process for {} frameset'.format(len(fsets)))
     number_of_all_converted_mf = 0
     if len(fsets) == 0:
@@ -943,8 +960,8 @@ def main_fix_multiframe_convert(
 #         j_file_name, folders, input_table_name, result_bucket_name,
 #         local_study_path
 #         )
-    # ctools.RunExe([
-    #     'gsutil' ,'cp', '-r', local_study_path + '/*', #os.path.join(fx_local_study_path, 'dicom'), 
-    #     'gs://{}'.format(result_bucket_name)],
-    #     log_std_out=True, log_std_err=True)
-    # create_dicomstores(result_bucket_name)
+#     ctools.RunExe([
+#         'gsutil' ,'cp', '-r', local_study_path + '/*', #os.path.join(fx_local_study_path, 'dicom'), 
+#         'gs://{}'.format(result_bucket_name)],
+#         log_std_out=True, log_std_err=True)
+#     create_dicomstores(result_bucket_name)
