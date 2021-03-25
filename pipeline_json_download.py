@@ -121,10 +121,11 @@ def download_json(remote_file, local_file, data_folder):
         json.dump(whole, writej, indent=4)
 
 
-
-local = 'gitexcluded_local/0001.json'
-remote = '/workspaces/VerifyDicom/gitexcluded_jsons/series_00000000.json'
-download_json(remote, local, '/workspaces/VerifyDicom/gitexcluded_data')
+# if __name__ == '__main__':
+#     freeze_support()
+#     local = 'gitexcluded_local/0001.json'
+#     remote = '/Users/afshin/Documents/work/VerifyDicom/gitexcluded_jsons/series_00000000.json'
+#     download_json(remote, local, '/Users/afshin/Documents/work/VerifyDicom/gitexcluded_data')
 
 
 

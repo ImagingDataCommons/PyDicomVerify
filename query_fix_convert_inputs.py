@@ -3,9 +3,11 @@ import logging.config
 import os
 import shutil
 from gcloud.BigQueryStuff import *
+from ref_query import QueryReferencedStudySequence
 import json
 
-def query_all(json_file: str = 'testfile', 
+def query_all(  ref_json_file: str = 'ref',
+                json_file: str = 'testfile', 
                 json_var: str = 'data' ,
                 mx_number_of_series_in_file: int = -1,
                 mx_number_of_series: int = -1) -> dict:
@@ -13,11 +15,50 @@ def query_all(json_file: str = 'testfile',
     parent = os.path.dirname(json_file)
     if parent and not os.path.exists(parent):
         os.makedirs(parent)
+    parent = os.path.dirname(ref_json_file)
+    if parent and not os.path.exists(parent):
+        os.makedirs(parent)
     Limit = ''
     if mx_number_of_series > 0:
         Limit = 'LIMIT {}'.format(mx_number_of_series)
-    query = """
-WITH DISTINGUISHED AS(
+    query = r"""
+WITH 
+    ARS AS (
+        SELECT 
+            StudyInstanceUID, 
+            STRING_AGG(DISTINCT X.CODEVALUE, '\n') AS CodeValue,
+            STRING_AGG(DISTINCT X.CodeMeaning, '\n') AS CodeMeaning,
+            STRING_AGG(DISTINCT X.CodingSchemeDesignator, '\n') AS CodingSchemeDesignator,
+            COUNT(DISTINCT X.CODEVALUE) AS CodeValue_COUNT,
+            COUNT(DISTINCT X.CodeMeaning) AS CodeMeaning_COUNT,
+            COUNT(DISTINCT X.CodingSchemeDesignator) AS CodingSchemeDesignator_COUNT
+        FROM `canceridc-data.idc_views.dicom_all` 
+            CROSS JOIN UNNEST(AnatomicRegionSequence) AS X 
+            GROUP BY 
+            StudyInstanceUID
+    )
+    ,BPE AS (
+        SELECT StudyInstanceUID, 
+        STRING_AGG(DISTINCT BODYPARTEXAMINED, '\n') AS BodyPartExamined, 
+        COUNT(DISTINCT BodyPartExamined) AS BPE_COUNT
+        FROM `canceridc-data.idc_views.dicom_all` 
+        GROUP BY StudyInstanceUID
+    )
+    , ANATOMY AS (
+        SELECT 
+            IF(BPE.StudyInstanceUID IS NOT NULL, BPE.StudyInstanceUID, ARS.StudyInstanceUID) AS StudyInstanceUID,
+            BodyPartExamined,
+            BPE_COUNT,
+            CodeValue,
+            CodeMeaning,
+            CodingSchemeDesignator,
+            CodeValue_COUNT AS ARS_COUNT,
+            FROM BPE FULL OUTER JOIN ARS ON BPE.StudyInstanceUID=ARS.StudyInstanceUID
+            WHERE (BPE.StudyInstanceUID IS NOT NULL OR ARS.StudyInstanceUID IS NOT NULL) 
+                AND (BPE_COUNT  < 2 OR BPE_COUNT IS NULL)
+                AND (CodeValue_COUNT  < 2 OR CodeValue_COUNT IS NULL)
+    )
+    , DISTINGUISHED AS(
         SELECT  SOPInstanceUID,
                 SeriesInstanceUID,
                 StudyInstanceUID, 
@@ -144,9 +185,16 @@ SELECT  GCS_BUCKET,
         DISTINGUISHED.StudyInstanceUID, 
         DISTINGUISHED.SeriesInstanceUID,
         ARRAY_AGG(SOPInstanceUID) AS INSTANCES,
-        ARRAY_AGG(FORMAT('%s', LEFT(GCS_URL, INSTR(GCS_URL, '#', -1, 1) - 1))) AS SERIES_PATH
+        ARRAY_AGG(FORMAT('%s', LEFT(GCS_URL, INSTR(GCS_URL, '#', -1, 1) - 1))) AS SERIES_PATH,
+        ANY_VALUE(BodyPartExamined) AS BodyPartExamined,
+        ANY_VALUE(CodeValue) AS CodeValue,
+        ANY_VALUE(CodeMeaning) AS CodeMeaning,
+        ANY_VALUE(CodingSchemeDesignator) AS CodingSchemeDesignator,
+        ANY_VALUE(BPE_COUNT) AS BPE_COUNT,
+        ANY_VALUE(ARS_COUNT) AS ARS_COUNT,
 FROM DISTINGUISHED INNER JOIN SINGLE_FRAMESETS 
 ON DISTINGUISHED.SeriesInstanceUID = SINGLE_FRAMESETS.SeriesInstanceUID
+LEFT OUTER JOIN ANATOMY ON ANATOMY.StudyInstanceUID = DISTINGUISHED.StudyInstanceUID
 GROUP BY 
         GCS_BUCKET,
         COLLECTION_ID,
@@ -173,6 +221,12 @@ ORDER BY StudyInstanceUID, SeriesInstanceUID
             data1['SeriesInstanceUID'] = row.SeriesInstanceUID
             data1['INSTANCES'] = row.INSTANCES
             data1['SERIES_PATH'] = row.SERIES_PATH
+            data1['BodyPartExamined'] = row.BodyPartExamined
+            data1['CodeValue'] = row.CodeValue
+            data1['CodeMeaning'] = row.CodeMeaning
+            data1['CodingSchemeDesignator'] = row.CodingSchemeDesignator
+            data1['BPE_COUNT'] = row.BPE_COUNT
+            data1['ARS_COUNT'] = row.ARS_COUNT
             vec_data.append(data1)
             size = len(
                 json.dumps({json_var: vec_data}, indent=4)) * sz_factor
@@ -188,12 +242,18 @@ ORDER BY StudyInstanceUID, SeriesInstanceUID
                 sz = os.path.getsize(filename)
                 sz_factor = sz / size_1
                 file_counter += 1
-                print('number of series: {}'.format(len(vec_data)))
+                # print('number of series: {}'.format(len(vec_data)))
                 vec_data = [vec_data[-1]]
         
         filename = '{}_{:08d}.json'.format(json_file, file_counter)
         with open(filename, 'w') as fp:
             json.dump(
                 {json_var: vec_data}, fp, indent=4)
+    ref_info = QueryReferencedStudySequence(
+        'canceridc-data.idc_views.dicom_all')
+    with open('{}.json'.format(ref_json_file), 'w') as ref_p:
+        json.dump(ref_info, ref_p, indent=4)
+    
+    
 
-# query_all('/series', 'data', 20, 1000)
+# query_all('gitexcluded_queries/refs', 'gitexcluded_jsons/series', 'data', 10, 100)

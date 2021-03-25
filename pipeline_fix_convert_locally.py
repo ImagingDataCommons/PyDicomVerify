@@ -105,7 +105,7 @@ max_number_of_up_down_load_processes = MAX_NUMBER_OF_THREADS
 max_number_of_bq_processes = MAX_NUMBER_OF_THREADS
 max_number_of_frameset_processes = MAX_NUMBER_OF_THREADS
 max_number_of_conversion_processes = MAX_NUMBER_OF_THREADS
-ref_info = {}
+
 fix_report_tq = None
 issue_report_tq = None
 org_report_tq = None
@@ -174,14 +174,15 @@ def VER(file: str, log: list, char_set: str = 'ascii'):
 
 def FixFile(dicom_file: str, dicom_fixed_file: str,
             log_fix: list, log_david_pre: list, log_david_post: list,
-            anatomy: tuple):
+            anatomy: tuple,
+            reference: dict):
     ds = pydicom.read_file(dicom_file)
     char_set = DicomFileInfo.get_charset_val_from_dataset(ds)
     # log_mine = []
     VER(dicom_file, log_david_pre, char_set=char_set)
     if len(anatomy) == 2:
         add_anatomy(ds, anatomy[0], anatomy[1], log_fix)
-    fix_SOPReferencedMacro(ds, log_fix, ref_info)
+    fix_SOPReferencedMacro(ds, log_fix, reference)
     fix_dicom(ds, log_fix)
     # fix_report = PrintLog(log_fix)
     pydicom.write_file(dicom_fixed_file, ds)
@@ -304,6 +305,7 @@ def fix_one_instance(org_file_path: str,
                      input_table_name: str,
                      fixed_table_name: str,
                      anatomy: tuple,
+                     reference_info: dict,
                      org_bucket_name = '',
                      org_series_uid: str = '',
                      org_study_uid: str = '') -> tuple:
@@ -318,7 +320,7 @@ def fix_one_instance(org_file_path: str,
         fx_ds = FixFile(
             org_file_path, fx_file_path, fix_log,
             pre_fix_issues,
-            post_fix_issues, anatomy)
+            post_fix_issues, anatomy, reference_info)
         curr_study_uid = fx_ds.StudyInstanceUID
         curr_series_uid = fx_ds.SeriesInstanceUID
         curr_instance_uid = fx_ds.SOPInstanceUID
@@ -405,11 +407,11 @@ def get_rows_and_insert_ids(q_list: list, insert_id_start: int):
     return (rows, ids, insert_id_start)
 
 
-def fix_convert_one_sereis(
+def fix_convert_one_series(
         original_files: list,
         fx_local_series_path: str,
         mf_local_study_path: str,
-        fx_gc_info, mf_gc_info, anatomy: tuple,
+        fx_gc_info, mf_gc_info, anatomy: tuple, ref_info: dict,
         in_bgq_table_name: str,
         in_collection_name: str = '',
         in_instance_uid: list = [],
@@ -418,16 +420,16 @@ def fix_convert_one_sereis(
        ):
     logger = logging.getLogger(__name__)
     try:
-        fix_convert_one_sereis.counter += 1
+        fix_convert_one_series.counter += 1
     except AttributeError:
-        fix_convert_one_sereis.counter = 1
+        fix_convert_one_series.counter = 1
     
     if len(original_files) == 0:
         logger.debug('The input is empty')
         return([], [], [], [], 0, 0)
     current_pid = os.getpid()
     insert_id = int('1{:05d}{:04d}00000'.format(
-        current_pid,fix_convert_one_sereis.counter)
+        current_pid,fix_convert_one_series.counter)
         )
     fx_table_name = fx_gc_info.BigQuery.GetBigQueryStyleTableAddress(False)
     mf_table_name = mf_gc_info.BigQuery.GetBigQueryStyleTableAddress(False)
@@ -463,13 +465,18 @@ def fix_convert_one_sereis(
         #     fx_file_path,
         #     in_bgq_table_name, fx_table_name, anatomy,
         #     in_collection_name, in_series_uid, in_study_uid)
-        
+        if fbase in ref_info:
+            found_ref_class_uid, found_ref_inst_uid = ref_info[fbase]
+            reference = {found_ref_inst_uid: found_ref_class_uid}
+        else:
+            reference = {}
+
         fix_process = TryAfterTimeout(
             fix_one_instance,
             (
                 obj,
                 fx_file_path,
-                in_bgq_table_name, fx_table_name, anatomy,
+                in_bgq_table_name, fx_table_name, anatomy, reference,
                 in_collection_name, in_series_uid, in_study_uid
             ),
             timeout_in_sec=3600,
@@ -528,7 +535,7 @@ def fix_convert_one_sereis(
     if len(flaw_queries) != 0:
         # rm((in_local_series_path, fx_local_series_path), False)
         return([], [], [], flaw_queries, 0, 0)
-    # Now I want to extract framesets from fixed sereis:
+    # Now I want to extract framesets from fixed series:
     
     (fsets, mf_series_uid, mf_series_dir) = frameset_for_one_series(
         single_frames,
@@ -791,7 +798,8 @@ def fix_convert_all(dataset_name,
          series_list: list,
          input_table_name: str,
          in_local_series_paths: list,
-         local_data_path: str
+         local_data_path: str,
+         ref_info: dict
          ):
 
     fx_dicoms, mf_dicoms = create_datainfos(dataset_name)
@@ -841,7 +849,7 @@ def fix_convert_all(dataset_name,
         # I am using a single process to avoid running down on RAM
         # processes = ProcessPool(1, 'single_proce')
         # processes.queue.put((
-        #     fix_convert_one_sereis,
+        #     fix_convert_one_series,
         #     (
         #         files,
         #         fx_series_folder,
@@ -856,7 +864,7 @@ def fix_convert_all(dataset_name,
         # processes.kill_them_all(60 * 5)
         # argus, outs = processes.output[0]
 
-        # outs = fix_convert_one_sereis(
+        # outs = fix_convert_one_series(
         #     files,
         #     fx_series_folder,
         #     mf_study_folder,
@@ -866,14 +874,22 @@ def fix_convert_all(dataset_name,
         #     series_info['SeriesInstanceUID'],
         #     series_info['StudyInstanceUID'])
 
-
+        anatomy = (
+            series_info["BodyPartExamined"],
+            (
+                series_info["CodeValue"],
+                series_info["CodeMeaning"],
+                series_info["CodingSchemeDesignator"],
+            )
+        )
         my_process = TryAfterTimeout(
-            fix_convert_one_sereis,
+            fix_convert_one_series,
             (
                 files,
                 fx_series_folder,
                 mf_study_folder,
-                fx_dicoms, mf_dicoms, {}, input_table_name,
+                fx_dicoms, mf_dicoms, anatomy, ref_info,
+                input_table_name,
                 series_info['COLLECTION_ID'],
                 series_info['INSTANCES'],
                 series_info['SeriesInstanceUID'],
@@ -917,26 +933,31 @@ def fix_convert_all(dataset_name,
     # Wait unitl populating bigquery stops
     
 def main_fix_multiframe_convert(
-        json_file: str,
+        input_data_json_file: str,
         series_folders: list,
         input_table_name: str,
         result_bucket_name: str,
-        local_data_path: str
+        local_data_path: str,
+        ref_query_json_file: str = ''
         ):
-    with open(json_file) as jfile:
+
+    with open(input_data_json_file) as jfile:
         jcontent = json.load(jfile)
     series = jcontent['data']
     status_logger = Periodic(log_status, None, 60)
     status_logger.start()
+    if ref_query_json_file:
+        with open(ref_query_json_file) as ref_j_file:
+            ref_info = json.load(ref_j_file)
+
     try:
-        
-        
         fix_convert_all(
             result_bucket_name, 
             series,
             input_table_name,
             series_folders,
-            local_data_path
+            local_data_path,
+            ref_info
         )
         status_logger.kill_timer()
 
@@ -958,7 +979,8 @@ def main_fix_multiframe_convert(
 #     create_bucket_tables(result_bucket_name)
 #     main_fix_multiframe_convert(
 #         j_file_name, folders, input_table_name, result_bucket_name,
-#         local_study_path
+#         local_study_path, 
+#         ref_query_json_file="gitexcluded_queries/refs.json"
 #         )
 #     ctools.RunExe([
 #         'gsutil' ,'cp', '-r', local_study_path + '/*', #os.path.join(fx_local_study_path, 'dicom'), 

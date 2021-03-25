@@ -41,6 +41,6 @@ def QueryReferencedStudySequence(source_table: str):
             found_inst_uid = row.FOUND_SOPINSTANCEUID
             found_class_uid = row.FOUND_SOPCLASSUID
             # if found_class_uid is not None:
-            ref_sop_class_uids[found_inst_uid] = found_class_uid
+            ref_sop_class_uids[cur_inst_uid] = (found_class_uid, found_inst_uid)
     return ref_sop_class_uids
 

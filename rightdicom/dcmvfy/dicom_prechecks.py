@@ -1776,11 +1776,11 @@ def getRepeatingBase(t:Tag):
              e = 0x0004			# PS 2 - Zonal Map
 
     elif gMASKEDff00 == 0x5000:
-        g = 0x5001 if(g%2) == 0  else 0x5000		# 0x50xx - PS 3 - Curve stuff
+        g = 0x5001 if(g%2) != 0  else 0x5000		# 0x50xx - PS 3 - Curve stuff
     elif gMASKEDff00 == 0x6000:
-        g = 0x6001 if(g%2) == 0  else 0x6000		# 0x60xx - PS 3 and earlier - Overlay stuff
+        g = 0x6001 if(g%2) != 0  else 0x6000		# 0x60xx - PS 3 and earlier - Overlay stuff
     elif gMASKEDff00 == 0x7000:
-        g = 0x7001 if(g%2) == 0  else 0x7000		# 0x70xx - Private DLX TextAnnotation etc.
+        g = 0x7001 if(g%2) != 0  else 0x7000		# 0x70xx - Private DLX TextAnnotation etc.
     elif gMASKEDff00 == 0x7f00 and g != 0x7fe0:
         g = 0x7f00		# 0x7Fxx - PS 2 - VariablePixelData
 
@@ -1805,6 +1805,8 @@ def AfterVerificationValidateUsed(ds: Dataset, log: list) -> bool:
 
 def get_not_used_list(ds: Dataset, notused: list, notrecognized: list):
     for key, a in ds.items():
+        if key.is_private:
+            continue
         try:
             a = (ds[key])
             # a.__class__= rightdicom.dcmvfy.data_elementx.DataElementX
