@@ -8,9 +8,11 @@ workflow  main{
         String dest_bucket_name
     }
     String json_file = 'sereies_info'
+    String ref_json_file = 'referenced_info'
     String json_var = 'data'
     call sub_.query_series as input_series{
-        input: json_file_name=json_file,
+        input: ref_json_file_name=ref_json_file,
+        input_json_file_name=json_file,
         json_var_name=json_var,
         series_chunk_size=number_of_series_in_chunk,
         max_series_to_query=whole_number_of_series_to_qurey
@@ -20,9 +22,9 @@ workflow  main{
         input: dataset_name=dest_bucket_name
     }
     
-    scatter (i in range(length(input_series.json)))
+    scatter (i in range(length(input_series.in_json)))
     {
-        File j_file = input_series.json[i]
+        File j_file = input_series.in_json[i]
         Object tmp = read_json(j_file)
         Array[Object] inputs = tmp[json_var]
         scatter (j in range(length(inputs)))
@@ -35,7 +37,8 @@ workflow  main{
         { 
             input: series_file_list=series_files,
             sereise_file_firstsamples=series_file_firstsample,
-            json_file=j_file,
+            ref_json_file=input_series.ref_json,
+            input_json_file=j_file,
             source_bgq_table_name=input_bgq_table_name,
             destination_bucket_name=first_task.created_dataset,
             task_index=i
@@ -61,7 +64,8 @@ task convert_all_series
     input { 
         Array[Array[File]] series_file_list
         Array[File] sereise_file_firstsamples
-        File json_file
+        File ref_json_file
+        File input_json_file
         String source_bgq_table_name
         String destination_bucket_name
         Int task_index
@@ -77,7 +81,7 @@ task convert_all_series
     sys.path.insert(1, '/fix/')
     from pipeline_fix_convert_locally import main_fix_multiframe_convert
     import os
-    print('~{json_file}')
+    print('~{input_json_file}')
     folders = [ os.path.dirname(f) for f in ['~{sep = "\', \'"  sereise_file_firstsamples}']]
     for f in folders:
         ff = os.listdir(f)
@@ -85,11 +89,12 @@ task convert_all_series
         for i, fff in enumerate(ff):
             print(i, ')', fff)
     main_fix_multiframe_convert(
-        '~{json_file}',
+        '~{input_json_file}',
         folders, 
         '~{source_bgq_table_name}',
         '~{destination_bucket_name}',
         '~{study_local_folder}',
+        '~{ref_json_file}',
         )
 
     log_folder = 'Logs'

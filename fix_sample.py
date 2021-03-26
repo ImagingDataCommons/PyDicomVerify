@@ -318,7 +318,7 @@ def DownloadAndFixOneInstance(kw, value):
 
 if __name__ == '__main__':
     sopuids = [
-        '1.3.6.1.4.1.14519.5.2.1.1706.4009.122108719111967420439285315799', 
+        '1.3.6.1.4.1.14519.5.2.1.8421.4019.657240631665032686647487884916', 
     ]
     for i, uid in enumerate(sopuids, 1):
         print('{}/{}) {}'.format(i, len(sopuids), uid))
