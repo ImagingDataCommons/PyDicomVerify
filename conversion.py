@@ -319,7 +319,7 @@ def ConvertFrameset(frameset: FrameSet, OutputFileName: str,
             sop_instance_uid = multi_frame_sop_instance_uid,
             instance_number = 1,
             transfer_syntax_uid=pydicom.uid.ExplicitVRLittleEndian)
-        x.BuildMultiFrame()
+        x.convert2mf()
         dcmwrite(
             filename = OutputFileName, dataset = x, write_like_original=False)
         pr_ch = ParentChildDicoms(

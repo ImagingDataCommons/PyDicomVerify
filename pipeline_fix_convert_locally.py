@@ -805,7 +805,7 @@ def fix_convert_all(dataset_name,
     fx_dicoms, mf_dicoms = create_datainfos(dataset_name)
     db_dataset_address =\
         fx_dicoms.BigQuery.GetBigQueryStyleDatasetAddress(False)
-
+    logger = logging.getLogger(__name__)
     fix_report_tq = table_quota(
         1500, '{}.{}'.format(
             db_dataset_address, 'FIX_REPORT'), schema_fix)
@@ -834,9 +834,15 @@ def fix_convert_all(dataset_name,
         rm(fx_local_study_path)
     if os.path.exists(mf_local_study_path):
         rm(mf_local_study_path)
+    counter = 1
+    mx_count = len(series_list)
+    msg_txt = '{:=^100}'.format('series[{}/{}]: {}')
     for series_info, series_path in zip(series_list, in_local_series_paths):
         files = [os.path.join(series_path, i) for i in os.listdir(
             series_path) if i.endswith('.dcm')]
+        logger.info(msg_txt.format(
+            counter, mx_count,series_info['SeriesInstanceUID']))
+        counter += 1
         fx_series_folder = '{}/dicom/{}/{}'.format(
             fx_local_study_path,
             series_info['StudyInstanceUID'],
@@ -873,7 +879,6 @@ def fix_convert_all(dataset_name,
         #     series_info['INSTANCES'],
         #     series_info['SeriesInstanceUID'],
         #     series_info['StudyInstanceUID'])
-
         anatomy = (
             series_info["BodyPartExamined"],
             (
@@ -929,7 +934,7 @@ def fix_convert_all(dataset_name,
             org_report_tq,
             flaw_queries,
             dataset_id, False)
-    
+
     # Wait unitl populating bigquery stops
     
 def main_fix_multiframe_convert(
@@ -946,11 +951,14 @@ def main_fix_multiframe_convert(
     series = jcontent['data']
     status_logger = Periodic(log_status, None, 60)
     status_logger.start()
+    logger = logging.getLogger(__name__)
     if ref_query_json_file:
         with open(ref_query_json_file) as ref_j_file:
             ref_info = json.load(ref_j_file)
 
     try:
+        msg_txt = '{:#^100}'.format('CONVERSION STARTED')
+        logger.info(msg_txt)
         fix_convert_all(
             result_bucket_name, 
             series,
@@ -959,6 +967,8 @@ def main_fix_multiframe_convert(
             local_data_path,
             ref_info
         )
+        msg_txt = '{:#^100}'.format('CONVERSION FINISHED SUCCESSFULLY')
+        logger.info(msg_txt)
         status_logger.kill_timer()
 
     finally:
