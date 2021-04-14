@@ -61,8 +61,33 @@ def get_full_attrib_list(ds) -> dict:
     for mod in mods:
         attribs = MODULE_ATTRIBUTE_MAP[mod['key']]
         for at in attribs:
-            output[at['keyword']] = {'path': at['path'], 'type': at['type']}
+            if at['keyword'] in output:
+                output[at['keyword']].append(
+                    {'path': at['path'], 'type': at['type']})
+            else:
+                output[at['keyword']] = [
+                    {'path': at['path'], 'type': at['type']} ]
     return output
+
+
+def get_all_kw_paths(ds: Dataset, prefix: list, paths: dict) -> None:
+    for tg, el in ds.items():
+        if tg.is_private:
+            continue
+        kw = el.keyword
+        v = el.value
+        if el.VR == 'SQ':
+            prefix.append(kw)
+            for i, item in enumerate(v):
+                get_all_kw_paths(item, prefix , paths)
+            prefix.pop()
+        else:
+            if kw in paths:
+                paths[kw].append((ds, list(prefix)))
+            else:
+                paths[kw] = [(ds, list(prefix))]
+
+            
 
 
 def put_attribute_in_path(ds: Dataset, path: list, a: DataElementX):

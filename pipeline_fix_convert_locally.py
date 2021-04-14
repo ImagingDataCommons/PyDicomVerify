@@ -35,8 +35,7 @@ from dicom_fix_issue_info import (
     IssueCollection,
     PerformanceMeasure,
     ProcessPerformance,
-    table_quota,
-    organize_dcmvfy_errors,
+    table_quota
 )
 from gcloud.BigQueryStuff import (
     # FUNCTIONS
@@ -98,6 +97,7 @@ from anatomy_query import (
     fix_SOPReferencedMacro,
 )
 from ref_query import QueryReferencedStudySequence
+from local_fix_convert import fix_file_verify_write
 # ---------------- Global Vars --------------------------:
 max_number_of_study_processes = 1
 max_number_of_fix_processes = MAX_NUMBER_OF_THREADS
@@ -152,43 +152,6 @@ for h in hs:
 # install_mp_handler()
 logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.CRITICAL)
 # -----------------------------------------------------------------------
-
-
-def VER(file: str, log: list, char_set: str = 'ascii'):
-    file_name = os.path.basename(file)
-    if file_name.endswith('.dcm'):
-        file_name = file_name[:-4]
-    dcm_verify = "/Users/afshin/Documents/softwares"\
-        "/dicom3tools/most_recent_exe/dciodvfy"
-    if not os.path.exists(dcm_verify):
-        dcm_verify = shutil.which('dciodvfy')
-        if dcm_verify is None:
-            print("Error: install dciodvfy into system path")
-            assert(False)
-    err_log = []
-    ctools.RunExe([dcm_verify, '-filename', file], '', '', errlog=err_log,
-                  char_encoding=char_set)
-    organize_dcmvfy_errors(err_log, log)
-    # my_code_output = verify_dicom(file, False, '')
-
-
-def FixFile(dicom_file: str, dicom_fixed_file: str,
-            log_fix: list, log_david_pre: list, log_david_post: list,
-            anatomy: tuple,
-            reference: dict):
-    ds = pydicom.read_file(dicom_file)
-    char_set = DicomFileInfo.get_charset_val_from_dataset(ds)
-    # log_mine = []
-    VER(dicom_file, log_david_pre, char_set=char_set)
-    if len(anatomy) == 2:
-        add_anatomy(ds, anatomy[0], anatomy[1], log_fix)
-    fix_SOPReferencedMacro(ds, log_fix, reference)
-    fix_dicom(ds, log_fix)
-    # fix_report = PrintLog(log_fix)
-    pydicom.write_file(dicom_fixed_file, ds)
-    VER(dicom_fixed_file, log_david_post, char_set=char_set)
-    return ds
-
 
 def BuildQueries1(table_q_info: table_quota, qs: list, dataset_id: str,
                  return_: bool = True, processes: ProcessPool=None) -> list:
@@ -317,10 +280,19 @@ def fix_one_instance(org_file_path: str,
     curr_series_uid = org_series_uid
     curr_instance_uid = ''
     try:
-        fx_ds = FixFile(
-            org_file_path, fx_file_path, fix_log,
-            pre_fix_issues,
-            post_fix_issues, anatomy, reference_info)
+        # fx_ds = FixFile(
+        #     org_file_path, fx_file_path, fix_log,
+        #     pre_fix_issues,
+        #     post_fix_issues, anatomy, reference_info)
+        fix_output = fix_file_verify_write(
+            org_file_path, fx_file_path, anatomy, reference_info)
+        (
+            fx_ds, fix_report, pre_rawlog,
+            pre_orglog, pre_pylog,
+            post_rawlog, post_orglog, post_pylog
+        ) = fix_output
+        pre_fix_issues = pre_orglog
+        post_fix_issues = post_orglog
         curr_study_uid = fx_ds.StudyInstanceUID
         curr_series_uid = fx_ds.SeriesInstanceUID
         curr_instance_uid = fx_ds.SOPInstanceUID
@@ -386,7 +358,7 @@ def frameset_for_one_series(single_frame_file_path: List[str],
         ds_list.append(pydicom.read_file(f_bl))
     try:
         fs_collection = FrameSetCollection(ds_list)
-        fs = fs_collection.FrameSets
+        fs = fs_collection.frame_sets
     except BaseException as err:
         msg = str(err)
         msg += '\n The first sample out of {}:\n{}'.format(
@@ -554,7 +526,7 @@ def fix_convert_one_series(
         mf_study_uid = fx_study_uid
         char_set = DicomFileInfo.get_charset_val_from_dataset(single_frames[0])
         for fset in fsets:
-            frameset_sop_uids = fset.GetSOPInstanceUIDList()
+            frameset_sop_uids = fset.get_sop_instance_uid_list()
             frameset_sop_uids.sort()
             mf_instace_uid = generate_uid(
                 prefix="1.3.6.1.4.1.43046.3" + ".1.9.",
@@ -569,7 +541,7 @@ def fix_convert_one_series(
                 mf_series_uid,
                 mf_instace_uid)
             if pr_ch is None:
-                for fr in fset.Frames:
+                for fr in fset.frames:
                     st_id = fr.StudyInstanceUID
                     se_id = fr.SeriesInstanceUID
                     sop_id = fr.SOPInstanceUID
@@ -650,6 +622,7 @@ def log_status():
     status = get_status_str('HardDisk', hdd.used, hdd.free, hdd.total)
     logger.info(status)
 
+
 def rm(folders, log: bool = True):
     # print(folders)
     if type(folders) == str:
@@ -662,6 +635,7 @@ def rm(folders, log: bool = True):
         else:
             if log:
                 logging.info("FOLDER {} DOESN'T EXIST TO BE ROMOVED".format(a))
+
 
 def partition_series(series_dict: dict, from_the_last: int):
     fist_part = {}
@@ -937,6 +911,7 @@ def fix_convert_all(dataset_name,
 
     # Wait unitl populating bigquery stops
     
+
 def main_fix_multiframe_convert(
         input_data_json_file: str,
         series_folders: list,
@@ -974,26 +949,26 @@ def main_fix_multiframe_convert(
     finally:
         status_logger.kill_timer()
 
-# if __name__ == '__main__':
-#     freeze_support()
-#     j_file_name =  'gitexcluded_local/0001.json'
-#     with open(j_file_name) as jfile:
-#         jcontent = json.load(jfile)
-#     series = jcontent['data']
-#     result_bucket_name = 'afshin_terra_test00'
-#     input_table_name = 'canceridc-data.idc_views.dicom_all'
-#     local_study_path = 'gitexcluded_data_res'
-#     folders = []
-#     for se in series:
-#         folders.append(os.path.dirname(se['SERIES_PATH'][0]))
-#     create_bucket_tables(result_bucket_name)
-#     main_fix_multiframe_convert(
-#         j_file_name, folders, input_table_name, result_bucket_name,
-#         local_study_path, 
-#         ref_query_json_file="gitexcluded_queries/refs.json"
-#         )
-#     ctools.RunExe([
-#         'gsutil' ,'cp', '-r', local_study_path + '/*', #os.path.join(fx_local_study_path, 'dicom'), 
-#         'gs://{}'.format(result_bucket_name)],
-#         log_std_out=True, log_std_err=True)
-#     create_dicomstores(result_bucket_name)
+if __name__ == '__main__':
+    freeze_support()
+    j_file_name =  'gitexcluded_local/0001.json'
+    with open(j_file_name) as jfile:
+        jcontent = json.load(jfile)
+    series = jcontent['data']
+    result_bucket_name = 'afshin_terra_test00'
+    input_table_name = 'canceridc-data.idc_views.dicom_all'
+    local_study_path = 'gitexcluded_data_res'
+    folders = []
+    for se in series:
+        folders.append(os.path.dirname(se['SERIES_PATH'][0]))
+    create_bucket_tables(result_bucket_name)
+    main_fix_multiframe_convert(
+        j_file_name, folders, input_table_name, result_bucket_name,
+        local_study_path, 
+        ref_query_json_file="gitexcluded_queries/refs.json"
+        )
+    ctools.RunExe([
+        'gsutil' ,'cp', '-r', local_study_path + '/*', #os.path.join(fx_local_study_path, 'dicom'), 
+        'gs://{}'.format(result_bucket_name)],
+        log_std_out=True, log_std_err=True)
+    create_dicomstores(result_bucket_name)

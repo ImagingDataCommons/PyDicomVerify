@@ -11,7 +11,8 @@ workflow  main{
     String ref_json_file = 'referenced_info'
     String json_var = 'data'
     call sub_.query_series as input_series{
-        input: ref_json_file_name=ref_json_file,
+        input: input_bq_table_name=input_bgq_table_name,
+        ref_json_file_name=ref_json_file,
         input_json_file_name=json_file,
         json_var_name=json_var,
         series_chunk_size=number_of_series_in_chunk,

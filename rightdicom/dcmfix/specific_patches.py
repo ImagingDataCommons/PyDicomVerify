@@ -1,4 +1,5 @@
 import pydicom.datadict as Dictionary
+from pydicom.sequence import Sequence as DataElementSequence
 import rightdicom.dcmvfy.mesgtext_cc as mesgtext_cc
 import rightdicom.dcmvfy.sopclc_h as sopclc_h
 from rightdicom.dcmvfy.verify import verify_dicom_dataset
@@ -8,6 +9,7 @@ from rightdicom.dcmvfy.validate_vr import tag2str
 from pydicom.dataset import(
     # CLASSES
     Dataset,
+    # DataElement,
 )
 from rightdicom.dcmvfy.data_elementx import DataElementX
 from rightdicom.dcmfix.fix_tools import (
@@ -19,6 +21,7 @@ from rightdicom.dcmfix.fix_tools import (
     subfix_RemoveAttrib,
     get_full_attrib_list,
     put_attribute_in_path,
+    get_all_kw_paths,
 )
 from rightdicom.dcmvfy.mesgtext_cc import (
     # CLASSES
@@ -29,44 +32,75 @@ from rightdicom.dcmvfy.sopclc_h import (
     PETImageStorageSOPClassUID,
 )
 
-
 def fix_Trivials(ds: Dataset, log: list):
     log.extend(verify_dicom_dataset(ds, False, '', True))
-    fixed = False
-    
-    not_used_attribs = []
-    not_recognized_attribs = []
-    wrn_msg = 'Warning - Attribute is not present in standard DICOM IOD - {}'
-    get_not_used_list(ds, not_used_attribs, not_recognized_attribs)
-    standard_ds = get_full_attrib_list(ds)
-    for kw, tg, parent in not_used_attribs:
-        msg = mesgtext_cc.ErrorInfo()
-        msg.msg = wrn_msg.format(tag2str(tg))
-        if kw not in standard_ds:
-            del parent[tg]
-            msg.fix = "fixed by removing the attribute"
-        else:
-            path_ = standard_ds[kw]['path']
-            tmp_parent = ds
-            attribute_is_present = True
-            pp = list(path_)
-            pp.append(kw)
-            for aa in pp:
-                if aa in tmp_parent:
-                    tmp_parent = tmp_parent[aa]
-                else:
-                    attribute_is_present = False
-                    break
-            if attribute_is_present:
-                attribute_is_present = not tmp_parent.is_empty
-            if not attribute_is_present:
-                msg.fix = "fixed by moving the attribute to the path {}".format(path_)
-                attribute = parent[tg]
-                del parent[tg]
-                put_attribute_in_path(ds, path_, attribute)
-            else:
-                msg.fix = "didn't fixed because there is already an attribute in correct place"
-        log.append(msg.getWholeMessage())
+    return True
+    # fixed = False
+    # exception_kywords = [
+    #     #Code Sequence Macro Attributes
+    #     #BASIC CODED ENTRY ATTRIBUTES
+    #     'CodeValue',
+    #     'CodeMeaning',
+    #     'CodingSchemeDesignator',
+    #     'URNCodeValue',
+    #     'LongCodeValue',
+    #     'CodingSchemeVersion',
+    #     # ENHANCED ENCODING MODE
+    #     'ContextIdentifier',
+    #     'ContextUID',
+    #     'MappingResource',
+    #     'MappingResourceUID',
+    #     'MappingResourceName',
+    #     'ContextGroupVersion',
+    #     'ContextGroupExtensionFlag',
+    #     'ContextGroupLocalVersion',
+    #     'ContextGroupExtensionCreatorUID',
+    #     #SOP Instance Reference Macro Attributes
+    #     'ReferencedSOPClassUID',
+    #     'ReferencedSOPInstanceUID',
+    # ]
+    # not_used_attribs = []
+    # not_recognized_attribs = []
+    # wrn_msg = 'Warning - Attribute is not present in standard DICOM IOD - {}'
+    # get_not_used_list(ds, not_used_attribs, not_recognized_attribs)
+    # standard_ds = get_full_attrib_list(ds)
+    # for kw, tg, parent in not_used_attribs:
+    #     msg = mesgtext_cc.ErrorInfo()
+    #     msg.msg = wrn_msg.format(tag2str(tg))
+    #     if kw not in standard_ds:
+    #         del parent[tg]
+    #         msg.fix = "fixed by removing the attribute"
+    #     else:
+    #         std__ = standard_ds[kw]
+    #         if len(std__) > 1:
+    #             msg.fix = "didn't fix because there are more than on "\
+    #                 "candidate for displacement of keyword <{}>: ".format(kw)
+    #             for i, el in enumerate(std__, 1):
+    #                 txt = '\n\t\t\t{}/{}\t{}'.format(i, len(std__), el)
+    #                 msg.fix += txt 
+    #         else:
+    #             path_ = std__[0]['path']
+    #             tmp_parent = ds
+    #             attribute_is_present = True
+    #             pp = list(path_)
+    #             pp.append(kw)
+    #             for aa in pp:
+    #                 if aa in tmp_parent:
+    #                     tmp_parent = tmp_parent[aa]
+    #                 else:
+    #                     attribute_is_present = False
+    #                     break
+    #             if attribute_is_present:
+    #                 attribute_is_present = not tmp_parent.is_empty
+    #             if not attribute_is_present:
+    #                 msg.fix = "fixed by moving the attribute to the path {}".format(path_)
+    #                 attribute = parent[tg]
+    #                 del parent[tg]
+    #                 put_attribute_in_path(ds, path_, attribute)
+    #             else:
+    #                 msg.fix = "didn't fixed because there is "\
+    #                 "already an attribute in correct place"
+    #     log.append(msg.getWholeMessage())
         
             
 

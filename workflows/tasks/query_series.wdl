@@ -4,6 +4,7 @@ task query_series
 {
     input
     {
+        String input_bq_table_name
         String ref_json_file_name
         String input_json_file_name
         String json_var_name
@@ -22,6 +23,7 @@ task query_series
     print('added fix to path')
     from query_fix_convert_inputs import query_all
     query_all(
+        '~{input_bq_table_name}',
         '~{ref_json_file_name}',
         '~{input_json_file_name}',
         '~{json_var_name}',

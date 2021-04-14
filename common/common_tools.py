@@ -106,6 +106,8 @@ def StrList2Txt(strlist) -> str:
 
 
 def WriteStringToFile(file_name, content, append=False):
+    if type(content) == list:
+        content = StrList2Txt(content)
     folder = os.path.dirname(file_name)
     if not os.path.exists(folder):
         os.makedirs(folder)

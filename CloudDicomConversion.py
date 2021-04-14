@@ -371,7 +371,7 @@ def frameset_for_one_series(file_blob_pairs: List[DicomFileInfo],
         ds_list.append(f_bl.dicom_ds)
     try:
         fs_collection = FrameSetCollection(ds_list)
-        fs = fs_collection.FrameSets
+        fs = fs_collection.frame_sets
     except BaseException as err:
         msg = str(err)
         msg += '\n The first sample out of {}:\n{}'.format(
@@ -457,7 +457,7 @@ def extract_convert_framesets_for_bunch_of_studies(
     for args, pr_ch in conversion_results:
         if pr_ch is None:
             fr_sets = args[0]
-            for fr in fr_sets.Frames:
+            for fr in fr_sets.frames:
                 st_id = fr.StudyInstanceUID
                 se_id = fr.SeriesInstanceUID
                 sop_id = fr.SOPInstanceUID
@@ -676,7 +676,7 @@ def download_fix_convert_upload_one_sereis(
                 mf_series_uid,
                 mf_instace_uid)
             if pr_ch is None:
-                for fr in fset.Frames:
+                for fr in fset.frames:
                     st_id = fr.StudyInstanceUID
                     se_id = fr.SeriesInstanceUID
                     sop_id = fr.SOPInstanceUID
@@ -725,7 +725,8 @@ def download_fix_convert_upload_one_sereis(
                     upload_files_size += os.path.getsize(pr_ch.child_dicom_file)
     # Now I can remove the series:
     rm((in_series_dir, fx_series_dir, mf_series_dir), False)
-    logging.info('fixed = {}, converted = {} orig = {}'.format(len(inst_infos), number_of_all_converted_mf, len(origin_queries)))
+    logging.info('fixed = {}, converted = {} orig = {}'.format(
+        len(inst_infos), number_of_all_converted_mf, len(origin_queries)))
     return(fix_queries, issue_queries, origin_queries, flaw_queries,
             len(fsets), number_of_all_converted_mf,
             downloaded_files_size, fixed_files_size,

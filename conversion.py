@@ -8,8 +8,11 @@ from highdicom.legacy.sop import(
     # CLASSES
     FrameSet,
     FrameSetCollection,
-    LegacyConvertedEnhanceImage,
+    LegacyConvertedEnhancedCTImage,
+    LegacyConvertedEnhancedMRImage,
+    LegacyConvertedEnhancedPETImage,
 )
+import highdicom.legacy.sop as sop
 from pydicom.filereader import(
     # FUNCTIONS
     dcmread,
@@ -304,7 +307,7 @@ def ConvertFrameset(frameset: FrameSet, OutputFileName: str,
                     multi_frame_series_instance_uid: str = None,
                     multi_frame_sop_instance_uid: str=None):
     logger = logging.getLogger(__name__)
-    ref_ds = frameset.Frames[0]
+    ref_ds = frameset.frames[0]
     if multi_frame_sop_instance_uid is None:
         multi_frame_sop_instance_uid = generate_uid()
     if multi_frame_series_instance_uid is None:
@@ -312,18 +315,28 @@ def ConvertFrameset(frameset: FrameSet, OutputFileName: str,
     if multi_frame_study_instance_uid is None:
         multi_frame_study_instance_uid = generate_uid()
     try:
-        x = LegacyConvertedEnhanceImage(
-            frame_set = frameset,
+        sop_class = frameset.frames[0].SOPClassUID
+        if sop_class == CTImageStorageSOPClassUID:
+            m = 'CT'
+        elif sop_class == MRImageStorageSOPClassUID:
+            m = 'MR'
+        elif sop_class == PETImageStorageSOPClassUID:
+            m = 'PET'
+        LegacyConverterClass = getattr(
+                    sop,
+                    "LegacyConvertedEnhanced{}Image".format(m)
+                )
+        x = LegacyConverterClass(
+            frameset.frames,
             series_instance_uid = multi_frame_series_instance_uid,
             series_number = ref_ds.SeriesNumber,
             sop_instance_uid = multi_frame_sop_instance_uid,
             instance_number = 1,
-            transfer_syntax_uid=pydicom.uid.ExplicitVRLittleEndian)
-        x.convert2mf()
+            )
         dcmwrite(
             filename = OutputFileName, dataset = x, write_like_original=False)
         pr_ch = ParentChildDicoms(
-            frameset.GetSOPInstanceUIDList(),
+            frameset.get_sop_instance_uid_list(),
             frameset.StudyInstanceUID,
             multi_frame_series_instance_uid,
             multi_frame_sop_instance_uid,
@@ -337,15 +350,15 @@ def ConvertFrameset(frameset: FrameSet, OutputFileName: str,
 def ConvertByHighDicomNew(single_frame_folder_or_list,
                           OutputPrefix, log=[]) -> list:
     all_datasets = GetFrameSetsFromFiles(single_frame_folder_or_list)
-    framesets = FrameSetCollection(all_datasets).FrameSets
+    framesets = FrameSetCollection(all_datasets).frame_sets
     multi_frame_study_instance_uid = all_datasets[0].StudyInstanceUID
     parent_child_uids = []
     multi_frame_series_instance_uid = generate_uid()
     mf_dir = os.path.join(OutputPrefix, '{}'.format(
         multi_frame_series_instance_uid))
     for n, frameset in enumerate(framesets, 1):
-        ref_ds = frameset.Frames[0]
-        sop_class_uid = frameset.GetSOPClassUID()
+        ref_ds = frameset.frames[0]
+        sop_class_uid = frameset.get_sop_class_uid()
         if sop_class_uid not in supported_sop_class_uids:
             continue
         # try:

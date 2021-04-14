@@ -7,6 +7,7 @@ from pydicom.datadict import (
     tag_for_keyword,
     dictionary_VM,
 )
+from pydicom.sequence import Sequence as DataElementSequence
 from pydicom.dataelem import (
     # FUNCTIONS
     DataElement_from_raw,
@@ -33,7 +34,8 @@ from rightdicom.dcmfix.fix_tools import (
     subfix_ReplaceSlashWithBackslash,
     subfix_checkandfixBasicCodeSeq,
     find_attribute_in_iod,
-    get_full_attrib_list
+    get_full_attrib_list,
+    get_all_kw_paths,
 )
 from rightdicom.dcmvfy.condn_h import (
     # FUNCTIONS
@@ -74,7 +76,7 @@ def generalfix_RemoveEmptyCodes(
                 if iod_dict is None or elem.keyword not in iod_dict:
                     type_ = None
                 else:
-                    type_ = iod_dict[elem.keyword]['type']
+                    type_ = iod_dict[elem.keyword][0]['type']
                 if type_ != '1' or type_ != '1C' or type_ != '2'\
                         or type_ != '2C':
                     fixed = fixed or subfix_checkandfixBasicCodeSeq(elem, log)
@@ -98,7 +100,7 @@ def generalfix_RemoveEmptyCodes(
             if iod_dict is None or k not in iod_dict:
                 type_ = None
             else:
-                type_ = iod_dict[k]['type']
+                type_ = iod_dict[k][0]['type']
             if type_ != '1' or type_ != '1C' or type_ != '2' or type_ != '2C':
                 err = "{} <{}>".format(
                     validate_vr.tag2str(a.tag), a.keyword)
@@ -435,6 +437,73 @@ def generalfix_RealWorldValueMappingSequence(ds, log):
                     "General Fix - The item number {} lacks {}".format(i, err),
                     "fixed by adding a new element with value <{}>".format(
                         new_el.value))
+                log.append(msg.getWholeMessage())
+
+
+def generalfix_MisplacedAttributes(ds: Dataset, log: list):
+    paths = {}
+    get_all_kw_paths(ds, [], paths)
+    standard_ds = get_full_attrib_list(ds)
+    not_in_std = {}
+    misplaced = {}
+    for kw, pp in paths.items():
+        tg = tag_for_keyword(kw)
+        if kw not in standard_ds:
+            not_in_std[kw] = pp
+        else:
+            std__ = standard_ds[kw]
+            if len(std__) > 1:
+                continue
+            for parent, path in pp:
+                correct_path = std__[0]['path']
+                if path != correct_path:
+                    if kw not in misplaced:
+                        misplaced[kw] = [(parent, path, correct_path)]
+                    else:
+                        misplaced[kw].append((parent, path, correct_path))
+    for kw, val in misplaced.items():
+        for parent, path, correct_path in val:
+            # print(parent, path, correct_path)
+            delem = parent[kw]
+            del parent[kw]
+            new_paretn = ds
+            inner_kw = kw
+            parent_ds = ds
+            for p in correct_path:
+                if p not in parent_ds:
+                    new_ds = Dataset()
+                    parent_ds[p] = DataElementX(
+                        tag_for_keyword(p), 'SQ',
+                    DataElementSequence([new_ds]))
+                elif parent_ds[p].is_empty:
+                    new_ds = Dataset()
+                    parent_ds[p].value = DataElementSequence([new_ds])
+                parent_ds = parent_ds[p].value[0]
+            if kw not in parent_ds:
+                parent_ds[kw] = delem
+                msg = ErrorInfo(
+                    "General Fix - The DICOM attribute <{}> is not in "
+                    "correct place. "
+                    "current-path = {} vs. correct-path = {}".format(
+                        kw, path, correct_path),
+                    "fixed by attribute displacement")
+            else:
+                 msg = ErrorInfo(
+                    "General Fix - The DICOM attribute <{}> is not in "
+                    "correct place. "
+                    "current-path = {} vs. correct-path = {}".format(
+                        kw, path, correct_path),
+                    "couldn't fix because there is already "
+                    "an attribute in correct place")
+            log.append(msg.getWholeMessage())
+    for kw, val in not_in_std.items():
+        for parent, path in val:
+            if kw in parent:
+                del parent[kw]
+                msg = ErrorInfo(
+                    "General Fix - The keyword <{}> is not in "
+                    "standard DICOM IOD".format(kw),
+                    "fixed by removing the attribute")
                 log.append(msg.getWholeMessage())
 
 

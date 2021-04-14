@@ -8,7 +8,6 @@ import common.parallelization as pl
 import conversion as convtool
 from anatomy_query import (
     # FUNCTIONS
-    get_anatomy_info,
     query_anatomy_from_tables,
 )
 from gcloud.BigQueryStuff import (
@@ -40,7 +39,14 @@ from rightdicom.dcmvfy.verify import (
     # FUNCTIONS
     verify_dicom,
 )
-
+from local_fix_convert import (
+    fix_file_verify_write,
+    verify_with_dciodvfy_and_pyvfy)
+from ref_query import QueryReferencedStudySequence
+from dicom_fix_issue_info import (
+    # CLASSES
+    DicomFileInfo
+)
 LOGGING_CONFIG = {
     'version': 1,
     'disable_existing_loggers': True,
@@ -119,73 +125,6 @@ def download_parallel(project_id: str, bucket_name: str, st_uid: str,
     ps.kill_them_all()
 
 
-def VER(file: str, out_folder: str, log: list, write_meta=False,
-        char_set: str = 'ascii'):
-    file_name = os.path.basename(file)
-    if file_name.endswith('.dcm'):
-        file_name = file_name[: -4]
-    meta_file = os.path.join(out_folder, file_name + '.xml')
-    if write_meta:
-        toxml_exe_file = "/Users/afshin/Documents/softwares/"\
-            "dcmtk/3.6.5/bin/bin/dcm2xml"
-        if not os.path.exists(toxml_exe_file):
-            toxml_exe_file = shutil.which('dcm2xml')
-            if toxml_exe_file is None:
-                print('ERROR: Please install dcm2xml in system path')
-                assert(False)
-        ctools.RunExe(
-            [toxml_exe_file, file, meta_file], '', '',
-            env_vars = {
-                "DYLD_LIBRARY_PATH":
-                "/Users/afshin/Documents/softwares/dcmtk/3.6.5/bin/lib/"})
-    else:
-        meta_file = ''
-    # print('{: = ^120}'.format("DAVID'S"))
-    dcm_verify = "/Users/afshin/Documents/softwares/"\
-        "dicom3tools/most_recent_exe/dciodvfy"
-    if not os.path.exists(dcm_verify):
-        dcm_verify = shutil.which('dciodvfy')
-        if dcm_verify is None:
-            print("Error: install dciodvfy into system path")
-            assert(False)
-    vfy_file = os.path.join(out_folder, file_name + "_vfy.txt")
-    ctools.RunExe(
-        [dcm_verify, '-filename', file], vfy_file, '',
-        errlog = log, char_encoding=char_set)
-    # print('{: = ^120}'.format("MY CODE"))
-    my_code_output = verify_dicom(file, False, '')
-    ctools.WriteStringToFile(vfy_file, '{:=^120}\n'.format("MY CODE"), True)
-    ctools.WriteStringToFile(vfy_file, my_code_output, True)
-    return(vfy_file, meta_file)
-
-
-def FixFile(dicom_file: str, dicom_fixed_file: str,
-            log_fix: list, log_david_pre: list, log_david_post: list):
-    ds = pydicom.read_file(dicom_file)
-    st_uid = ds.StudyInstanceUID
-    st_anatomy_info = None
-    cl_anatomy_info = None
-    for cln, cln_an in anatomy_info.items():
-        # if len(cln_an[0][0]) > 1:
-        #     print(cln_an[0])
-        cl_anatomy_info = cln_an[0]
-        if st_uid in cln_an[1]:
-            st_anatomy_info = cln_an[1][st_uid]
-            break
-    if st_anatomy_info is not None:
-        bpe, ars = get_anatomy_info(st_anatomy_info)
-    if bpe is None and ars[0] is None:
-        bpe, ars = get_anatomy_info(cl_anatomy_info)
-    add_anatomy(ds, bpe, ars, log_fix)
-    # log_mine = []
-    # VER(dicom_file, log_david_pre)
-    fix_dicom(ds, log_fix)
-    # fix_report = print(log_fix)
-    pydicom.write_file(dicom_fixed_file, ds)
-    # VER(dicom_fixed_file, log_david_post)
-    return ds
-
-
 def GetSeries(keyword: str, value: str):
     if isinstance(value, str):
         value = '"{}"'.format(value)
@@ -243,11 +182,13 @@ def fix_convert_series(attribute:str , value):
     log_ver = []
     fix_: bool = True
     download_ : bool = False
-    global anatomy_info
-    anatomy_info = {}
+    ref_info = QueryReferencedStudySequence(
+            'canceridc-data.idc_views.dicom_all')
     anatomy_info = query_anatomy_from_tables(
-        '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata`',
-        '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_auxilliary_metadata`')
+        'canceridc-data.idc_views.dicom_all')
+    empty_anatomy = (None, (None, None, None))
+    anatomy = empty_anatomy if study_uid not in anatomy_info else\
+        anatomy_info[study_uid]
     for i in range(0, len(in_folders)):
         in_folder = os.path.realpath(in_folders[i])
         if download_:
@@ -266,21 +207,38 @@ def fix_convert_series(attribute:str , value):
             for i, ff in enumerate(in_files):
                 fx_log = []
                 base = os.path.basename(ff)
+                base_wo_ext = base[:-4] if base.endswith('.dcm') else base
                 if i % 10 == 0:
                     print('{}/{}) {}'.format(i, len(in_files), base))
-                ds = FixFile(ff, os.path.join(fix_folder, base), fx_log, [], [])
-                if "SpecificCharacterSet" in ds:
-                    dicom_char_set = ds.SpecificCharacterSet
-                    if dicom_char_set in python_encoding:
-                        python_char_set = python_encoding[dicom_char_set]
-                    else:
-                        python_char_set = 'ascii'
+                if i == 0:
+                    fix_output = fix_file_verify_write(
+                        ff, os.path.join(fix_folder, base),
+                        anatomy,
+                        ref_info,
+                        os.path.join(out_folder, base_wo_ext +"_fixrpt.txt"),
+                        os.path.join(out_folder, 'pre' + base_wo_ext +"_vfy.txt"),
+                        os.path.join(out_folder, 'post' + base_wo_ext +"_vfy.txt"),
+                        )
+                    char_set = DicomFileInfo.get_charset_val_from_dataset(
+                        fix_output[0])
                 else:
-                    python_char_set = 'ascii'
-                
+                    fix_output = fix_file_verify_write(
+                        ff, os.path.join(fix_folder, base),
+                        anatomy,
+                        ref_info
+                        )
+
+                (
+                    fx_ds, fix_report, pre_rawlog,
+                    pre_orglog, pre_pylog,
+                    post_rawlog, post_orglog, post_pylog
+                ) = fix_output
+                # ds = FixFile(ff, os.path.join(fix_folder, base), fx_log, [], [])
+
                 # try:
                 fx_files = ctools.Find(fix_folder, max_depth=1,
                                                 cond_function=ctools.is_dicom)
+                
         else:
             fx_files = in_files
             fix_folder = in_folder
@@ -291,12 +249,14 @@ def fix_convert_series(attribute:str , value):
             new_name = os.path.join(out_folder, output_file_pattern.format(n))
             os.rename(f.child_dicom_file, new_name)
         files = ctools.Find(out_folder, 1, lambda x: x.endswith('.dcm'))
-        (v_file_pre, m_file_pre) = VER(
-            fx_files[0], out_folder, log_ver, char_set=python_char_set)
         print(fx_files[0])
         for f in files:
-            (v_file_pre, m_file_pre) = VER(
-                f, out_folder, log_ver, char_set=python_char_set)
+            f_name = os.path.basename(f)
+            if f_name.endswith('.dcm'):
+                f_name = f_name[: -4]
+            verify_with_dciodvfy_and_pyvfy(
+                f, char_set,
+                os.path.join(out_folder, f_name + '_vfy.txt'))
 
 if __name__ == '__main__':
     freeze_support()
