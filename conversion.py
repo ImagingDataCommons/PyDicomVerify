@@ -348,7 +348,7 @@ def ConvertFrameset(frameset: FrameSet, OutputFileName: str,
 
 
 def ConvertByHighDicomNew(single_frame_folder_or_list,
-                          OutputPrefix, log=[]) -> list:
+                          OutputPrefix) -> list:
     all_datasets = GetFrameSetsFromFiles(single_frame_folder_or_list)
     framesets = FrameSetCollection(all_datasets).frame_sets
     multi_frame_study_instance_uid = all_datasets[0].StudyInstanceUID
