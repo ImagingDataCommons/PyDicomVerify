@@ -193,7 +193,7 @@ def verify_dciodvfy(
     return (raw_log, organized_log)
 
 
-def verify_with_pyverify(
+def verify_pyverify(
         file: str, report_file: str = '', verbose: bool = False):
     my_code_output = verify_dicom(file, verbose, '')
     if report_file:
@@ -204,7 +204,7 @@ def verify_with_pyverify(
 def verify_with_dciodvfy_and_pyvfy(
         file: str, char_set: str = 'ascii', report_file: str = ''):
     rawlog, orglog = verify_dciodvfy(file, char_set)
-    pylog = verify_with_pyverify(file)
+    pylog = verify_pyverify(file)
     if report_file:
         ctools.WriteStringToFile(report_file, '{:=^120}'.format("dciodvfy"))
         ctools.WriteStringToFile(report_file, rawlog, True)
@@ -277,9 +277,9 @@ def fix_file_verify_write_dciodvfy(
         anatomy, reference,
         dicom_fix_report_file)
     char_set = DicomFileInfo.get_charset_val_from_dataset(ds)
-    pre_rawlog, pre_orglog = verify_with_dciodvfy(
+    pre_rawlog, pre_orglog = verify_dciodvfy(
         dicom_file, char_set, pre_fix_vfy_file)
-    post_rawlog, post_orglog = verify_with_dciodvfy(
+    post_rawlog, post_orglog = verify_dciodvfy(
         dicom_fixed_file, char_set, post_fix_vfy_file)
     return (ds, fix_report, pre_rawlog, pre_orglog,
         post_rawlog, post_orglog)

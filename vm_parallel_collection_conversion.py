@@ -102,8 +102,8 @@ max_number_of_up_down_load_processes = MAX_NUMBER_OF_THREADS
 max_number_of_bq_processes = MAX_NUMBER_OF_THREADS
 max_number_of_frameset_processes = MAX_NUMBER_OF_THREADS
 max_number_of_conversion_processes = MAX_NUMBER_OF_THREADS
-ref_info = None
-anatomy_inof = None
+ref_info = {}
+anatomy_info = {}
 fix_report_tq = None
 issue_report_tq = None
 org_report_tq = None
@@ -947,7 +947,7 @@ def get_all_series_size(proj_id: str, uids: dict, ps_num: int,
     z_count = 0
     for (p, b, st, se, ins), sz in results:
         if sz == 0:
-            c_count += 1
+            z_count += 1
         else:
             uids[st][1][se][0] = sz
     toc = time.time()
@@ -989,8 +989,15 @@ def partition_series(series_dict: dict, from_the_last: int):
     return(fist_part, second_part)
 
 
-def main(number_of_processes: int = None,
-         rough_series_count_in_chunk: int=600):
+def main(
+        number_of_processes: int = None,
+        rough_series_count_in_chunk: int=600,
+        input_table_view_id: str = 'canceridc-data.idc_views.dicom_all',
+        output_dataset_name: str = 'output',
+        sample_size: int = 2 ** 63 - 1,
+    ):
+    if sample_size < 1:
+        sample_size = 2 ** 63 - 1
     if number_of_processes is None:
         number_of_processes = MAX_NUMBER_OF_THREADS
     # StudyProcess.initialize_statics()
@@ -1020,7 +1027,7 @@ def main(number_of_processes: int = None,
                 'idc_tcia_mvp_wave0',
                 'idc_tcia_dicom_metadata'),
         )
-    general_dataset_name = 'afshin_vmtest_00' + in_dicoms.BigQuery.Dataset
+    general_dataset_name = output_dataset_name
     fx_dicoms = DataInfo(
         Datalet('idc-tcia',      # Bucket
                 'us',
@@ -1095,13 +1102,10 @@ def main(number_of_processes: int = None,
         mf_dicoms.Bucket.ProjectID,
         mf_dicoms.Bucket.Dataset,
         False)
-    max_number = 2 ** 63 - 1
-    max_number = 3
-    if max_number < 2 ** 63 - 1:
-        limit_q = 'LIMIT 9'
+    if sample_size < 2 ** 63 - 1:
+        limit_q = 'LIMIT {}'.format(sample_size * sample_size * 10)
     else:
         limit_q = ''
-    # with t1 as (select studyinstanceuid, x.CodeValue as CodeValue, x.CodeMeaning as CodeMeaning, x.codingSchemeDesignator as codingSchemeDesignator from `idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata` CROSS JOIN UNNEST(anatomicregionsequence) as x), t2 as (select src.studyinstanceuid, src.BodyPartExamined from `idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata` as src group by studyinstanceuid, Bodypartexamined) select t2.Studyinstanceuid, t1.Studyinstanceuid, Bodypartexamined , CodeValue, CodeMeaning, CodingSchemeDesignator from t1 full outer join t2 on t1.studyinstanceuid=t2.studyinstanceuid where not (Bodypartexamined is null and codevalue is null) group by t2.Studyinstanceuid, t1.Studyinstanceuid, Bodypartexamined , CodeValue, CodeMeaning, CodingSchemeDesignator order by t2.studyinstanceuid
     study_query = r"""
 WITH DISTINGUISHED AS(
         SELECT  SOPInstanceUID,
@@ -1240,24 +1244,24 @@ GROUP BY
         DISTINGUISHED.SeriesInstanceUID
 ORDER BY StudyInstanceUID, SeriesInstanceUID
 {1}
-    """.format('canceridc-data.idc_views.dicom_all', limit_q)
+    """.format(input_table_view_id, limit_q)
     global anatomy_info
     logger = logging.getLogger(__name__)
     logger.info('Now we query anatomy info')
     anatomy_info = query_anatomy_from_tables(
-        'canceridc-data.idc_views.dicom_all')
+        input_table_view_id)
     logger.info('Now we query ref sequence info')
     ref_info = QueryReferencedStudySequence(
-        'canceridc-data.idc_views.dicom_all')
+        input_table_view_id)
     uids: dict = {}
     # q_dataset_uid = '{}.{}.{}'.format(
     #     in_dicoms.BigQuery.ProjectID,
     #     in_dicoms.BigQuery.Dataset,
     #     in_dicoms.BigQuery.DataObject
     #     )
-    max_number_of_studies = max_number
-    max_number_of_series = max_number
-    max_number_of_intances = max_number
+    max_number_of_studies = sample_size
+    max_number_of_series = sample_size
+    max_number_of_intances = sample_size
     start_time = time.time()
     logger.info('Now we query all studies to be fix/converted')
     studies = query_string_with_result(
@@ -1271,9 +1275,9 @@ ORDER BY StudyInstanceUID, SeriesInstanceUID
     hdd_mem = psutil.disk_usage('/')
     if studies is not None:
         for row in studies:
-            cln_id = row.GCS_BUCKET,
-            stuid = row.StudyInstanceUID, 
-            seuid = row.SeriesInstanceUID,
+            cln_id = row.GCS_BUCKET
+            stuid = row.StudyInstanceUID 
+            seuid = row.SeriesInstanceUID
             sopuids = row.INSTANCES
             if len(sopuids) > max_number_of_intances:
                 sopuids = sopuids[:max_number_of_intances]
@@ -1287,7 +1291,8 @@ ORDER BY StudyInstanceUID, SeriesInstanceUID
                 uids[stuid] = (cln_id, {seuid: [0, sopuids]})
         uids = get_all_series_size(
             in_dicoms.Bucket.ProjectID, uids, number_of_processes,
-            max_number < 2 ** 63 - 1)
+            sample_size < 2 ** 63 - 1)
+        # print(ctools.dict2str(uids))
         number_of_all_studies = min(len(uids), max_number_of_studies)
         max_study_count_in_chunk = 300
         max_series_count_in_chunk = (
@@ -1334,7 +1339,7 @@ ORDER BY StudyInstanceUID, SeriesInstanceUID
                         local_tmp_folder,
                         study_chunk,
                         in_dicoms, fx_dicoms, mf_dicoms,
-                        max_number)
+                        sample_size)
                     performance_history.append(perf)
                     number_of_inst_processed += perf.fix.size
                     if whole_performace is None:
@@ -1442,6 +1447,12 @@ if __name__ == '__main__':
     status_logger = Periodic(log_status, None, 60)
     status_logger.start()
     try:
-        main(33, 1000)
+        main(
+            number_of_processes=88,
+            rough_series_count_in_chunk=1000,
+            input_table_view_id='canceridc-data.idc_views.dicom_all',
+            output_dataset_name='vm_test_output',
+            sample_size=5 #  number less than one means the whole collection
+        )
     finally:
         status_logger.kill_timer()

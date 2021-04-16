@@ -12,6 +12,6 @@ def main(argv):
         "-v", "--verbose", dest="verbose", action ="store_true",
         required = False, help ="Verbosity")
     args = parser.parse_args(argv)
-    print(fx.verify_with_pyverify(args.input_file, '', args.verbose))
+    print(fx.verify_pyverify(args.input_file, '', args.verbose))
 if __name__ == "__main__":
     main(sys.argv[1:])

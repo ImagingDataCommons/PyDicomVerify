@@ -29,17 +29,18 @@ def list_blobs(project_id: str, bucket_name: str, prefix: str = None):
     max_retries = 30
     retries = 0
     blobs = []
+    logger.debug("project_id: {}, bucket_name: {}, prefix: {}".format(
+        project_id, bucket_name, prefix))
     while retries < max_retries:
         try:
-            logger.debug("Before building client object")
             storage_client = storage.Client(project_id)
             logger.debug(
                 "After building clietn object and before "
-                "construction a bucket object")
+                "construction a bucket object <{}>".format(project_id))
             bucket_obj = storage_client.bucket(bucket_name, project_id)
             logger.debug(
-                "After construction a bucket object and"
-                " before retrieving blob list")
+                "After construction a bucket object <{}> and"
+                " before retrieving blob list".format(bucket_name))
             if prefix is None:
                 blobs = storage_client.list_blobs(bucket_obj, timeout=5)
             else:
@@ -161,7 +162,8 @@ def delete_bucket(project_id: str, bucket_name: str):
     logger = logging.getLogger(__name__)
     """Deletes a bucket. The bucket must be empty."""
     # bucket_name = "your-bucket-name"
-
+    logger.debug(
+        "project_id: {}, bucket_name: {}".format(project_id, bucket_name))
     storage_client = storage.Client(project_id)
 
     bucket_obj = storage_client.bucket(bucket_name, project_id)
@@ -180,7 +182,7 @@ def copy_blob(
     # blob_name = "your-object-name"
     # destination_bucket_name = "destination-bucket-name"
     # destination_blob_name = "destination-object-name"
-
+    
     storage_client = storage.Client(project_id)
 
     source_bucket = storage_client.bucket(bucket_name, project_id)
@@ -205,6 +207,8 @@ def get_blob(project_id: str, bucket_name: str, blob_name) -> bool:
     logger = logging.getLogger(__name__)
     # bucket_name = "your-bucket-name"
     # blob_name = "your-object-name"
+    logger.debug("project_id: {}, bucket_name: {}, blob_name: {}".format(
+        project_id, bucket_name, blob_name))
     retries = 0
     max_retries = 30
     bl = None
@@ -231,7 +235,8 @@ def delete_blob(project_id: str, bucket_name: str, blob_name) -> bool:
     """Deletes a blob from the bucket."""
     # bucket_name = "your-bucket-name"
     # blob_name = "your-object-name"
-
+    logger.debug("project_id: {}, bucket_name: {}, blob_name: {}".format(
+        project_id, bucket_name, blob_name))
     storage_client = storage.Client(project_id)
 
     bucket = storage_client.bucket(bucket_name, project_id)
@@ -248,7 +253,10 @@ def download_blob(project_id: str, bucket_name: str,
     # bucket_name = "your-bucket-name"
     # source_blob_name = "storage-object-name"
     # destination_file_name = "local/path/to/file"
-
+    logger.debug(
+        "project_id: {}, bucket_name: {}, src_blob_name: {}, \n"
+        "dest_file_name: {}".format(
+            project_id, bucket_name, source_blob_name, destination_file_name))
     storage_client = storage.Client(project_id)
 
     bucket = storage_client.bucket(bucket_name, project_id)
@@ -296,6 +304,10 @@ def upload_blob(project_id: str, bucket_name: str,
     # source_file_name = "local/path/to/file"
     # destination_blob_name = "storage-object-name"
     logger = logging.getLogger(__name__)
+    logger.debug(
+        "project_id: {}, bucket_name: {}, dest_blob_name: {}, \n"
+        "src_file_name: {}".format(
+            project_id, bucket_name, destination_blob_name, source_file_name))
     storage_client = storage.Client(project_id)
     bucket = storage_client.bucket(bucket_name, project_id)
     blob = bucket.blob(destination_blob_name)
