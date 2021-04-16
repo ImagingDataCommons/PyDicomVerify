@@ -6,12 +6,15 @@ from gcloud.BigQueryStuff import *
 from ref_query import QueryReferencedStudySequence
 import json
 
-def query_all(  source_bq_tableview: str = 'ref',
-                ref_json_file: str = 'ref',
-                json_file: str = 'testfile', 
-                json_var: str = 'data' ,
-                mx_number_of_series_in_file: int = -1,
-                mx_number_of_series: int = -1) -> dict:
+
+def query_all( 
+        source_bq_tableview: str = 'ref',
+        ref_json_file: str = 'ref',
+        json_file: str = 'testfile', 
+        json_var: str = 'data' ,
+        mx_number_of_series_in_file: int = -1,
+        mx_number_of_series: int = -1
+    ) -> None:
     logger = logging.getLogger(__name__)
     parent = os.path.dirname(json_file)
     if parent and not os.path.exists(parent):
@@ -213,7 +216,7 @@ def query_all(  source_bq_tableview: str = 'ref',
     if q_results is not None:
         file_counter = 0
         vec_data = []
-        sz_factor = 1
+        sz_factor: float = 1
         for i, row in enumerate(q_results):
             data1 = {}
             data1['GCS_BUCKET'] = row.GCS_BUCKET

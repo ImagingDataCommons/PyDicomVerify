@@ -337,7 +337,7 @@ def ConvertFrameset(frameset: FrameSet, OutputFileName: str,
             filename = OutputFileName, dataset = x, write_like_original=False)
         pr_ch = ParentChildDicoms(
             frameset.get_sop_instance_uid_list(),
-            frameset.StudyInstanceUID,
+            frameset.study_instance_uid,
             multi_frame_series_instance_uid,
             multi_frame_sop_instance_uid,
             OutputFileName)

@@ -92,7 +92,6 @@ from typing import (
 from multiprocessing import Manager
 from anatomy_query import (
     # FUNCTIONS
-    get_anatomy_info,
     query_anatomy_from_tables,
     fix_SOPReferencedMacro,
 )
@@ -342,7 +341,7 @@ def frameset_for_one_series(single_frame_file_path: List[str],
                             single_frame_series_uid: str):
     logger = logging.getLogger(__name__)
     # All frames set created out of one series must have the same series
-    #   instance uid. So I have to create on sereies instance uid and a
+    #   instance uid. So I have to create on series instance uid and a
     #   destination folder for future multiframe images
     # ------------------------------------------------
     multi_frame_series_uid = generate_uid(
@@ -542,9 +541,9 @@ def fix_convert_one_series(
                 mf_instace_uid)
             if pr_ch is None:
                 for fr in fset.frames:
-                    st_id = fr.StudyInstanceUID
-                    se_id = fr.SeriesInstanceUID
-                    sop_id = fr.SOPInstanceUID
+                    st_id = fr.study_instance_uid
+                    se_id = fr.series_instance_uid
+                    sop_id = fr.sop_instance_uid
                 f_query = flaw_query_form.format(
                     in_collection_name,
                     st_id, se_id, sop_id, 'CONVERSION')

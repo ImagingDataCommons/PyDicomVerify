@@ -33,8 +33,7 @@ from dicom_fix_issue_info import (
     IssueCollection,
     PerformanceMeasure,
     ProcessPerformance,
-    table_quota,
-    organize_dcmvfy_errors,
+    table_quota
 )
 from gcloud.BigQueryStuff import (
     # FUNCTIONS
@@ -91,11 +90,11 @@ from typing import (
 from multiprocessing import Manager
 from anatomy_query import (
     # FUNCTIONS
-    get_anatomy_info,
     query_anatomy_from_tables,
     fix_SOPReferencedMacro,
 )
 from ref_query import QueryReferencedStudySequence
+from local_fix_convert import fix_file_verify_write_dciodvfy, verify_dciodvfy
 # ---------------- Global Vars --------------------------:
 max_number_of_study_processes = 1
 max_number_of_fix_processes = MAX_NUMBER_OF_THREADS
@@ -104,6 +103,7 @@ max_number_of_bq_processes = MAX_NUMBER_OF_THREADS
 max_number_of_frameset_processes = MAX_NUMBER_OF_THREADS
 max_number_of_conversion_processes = MAX_NUMBER_OF_THREADS
 ref_info = None
+anatomy_inof = None
 fix_report_tq = None
 issue_report_tq = None
 org_report_tq = None
@@ -150,40 +150,6 @@ for h in hs:
 install_mp_handler()
 logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.CRITICAL)
 # -----------------------------------------------------------------------
-
-
-def VER(file: str, log: list, char_set: str = 'ascii'):
-    file_name = os.path.basename(file)
-    if file_name.endswith('.dcm'):
-        file_name = file_name[:-4]
-    dcm_verify = "/Users/afshin/Documents/softwares"\
-        "/dicom3tools/most_recent_exe/dciodvfy"
-    if not os.path.exists(dcm_verify):
-        dcm_verify = shutil.which('dciodvfy')
-        if dcm_verify is None:
-            print("Error: install dciodvfy into system path")
-            assert(False)
-    err_log = []
-    ctools.RunExe([dcm_verify, '-filename', file], '', '', errlog=err_log,
-                  char_encoding=char_set)
-    organize_dcmvfy_errors(err_log, log)
-    # my_code_output = verify_dicom(file, False, '')
-
-
-def FixFile(dicom_file: str, dicom_fixed_file: str,
-            log_fix: list, log_david_pre: list, log_david_post: list,
-            anatomy: tuple):
-    ds = pydicom.read_file(dicom_file)
-    char_set = DicomFileInfo.get_charset_val_from_dataset(ds)
-    # log_mine = []
-    VER(dicom_file, log_david_pre, char_set=char_set)
-    add_anatomy(ds, anatomy[0], anatomy[1], log_fix)
-    fix_SOPReferencedMacro(ds, log_fix, ref_info)
-    fix_dicom(ds, log_fix)
-    # fix_report = PrintLog(log_fix)
-    pydicom.write_file(dicom_fixed_file, ds)
-    VER(dicom_fixed_file, log_david_post, char_set=char_set)
-    return ds
 
 
 def BuildQueries1(table_q_info: table_quota, qs: list, dataset_id: str,
@@ -300,18 +266,27 @@ def fix_one_instance(inst_info: DicomFileInfo,
                      fx_inst_info: DicomFileInfo,
                      input_table_name: str,
                      fixed_table_name: str,
-                     anatomy: tuple) -> tuple:
+                     anatomy: tuple,
+                     reference: dict) -> tuple:
     logger = logging.getLogger(__name__)
     fix_log = []
     pre_fix_issues = []
     post_fix_issues = []
     try:
-        fx_ds = FixFile(
-            inst_info.file_path, fx_inst_info.file_path, fix_log,
+        (
+            fx_ds,
+            fix_log,
+            pre_rawlog,
             pre_fix_issues,
-            post_fix_issues, anatomy)
+            post_rawlog,
+            post_fix_issues
+        ) = fix_file_verify_write_dciodvfy(
+            inst_info.file_path, 
+            fx_inst_info.file_path,
+            anatomy,
+            reference)
         fx_inst_info.study_uid = fx_ds.StudyInstanceUID
-        fx_inst_info.sereies_uid = fx_ds.SeriesInstanceUID
+        fx_inst_info.series_uid = fx_ds.SeriesInstanceUID
         fx_inst_info.instance_uid = fx_ds.SOPInstanceUID
         # as a trick to workaround pickling problem
         fx_inst_info.dicom_ds = fx_ds
@@ -356,7 +331,7 @@ def frameset_for_one_series(file_blob_pairs: List[DicomFileInfo],
                             series_folder_prifix: str):
     logger = logging.getLogger(__name__)
     # All frames set created out of one series must have the same series
-    #   instance uid. So I have to create on sereies instance uid and a
+    #   instance uid. So I have to create on series instance uid and a
     #   destination folder for future multiframe images
     # ------------------------------------------------
     multi_frame_series_uid = generate_uid(
@@ -379,125 +354,6 @@ def frameset_for_one_series(file_blob_pairs: List[DicomFileInfo],
         logger.error(msg, exc_info=True)
         fs = []
     return(fs, multi_frame_series_uid, multi_frame_series_folder)
-
-
-def extract_convert_framesets_for_bunch_of_studies(
-        study_series_dict,
-        mf_local_study_path: str,
-        fx_gc_info, mf_gc_info) -> tuple:
-    # Now I want to extract framesets from fixed sereis:
-    logger = logging.getLogger(__name__)
-    logger.info('Start finding the framesets')
-    fx_table_name = fx_gc_info.BigQuery.GetBigQueryStyleTableAddress(False)
-    mf_table_name = mf_gc_info.BigQuery.GetBigQueryStyleTableAddress(False)
-    tic = time.time()
-    frameset_processes = ProcessPool(
-        max_number_of_frameset_processes, 'frset')
-    for study_uid, series_dict in study_series_dict.items():
-        study_folder = mf_local_study_path.format(study_uid)
-        for series_uid, file_blob_pairs in series_dict.items():
-            frameset_processes.queue.put(
-                (
-                    frameset_for_one_series,
-                    (
-                        file_blob_pairs,
-                        study_folder)
-                )
-            )
-    frameset_processes.queue.join()
-    frameset_processes.kill_them_all()
-    toc = time.time()
-    frameset_elapsed_time = toc - tic
-    results = frameset_processes.output
-    flaw_queries = []
-    issue_queries = []
-    origin_queries = []
-    upload_blobfile_pairs = []
-    number_of_all_framesets = 0
-    # -> Starting the conversion
-    tic = time.time()
-    logger.info('Frameset calculation finished. '
-                'Now starting converting the framesets')
-    conversion_processes = ProcessPool(
-        max_number_of_conversion_processes, 'convert')
-    for(file_blob_pairs, prefix), \
-            (fsets, mf_series_uid, mf_series_dir) in results:
-        if len(fsets) == 0:
-            for file_blob in file_blob_pairs:
-                f_query = flaw_query_form.format(
-                    file_blob.bucket_name, file_blob.study_uid,
-                    file_blob.series_uid, file_blob.instance_uid, 'FRAMESET')
-                flaw_queries.append(f_query)
-        else:
-            mf_study_uid = file_blob_pairs[0].study_uid
-            for fset in fsets:
-                number_of_all_framesets += 1
-                upload_blobfile_pairs.extend(file_blob_pairs)
-                mf_instace_uid = generate_uid(
-                    prefix="1.3.6.1.4.1.43046.3" + ".1.9.")
-                mf_file_path = os.path.join(
-                    mf_series_dir, '{}.dcm'.format(mf_instace_uid))
-                conversion_processes.queue.put(
-                    (
-                        conv.ConvertFrameset,
-                        (
-                            fset,
-                            mf_file_path,
-                            mf_study_uid,
-                            mf_series_uid,
-                            mf_instace_uid)
-                    )
-                )
-    conversion_processes.queue.join()
-    conversion_processes.kill_them_all()
-    toc = time.time()
-    conversion_elapsed_time = toc - tic
-    conversion_results = conversion_processes.output
-    number_of_all_converted_mf = 0
-    for args, pr_ch in conversion_results:
-        if pr_ch is None:
-            fr_sets = args[0]
-            for fr in fr_sets.frames:
-                st_id = fr.StudyInstanceUID
-                se_id = fr.SeriesInstanceUID
-                sop_id = fr.SOPInstanceUID
-            f_query = flaw_query_form.format(
-                study_series_dict[st_id][se_id][0].bucket_name,
-                st_id, se_id, sop_id, 'CONVERSION')
-            flaw_queries.append(f_query)
-        else:
-            number_of_all_converted_mf += 1
-            origin_queries.extend(pr_ch.GetQuery(fx_table_name, mf_table_name))
-            multiframe_log = []
-            VER(pr_ch.child_dicom_file, multiframe_log)
-            mf_issues = IssueCollection(
-                multiframe_log[1:], mf_table_name,
-                pr_ch.child_study_instance_uid,
-                pr_ch.child_series_instance_uid,
-                pr_ch.child_sop_instance_uid, )
-            issue_queries.extend(mf_issues.GetQuery())
-            mf_blob_path = '{}/dicom/{}/{}/{}.dcm'.format(
-                    mf_gc_info.Bucket.DataObject,
-                    pr_ch.child_study_instance_uid,
-                    pr_ch.child_series_instance_uid,
-                    pr_ch.child_series_instance_uid)
-            upload_blobfile_pairs.append(DicomFileInfo(
-                mf_gc_info.Bucket.ProjectID,
-                mf_gc_info.Bucket.Dataset,
-                mf_blob_path, pr_ch.child_dicom_file,
-                pr_ch.child_study_instance_uid,
-                pr_ch.child_series_instance_uid,
-                pr_ch.child_sop_instance_uid))
-    frameset_perf = PerformanceMeasure(
-        number_of_all_framesets, frameset_elapsed_time, '(frameset)', False)
-    mf_perf = PerformanceMeasure(
-        number_of_all_converted_mf, conversion_elapsed_time,
-        '(multiframe-inst)')
-    logger.info(
-        '\tfinished conversion to multi-frame '
-        'instances first {} then {}'.format(str(frameset_perf), str(mf_perf)))
-    return(issue_queries, origin_queries, upload_blobfile_pairs, flaw_queries,
-            frameset_perf, mf_perf)
 
 
 def organize_file_blob_infos(file_blob_list: list):
@@ -530,23 +386,23 @@ def get_rows_and_insert_ids(q_list: list, insert_id_start: int):
     return (rows, ids, insert_id_start)
 
 
-def download_fix_convert_upload_one_sereis(
+def download_fix_convert_upload_one_series(
         inst_infos: list,
         fx_local_study_path: str,
         mf_local_study_path: str,
-        in_gc_info, fx_gc_info, mf_gc_info, anatomy: tuple):
+        in_gc_info, fx_gc_info, mf_gc_info, anatomy: tuple, reference: dict):
     logger = logging.getLogger(__name__)
     try:
-        download_fix_convert_upload_one_sereis.counter += 1
+        download_fix_convert_upload_one_series.counter += 1
     except AttributeError:
-        download_fix_convert_upload_one_sereis.counter = 1
+        download_fix_convert_upload_one_series.counter = 1
     
     if len(inst_infos) == 0:
         logger.debug('The input is empty')
         return([], [], [], [], 0, 0, 0, 0, 0, 0)
     current_pid = os.getpid()
     insert_id = int('1{:05d}{:04d}00000'.format(
-        current_pid,download_fix_convert_upload_one_sereis.counter)
+        current_pid,download_fix_convert_upload_one_series.counter)
         )
     in_table_name = in_gc_info.BigQuery.GetBigQueryStyleTableAddress(False)
     fx_table_name = fx_gc_info.BigQuery.GetBigQueryStyleTableAddress(False)
@@ -594,7 +450,7 @@ def download_fix_convert_upload_one_sereis(
         (fix_q, iss_q, org_q, flaw) = fix_one_instance(
             obj,
             fx_obj,
-            in_table_name, fx_table_name, anatomy)
+            in_table_name, fx_table_name, anatomy, reference)
         bgq_db_id = fx_gc_info.BigQuery.GetBigQueryStyleDatasetAddress(False)
         fix_report_table_id = '{}.{}'.format(bgq_db_id, 'FIX_REPORT')
         issue_report_table_id = '{}.{}'.format(bgq_db_id, 'ISSUE')
@@ -643,7 +499,7 @@ def download_fix_convert_upload_one_sereis(
         return([], [], [], flaw_queries, 0, 0,
                 downloaded_files_size, fixed_files_size,
                 mf_files_size, upload_files_size)
-    # Now I want to extract framesets from fixed sereis:
+    # Now I want to extract framesets from fixed series:
     study_uid = inst_infos[0].study_uid
     study_folder = mf_local_study_path.format(study_uid)
     (fsets, mf_series_uid, mf_series_dir) = frameset_for_one_series(
@@ -677,9 +533,9 @@ def download_fix_convert_upload_one_sereis(
                 mf_instace_uid)
             if pr_ch is None:
                 for fr in fset.frames:
-                    st_id = fr.StudyInstanceUID
-                    se_id = fr.SeriesInstanceUID
-                    sop_id = fr.SOPInstanceUID
+                    st_id = fr.study_instance_uid
+                    se_id = fr.series_instance_uid
+                    sop_id = fr.sop_instance_uid
                 f_query = flaw_query_form.format(
                     inst_infos[0].bucket_name,
                     st_id, se_id, sop_id, 'CONVERSION')
@@ -693,8 +549,9 @@ def download_fix_convert_upload_one_sereis(
                 #     orig_report_table_id, rows, schema_originated_from)
                 # if not success:
                 origin_queries.extend(org_q)
-                multiframe_log = []
-                VER(pr_ch.child_dicom_file, multiframe_log, char_set=char_set)
+                rowlog, multiframe_log =  verify_dciodvfy(
+                    pr_ch.child_dicom_file,
+                    char_set)
                 mf_issues = IssueCollection(
                     multiframe_log, mf_table_name,
                     pr_ch.child_study_instance_uid,
@@ -808,30 +665,27 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
     max_q_cap = 4000 * proc_num
     for study_uid, study_contents in study_series_dict.items():
         for series_uid, series_contents in study_contents.items():
-            st_anatomy_info = None
-            cl_anatomy_info = None
-            for cln, cln_an in anatomy_info.items():
-                cl_anatomy_info = cln_an[0]
-                if study_uid in cln_an[1]:
-                    st_anatomy_info = cln_an[1][study_uid]
-                    break
-            if st_anatomy_info is not None:
-                anatomy = get_anatomy_info(st_anatomy_info)
-            if anatomy[0] is None and anatomy[1][0] is None:
-                anatomy = get_anatomy_info(cl_anatomy_info)
+            if study_uid in anatomy_info:
+                anatomy = anatomy_info[study_uid]
+            else:
+                anatomy = (None, (None, None, None))
+            if study_uid in ref_info:
+                reference = {study_uid, ref_info[study_uid]}
+            else:
+                reference = {}
             if q_sz % max_q_cap == 0:
                 container = []
                 jobs.append(container)
             container.append(
                 (
-                    download_fix_convert_upload_one_sereis,
+                    download_fix_convert_upload_one_series,
                     (
                         series_contents,
                         '{}{}{}'.format(
                             in_folder, '/{}', '/{}'.format(fx_sub_dir)),
                         '{}{}{}'.format(
                             in_folder, '/{}', '/{}'.format(mf_sub_dir)),
-                        in_gc_info, fx_gc_info, mf_gc_info, anatomy)
+                        in_gc_info, fx_gc_info, mf_gc_info, anatomy, reference)
                 )
             )
             q_sz += 1
@@ -885,7 +739,7 @@ def process_series_parallel(in_folder: str, studies_chunk: List[Tuple],
     global issue_report_tq
     global org_report_tq
     global defect_report_tq
-    global ref_info
+
     if len(fix_queries) != 0:
         BuildQueries1(
             fix_report_tq,
@@ -1166,7 +1020,7 @@ def main(number_of_processes: int = None,
                 'idc_tcia_mvp_wave0',
                 'idc_tcia_dicom_metadata'),
         )
-    general_dataset_name = 'afshin_results_01_' + in_dicoms.BigQuery.Dataset
+    general_dataset_name = 'afshin_vmtest_00' + in_dicoms.BigQuery.Dataset
     fx_dicoms = DataInfo(
         Datalet('idc-tcia',      # Bucket
                 'us',
@@ -1242,71 +1096,159 @@ def main(number_of_processes: int = None,
         mf_dicoms.Bucket.Dataset,
         False)
     max_number = 2 ** 63 - 1
-    # max_number = 10
+    max_number = 3
     if max_number < 2 ** 63 - 1:
-        limit_q = 'LIMIT 50000'
+        limit_q = 'LIMIT 9'
     else:
         limit_q = ''
     # with t1 as (select studyinstanceuid, x.CodeValue as CodeValue, x.CodeMeaning as CodeMeaning, x.codingSchemeDesignator as codingSchemeDesignator from `idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata` CROSS JOIN UNNEST(anatomicregionsequence) as x), t2 as (select src.studyinstanceuid, src.BodyPartExamined from `idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata` as src group by studyinstanceuid, Bodypartexamined) select t2.Studyinstanceuid, t1.Studyinstanceuid, Bodypartexamined , CodeValue, CodeMeaning, CodingSchemeDesignator from t1 full outer join t2 on t1.studyinstanceuid=t2.studyinstanceuid where not (Bodypartexamined is null and codevalue is null) group by t2.Studyinstanceuid, t1.Studyinstanceuid, Bodypartexamined , CodeValue, CodeMeaning, CodingSchemeDesignator order by t2.studyinstanceuid
-    study_query = """
-                WITH DICOMS AS (
-                SELECT STUDYINSTANCEUID, SERIESINSTANCEUID, SOPINSTANCEUID
-                FROM {}
-                WHERE
-                    SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.2" OR
-                    SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.4" OR
-                    SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.128"
-                    {} )
-                    SELECT DICOMS.STUDYINSTANCEUID,
-                        DICOMS.SERIESINSTANCEUID,
-                        DICOMS.SOPINSTANCEUID,
-                        COLLECTION_TABLE.GCS_Bucket,
-                    FROM DICOMS JOIN
-                        {} AS
-                        COLLECTION_TABLE ON
-                        COLLECTION_TABLE.SOPINSTANCEUID = DICOMS.SOPINSTANCEUID
-    """.format(in_dicoms.BigQuery.GetBigQueryStyleTableAddress(), limit_q,
-               BigQueryInputCollectionInfo.GetBigQueryStyleTableAddress())
-    # study_query ="""
-    # WITH INSTS AS (
-    # SELECT 
-    #     FX.STUDYINSTANCEUID,
-    #     FX.SeriesInstanceUID,
-    #     FX.SOPINSTANCEUID,
-    #     MF.SOPInstanceUID AS KID_ID
-    # FROM `idc-tcia.afshin_results_00_idc_tcia_mvp_wave0.MULTIFRAME` AS MF 
-    # JOIN `idc-tcia.afshin_results_00_idc_tcia_mvp_wave0.ORIGINATED_FROM` AS ORG
-    # ON ORG.CHILD_SOPInstanceUID = MF.MediaStorageSOPInstanceUID
-    # JOIN `idc-tcia.afshin_results_00_idc_tcia_mvp_wave0.FIXED` AS FX 
-    # ON FX.SOPInstanceUID = ORG.PARENT_SOPInstanceUID),
-    # T1 AS (
-    #     SELECT DISTINCT(SeriesInstanceUID) 
-    #     FROM INSTS LIMIT 100
-    # )
-    # SELECT  
-    #         STUDYINSTANCEUID,
-    #         INSTS.SERIESINSTANCEUID,
-    #         INSTS.SOPINSTANCEUID,
-    #         KEYWORD,
-    #         META.GCS_Bucket
-    # FROM `idc-tcia.afshin_results_00_idc_tcia_mvp_wave0.ISSUE` AS ISSUE_T
-    # JOIN INSTS ON INSTS.KID_ID  = ISSUE_T.SOPInstanceUID
-    # JOIN `idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_auxilliary_metadata` AS META 
-    # ON META.SOPInstanceUID = INSTS.SOPInstanceUID
-    # JOIN T1 ON T1.SeriesInstanceUID = INSTS.SeriesInstanceUID
-    # WHERE TYPE='Error' AND UPPER(DCM_TABLE_NAME) LIKE '%MULTIFRAME' AND (KEYWORD = 'FrameType' OR KEYWORD = 'FrameType')
-
-    # """
-
+    study_query = r"""
+WITH DISTINGUISHED AS(
+        SELECT  SOPInstanceUID,
+                SeriesInstanceUID,
+                StudyInstanceUID, 
+                COLLECTION_ID,
+                GCS_URL,
+                GCS_BUCKET,
+                ARRAY_TO_STRING(SoftwareVersions, '/') AS SoftwareVersions,
+                ARRAY_TO_STRING(ImageType, '/') AS ImageType,
+                FORMAT('%10.5f, %10.5f, %10.5f, %10.5f, %10.5f, %10.5f',
+                        CAST(ImageOrientationPatient [SAFE_OFFSET(0)] AS FLOAT64 ),
+                        CAST(ImageOrientationPatient [SAFE_OFFSET(1)] AS FLOAT64 ),
+                        CAST(ImageOrientationPatient [SAFE_OFFSET(2)] AS FLOAT64 ),
+                        CAST(ImageOrientationPatient [SAFE_OFFSET(3)] AS FLOAT64 ),
+                        CAST(ImageOrientationPatient [SAFE_OFFSET(4)] AS FLOAT64 ),
+                        CAST(ImageOrientationPatient [SAFE_OFFSET(5)] AS FLOAT64 )
+                        ) AS ImageOrientationPatient,
+                FORMAT('%10.5f, %10.5f',
+                        CAST(PixelSpacing [SAFE_OFFSET(0)] AS FLOAT64 ),
+                        CAST(PixelSpacing [SAFE_OFFSET(1)] AS FLOAT64 )
+                        ) AS PixelSpacing,
+                SliceThickness,
+                ORG.Rows,
+                ORG.Columns,
+                PatientID,
+                CONCAT(
+                    ORG.PATIENTNAME.Alphabetic.FamilyName, '^',
+                    ORG.PATIENTNAME.Alphabetic.GivenName, '^',
+                    ORG.PATIENTNAME.Alphabetic.MiddleName, '^',
+                    ORG.PATIENTNAME.Alphabetic.NamePrefix, '^',
+                    ORG.PATIENTNAME.Alphabetic.NameSuffix
+                ) AS PATIENTNAME,
+                Manufacturer,
+                StationName,
+                ManufacturerModelName,
+                DeviceSerialNumber,
+                PixelPaddingValue,
+                Modality,
+                BurnedInAnnotation,
+                SOPClassUID,
+                BitsStored,
+                BitsAllocated,
+                HighBit,
+                PixelRepresentation,
+                PhotometricInterpretation,
+                PlanarConfiguration,
+                SamplesPerPixel,
+                ProtocolName,
+                FORMAT('%2.8E/%2.8E/%2.8E',
+                    CAST(ImagePositionPatient[SAFE_OFFSET(0)] AS FLOAT64 ),
+                    CAST(ImagePositionPatient[SAFE_OFFSET(1)] AS FLOAT64 ),
+                    CAST(ImagePositionPatient[SAFE_OFFSET(2)] AS FLOAT64 )
+                    ) AS ImagePositionPatient,
+        FROM `{0}` AS ORG
+        WHERE
+                SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.2" OR
+                SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.4" OR
+                SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.128"
+), COUNT_TABLE AS(
+        SELECT  COUNT(DISTINCT SOPInstanceUID) AS SOPInstanceUID_COUNT,
+                SeriesInstanceUID,
+                StudyInstanceUID, 
+                COUNT(DISTINCT COLLECTION_ID) AS COLLECTION_ID_COUNT,
+                COUNT(DISTINCT GCS_URL) AS GCS_URL_COUNT,
+                COUNT(DISTINCT GCS_BUCKET) AS GCS_BUCKET_COUNT,
+                COUNT(DISTINCT SoftwareVersions) AS SoftwareVersions_COUNT,
+                COUNT(DISTINCT ImageType) AS ImageType_COUNT,
+                COUNT(DISTINCT ImageOrientationPatient) AS ImageOrientationPatient_COUNT,
+                COUNT(DISTINCT PixelSpacing) AS PixelSpacing_COUNT,
+                COUNT(DISTINCT SliceThickness) AS SliceThickness_COUNT,
+                COUNT(DISTINCT DISTINGUISHED.Rows) AS Rows_COUNT,
+                COUNT(DISTINCT DISTINGUISHED.Columns) AS Columns_COUNT,
+                COUNT(DISTINCT PatientID) AS PatientID_COUNT,
+                COUNT(DISTINCT PATIENTNAME) AS PATIENTNAME_COUNT,
+                COUNT(DISTINCT Manufacturer) AS Manufacturer_COUNT,
+                COUNT(DISTINCT StationName) AS StationName_COUNT,
+                COUNT(DISTINCT ManufacturerModelName) AS ManufacturerModelName_COUNT,
+                COUNT(DISTINCT DeviceSerialNumber) AS DeviceSerialNumber_COUNT,
+                COUNT(DISTINCT PixelPaddingValue) AS PixelPaddingValue_COUNT,
+                COUNT(DISTINCT Modality) AS Modality_COUNT,
+                COUNT(DISTINCT BurnedInAnnotation) AS BurnedInAnnotation_COUNT,
+                COUNT(DISTINCT SOPClassUID) AS SOPClassUID_COUNT,
+                COUNT(DISTINCT BitsStored) AS BitsStored_COUNT,
+                COUNT(DISTINCT BitsAllocated) AS BitsAllocated_COUNT,
+                COUNT(DISTINCT HighBit) AS HighBit_COUNT,
+                COUNT(DISTINCT PixelRepresentation) AS PixelRepresentation_COUNT,
+                COUNT(DISTINCT PhotometricInterpretation) AS PhotometricInterpretation_COUNT,
+                COUNT(DISTINCT PlanarConfiguration) AS PlanarConfiguration_COUNT,
+                COUNT(DISTINCT SamplesPerPixel) AS SamplesPerPixel_COUNT,
+                COUNT(DISTINCT ProtocolName) AS ProtocolName_COUNT,
+                COUNT(DISTINCT ImagePositionPatient) AS ImagePositionPatient_COUNT
+        FROM DISTINGUISHED  
+        GROUP BY  StudyInstanceUID, SeriesInstanceUID),
+SINGLE_FRAMESETS AS(
+        SELECT SeriesInstanceUID FROM COUNT_TABLE 
+        WHERE
+                SoftwareVersions_COUNT < 2 AND
+                ImageType_COUNT < 2 AND
+                ImageOrientationPatient_COUNT < 2 AND
+                PixelSpacing_COUNT < 2 AND
+                SliceThickness_COUNT < 2 AND
+                Rows_COUNT < 2 AND
+                Columns_COUNT < 2 AND
+                PatientID_COUNT < 2 AND
+                PATIENTNAME_COUNT < 2 AND
+                Manufacturer_COUNT < 2 AND
+                StationName_COUNT < 2 AND
+                ManufacturerModelName_COUNT < 2 AND
+                DeviceSerialNumber_COUNT < 2 AND
+                PixelPaddingValue_COUNT < 2 AND
+                Modality_COUNT < 2 AND
+                BurnedInAnnotation_COUNT < 2 AND
+                SOPClassUID_COUNT < 2 AND
+                BitsStored_COUNT < 2 AND
+                BitsAllocated_COUNT < 2 AND
+                HighBit_COUNT < 2 AND
+                PixelRepresentation_COUNT < 2 AND
+                PhotometricInterpretation_COUNT < 2 AND
+                PlanarConfiguration_COUNT < 2 AND
+                SamplesPerPixel_COUNT < 2 AND
+                ProtocolName_COUNT < 2 AND 
+                ImagePositionPatient_COUNT = SOPInstanceUID_COUNT)
+SELECT  GCS_BUCKET,
+        COLLECTION_ID,
+        DISTINGUISHED.StudyInstanceUID, 
+        DISTINGUISHED.SeriesInstanceUID,
+        ARRAY_AGG(SOPInstanceUID) AS INSTANCES,
+        --ARRAY_AGG(FORMAT('%s', LEFT(GCS_URL, INSTR(GCS_URL, '#', -1, 1) - 1))) AS SERIES_PATH
+FROM DISTINGUISHED INNER JOIN SINGLE_FRAMESETS 
+ON DISTINGUISHED.SeriesInstanceUID = SINGLE_FRAMESETS.SeriesInstanceUID
+GROUP BY 
+        GCS_BUCKET,
+        COLLECTION_ID,
+        DISTINGUISHED.StudyInstanceUID, 
+        DISTINGUISHED.SeriesInstanceUID
+ORDER BY StudyInstanceUID, SeriesInstanceUID
+{1}
+    """.format('canceridc-data.idc_views.dicom_all', limit_q)
     global anatomy_info
     logger = logging.getLogger(__name__)
     logger.info('Now we query anatomy info')
     anatomy_info = query_anatomy_from_tables(
-        '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata`',
-        '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_auxilliary_metadata`')
+        'canceridc-data.idc_views.dicom_all')
     logger.info('Now we query ref sequence info')
     ref_info = QueryReferencedStudySequence(
-        'idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata')
+        'canceridc-data.idc_views.dicom_all')
     uids: dict = {}
     # q_dataset_uid = '{}.{}.{}'.format(
     #     in_dicoms.BigQuery.ProjectID,
@@ -1329,23 +1271,20 @@ def main(number_of_processes: int = None,
     hdd_mem = psutil.disk_usage('/')
     if studies is not None:
         for row in studies:
-            stuid = row.STUDYINSTANCEUID
-            seuid = row.SERIESINSTANCEUID
-            sopuid = row.SOPINSTANCEUID
-            cln_id = row.GCS_Bucket
+            cln_id = row.GCS_BUCKET,
+            stuid = row.StudyInstanceUID, 
+            seuid = row.SeriesInstanceUID,
+            sopuids = row.INSTANCES
+            if len(sopuids) > max_number_of_intances:
+                sopuids = sopuids[:max_number_of_intances]
             if stuid in uids:
-                if seuid in uids[stuid][1]:
-                    if len(uids[stuid][1][seuid][1]) >= max_number_of_intances:
-                        continue
-                    uids[stuid][1][seuid][1].append(sopuid)
-                else:
-                    if len(uids[stuid]) >= max_number_of_series:
-                        continue
-                    uids[stuid][1][seuid] = [0, [sopuid]]
+                if len(uids[stuid]) >= max_number_of_series:
+                    continue
+                uids[stuid][1][seuid] = [0, sopuids]
             else:
                 if len(uids) >= max_number_of_studies:
                     continue
-                uids[stuid] = (cln_id, {seuid: [0, [sopuid]]})
+                uids[stuid] = (cln_id, {seuid: [0, sopuids]})
         uids = get_all_series_size(
             in_dicoms.Bucket.ProjectID, uids, number_of_processes,
             max_number < 2 ** 63 - 1)

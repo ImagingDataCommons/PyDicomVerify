@@ -243,7 +243,7 @@ def fix_convert_series(attribute:str , value):
             fx_files = in_files
             fix_folder = in_folder
         print('before coversion')
-        SOPClassList = convtool.ConvertByHighDicomNew(fix_folder, out_folder, log)
+        SOPClassList = convtool.ConvertByHighDicomNew(fix_folder, out_folder)
         for n, f in enumerate(SOPClassList, 0):
             output_file_pattern = "hd{:03d}.dcm"
             new_name = os.path.join(out_folder, output_file_pattern.format(n))

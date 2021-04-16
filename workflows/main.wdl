@@ -7,7 +7,7 @@ workflow  main{
         String input_bgq_table_name
         String dest_bucket_name
     }
-    String json_file = 'sereies_info'
+    String json_file = 'series_info'
     String ref_json_file = 'referenced_info'
     String json_var = 'data'
     call sub_.query_series as input_series{
@@ -37,7 +37,7 @@ workflow  main{
         call convert_all_series
         { 
             input: series_file_list=series_files,
-            sereise_file_firstsamples=series_file_firstsample,
+            seriese_file_firstsamples=series_file_firstsample,
             ref_json_file=input_series.ref_json,
             input_json_file=j_file,
             source_bgq_table_name=input_bgq_table_name,
@@ -64,7 +64,7 @@ task convert_all_series
 {
     input { 
         Array[Array[File]] series_file_list
-        Array[File] sereise_file_firstsamples
+        Array[File] seriese_file_firstsamples
         File ref_json_file
         File input_json_file
         String source_bgq_table_name
@@ -83,7 +83,7 @@ task convert_all_series
     from pipeline_fix_convert_locally import main_fix_multiframe_convert
     import os
     print('~{input_json_file}')
-    folders = [ os.path.dirname(f) for f in ['~{sep = "\', \'"  sereise_file_firstsamples}']]
+    folders = [ os.path.dirname(f) for f in ['~{sep = "\', \'"  seriese_file_firstsamples}']]
     for f in folders:
         ff = os.listdir(f)
         print('----->',f)

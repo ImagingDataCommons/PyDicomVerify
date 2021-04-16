@@ -217,7 +217,7 @@ def verify_with_dciodvfy_and_pyvfy(
 def fix_file(dicom_file: str, 
              anatomy: tuple,
              reference: dict):
-    log_fix = []
+    log_fix: list = []
     ds = pydicom.read_file(dicom_file)
     if len(anatomy) == 2:
         add_anatomy(ds, anatomy[0], anatomy[1], log_fix)
@@ -260,3 +260,26 @@ def fix_file_verify_write(
         dicom_fixed_file, char_set, post_fix_vfy_file)
     return (ds, fix_report, pre_rawlog, pre_orglog, pre_pylog,
         post_rawlog, post_orglog, post_pylog)
+    
+    
+def fix_file_verify_write_dciodvfy(
+        dicom_file: str, 
+        dicom_fixed_file: str,
+        anatomy: tuple,
+        reference: dict,
+        dicom_fix_report_file: str = '',
+        pre_fix_vfy_file: str = '',
+        post_fix_vfy_file: str = ''
+    ):
+    ds, fix_report = fix_file_and_write(
+        dicom_file,
+        dicom_fixed_file,
+        anatomy, reference,
+        dicom_fix_report_file)
+    char_set = DicomFileInfo.get_charset_val_from_dataset(ds)
+    pre_rawlog, pre_orglog = verify_with_dciodvfy(
+        dicom_file, char_set, pre_fix_vfy_file)
+    post_rawlog, post_orglog = verify_with_dciodvfy(
+        dicom_fixed_file, char_set, post_fix_vfy_file)
+    return (ds, fix_report, pre_rawlog, pre_orglog,
+        post_rawlog, post_orglog)

@@ -67,6 +67,7 @@ anatomic_attribs = ["ImageLaterality" ,
 "FrameAnatomySequence",
 "AnatomicRegionSequence",]
 
+
 def download_parallel(blob_list: list, destination_dir: str, bucket_name: str,
                       process_number: int=pl.MAX_NUMBER_OF_THREADS):
     logger = logging.getLogger(__name__)
@@ -97,6 +98,7 @@ def download_parallel(blob_list: list, destination_dir: str, bucket_name: str,
     ps.kill_them_all()
     return dest_files
 
+
 def download_json(remote_file, local_file, data_folder):
     with open(remote_file) as json_file:
         jcontent = json.load(json_file)
@@ -109,7 +111,8 @@ def download_json(remote_file, local_file, data_folder):
         local_dict = {}
         for key, val in series.items():
             if key == 'SERIES_PATH':
-                files = download_parallel(val, data_folder, series['GCS_BUCKET'], 16)
+                files = download_parallel(
+                    val, data_folder, series['GCS_BUCKET'], 16)
                 local_dict[key] = files
             elif key == 'INSTANCES':
                 local_dict[key] = list(val[:16])
