@@ -21,7 +21,7 @@ task query_series
     import sys
     sys.path.insert(1, '/fix/')
     print('added fix to path')
-    from query_fix_convert_inputs import query_all
+    from pipeline_query_inputs import query_all
     query_all(
         '~{input_bq_table_name}',
         '~{ref_json_file_name}',
