@@ -88,7 +88,7 @@ class Periodic:
         if self._args is None:
             self._function()
         else:
-            self._function(self._args)
+            self._function(*self._args)
         if not self._kill_timer:
             threading.Timer(self.period_in_sec, self.start).start()
 

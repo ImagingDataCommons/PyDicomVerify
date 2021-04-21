@@ -1,10 +1,20 @@
-from BigQueryStuff import create_all_tables,\
-                          query_string,\
-                          query_string_with_result
-from StorageBucketStuff import download_blob, upload_blob, exists_bucket,\
-    list_blobs, create_bucket,empty_bukcet, delete_bucket
+from gcloud.BigQueryStuff import (
+    create_all_tables,
+    query_string,
+    query_string_with_result
+)
+from gcloud.StorageBucketStuff import (
+    download_blob,
+    upload_blob,
+    exists_bucket,
+    list_blobs,
+    create_bucket,
+    delete_bucket
+)
 import common.common_tools as ct
-import parallelization as pl
+import common.parallelization as pl
+from datetime import timedelta
+import time
 
 
 def get_bucket_size(project_id: str, bucket_name:str):
@@ -14,40 +24,53 @@ def get_bucket_size(project_id: str, bucket_name:str):
         size += bl.size
         # print(size)
     return (bucket_name, size)
-collection_query = """
-            WITH DICOMS AS (
-            SELECT SOPINSTANCEUID  
-            FROM {} 
-            WHERE
-                SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.2" OR 
-                SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.4" OR 
-                SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.128" 
-                 ) 
-                SELECT DISTINCT 
-                    COLLECTION_TABLE.GCS_Bucket, 
-                FROM DICOMS JOIN 
-                    {} AS 
-                    COLLECTION_TABLE ON 
-                    COLLECTION_TABLE.SOPINSTANCEUID = DICOMS.SOPINSTANCEUID 
-""".format('`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_dicom_metadata`', 
-           '`idc-dev-etl.idc_tcia_mvp_wave0.idc_tcia_auxilliary_metadata`')
-q_results = query_string_with_result(collection_query, project_name='idc-dev-etl')
-all_sizes = {}
-whole_siz = 0.0
-ths = pl.ThreadPool(pl.MAX_NUMBER_OF_THREADS, 'size')
-for row in q_results:
-    bucket_name = row.GCS_Bucket
-    ths.queue.put(
-        (
-            get_bucket_size,
-            ('idc-tcia', bucket_name,),
+
+def show_progress(start_time):
+    n = 5
+    toc = time.time()
+    e_sec = round(toc - start_time)
+    nn = e_sec % n
+    e_t = timedelta(seconds=e_sec)
+    dots = ''
+    for i in range(n):
+        if i <= nn:
+            dots += ' .'
+        else:
+            dots += '  '
+    print(
+        "WAIT UNTIL FETCH THE "
+        "BUCKET SIZES. ELAPSED TIME: {} {}".format(dots, e_t),
+        flush=True, end='\r')
+
+if __name__ == '__main__':
+    progress = pl.Periodic(show_progress, [time.time()], .5)
+    progress.start()
+    collection_query = """
+        SELECT DISTINCT GCS_BUCKET FROM 
+        `{}` 
+        ORDER BY GCS_BUCKET
+    """.format('canceridc-data.idc_views.dicom_all')
+    q_results = query_string_with_result(
+        collection_query, project_name='idc-tcia')
+    all_sizes = {}
+    whole_siz = 0.0
+    pss = pl.ProcessPool(16, 'size')
+    for row in q_results:
+        bucket_name = row.GCS_BUCKET
+        pss.queue.put(
+            (
+                get_bucket_size,
+                ('idc-tcia', bucket_name,),
+            )
         )
-    )
-ths.queue.join()
-ths.kill_them_all()
-for bucket_name, b_size in ths.output:
-    all_sizes[bucket_name] = (b_size, ct.get_human_readable_string(b_size))
-    print(ct.get_human_readable_string(b_size))
-    whole_siz += b_size
-all_sizes['whole'] = (whole_siz, ct.get_human_readable_string(whole_siz))
-print(all_sizes)
+    pss.queue.join()
+    pss.kill_them_all()
+    progress.kill_timer()
+    for args, (bucket_name, b_size) in pss.output:
+        all_sizes[bucket_name] = (b_size, ct.get_human_readable_string(b_size))
+        print(ct.get_human_readable_string(b_size))
+        whole_siz += b_size
+    print(whole_siz)
+    all_sizes['whole'] = (
+        whole_siz, ct.get_human_readable_string(whole_siz))
+    print(ct.dict2str(all_sizes))

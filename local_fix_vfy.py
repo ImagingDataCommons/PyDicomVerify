@@ -6,7 +6,7 @@ import shutil
 import common.common_tools as ctools
 import common.parallelization as pl
 import conversion as convtool
-from anatomy_query import (
+from query_anatomy import (
     # FUNCTIONS
     query_anatomy_from_tables,
 )

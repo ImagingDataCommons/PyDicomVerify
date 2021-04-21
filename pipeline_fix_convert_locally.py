@@ -90,13 +90,13 @@ from typing import (
     Tuple,
 )
 from multiprocessing import Manager
-from anatomy_query import (
+from query_anatomy import (
     # FUNCTIONS
     query_anatomy_from_tables,
     fix_SOPReferencedMacro,
 )
-from ref_query import QueryReferencedStudySequence
-from local_fix_convert import fix_file_verify_write
+from query_reference import QueryReferencedStudySequence
+from local_fix_vfy import fix_file_verify_write
 # ---------------- Global Vars --------------------------:
 max_number_of_study_processes = 1
 max_number_of_fix_processes = MAX_NUMBER_OF_THREADS
@@ -917,7 +917,7 @@ def main_fix_multiframe_convert(
         input_table_name: str,
         result_bucket_name: str,
         local_data_path: str,
-        ref_query_json_file: str = ''
+        query_reference_json_file: str = ''
         ):
 
     with open(input_data_json_file) as jfile:
@@ -926,8 +926,8 @@ def main_fix_multiframe_convert(
     status_logger = Periodic(log_status, None, 60)
     status_logger.start()
     logger = logging.getLogger(__name__)
-    if ref_query_json_file:
-        with open(ref_query_json_file) as ref_j_file:
+    if query_reference_json_file:
+        with open(query_reference_json_file) as ref_j_file:
             ref_info = json.load(ref_j_file)
 
     try:
@@ -964,7 +964,7 @@ if __name__ == '__main__':
     main_fix_multiframe_convert(
         j_file_name, folders, input_table_name, result_bucket_name,
         local_study_path, 
-        ref_query_json_file="gitexcluded_queries/refs.json"
+        query_reference_json_file="gitexcluded_queries/refs.json"
         )
     ctools.RunExe([
         'gsutil' ,'cp', '-r', local_study_path + '/*', #os.path.join(fx_local_study_path, 'dicom'), 

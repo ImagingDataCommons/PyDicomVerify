@@ -6,7 +6,7 @@ import shutil
 import common.common_tools as ctools
 import common.parallelization as pl
 import conversion as convtool
-from anatomy_query import (
+from query_anatomy import (
     # FUNCTIONS
     query_anatomy_from_tables,
 )
@@ -40,8 +40,8 @@ from rightdicom.dcmvfy.verify import (
     # FUNCTIONS
     verify_dicom,
 )
-from ref_query import QueryReferencedStudySequence
-from local_fix_convert import fix_file_verify_write
+from query_reference import QueryReferencedStudySequence
+from local_fix_vfy import fix_file_verify_write
 LOGGING_CONFIG = {
     'version': 1,
     'disable_existing_loggers': True,

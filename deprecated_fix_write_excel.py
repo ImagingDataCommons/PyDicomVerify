@@ -3,7 +3,7 @@ import os
 import pydicom
 import re
 import shutil
-import single2multi_frame
+import deprecated_single2multi_frame
 import sys
 import time
 import xlsxwriter
@@ -48,7 +48,7 @@ class FileUIDS:
             self.StudyUID = ds['StudyInstanceUID'].value
             self.SeriesUID = ds['SeriesInstanceUID'].value
             self.SOPClassUID = ds['SOPClassUID'].value
-            self.SOPClassTxt = single2multi_frame.SopClassUID2Txt(
+            self.SOPClassTxt = deprecated_single2multi_frame.SopClassUID2Txt(
                 self.SOPClassUID)
             self.VerificationFilePath = vfile
             self.MetaFilePath = mfile
@@ -531,7 +531,7 @@ inputresult_folder = os.path.join(out_folder,"in")
 input_stats = FIX(in_folder, inputresult_folder, 'INPUT FIX')
 fixed_folder = os.path.join(inputresult_folder, 'fixed_dicom/')
 conversion_log = []
-single2multi_frame.Convert(fixed_folder, pixelmed_folder, highdicom_folder,
+deprecated_single2multi_frame.Convert(fixed_folder, pixelmed_folder, highdicom_folder,
      conversion_log)
 ctools.WriteStringToFile(os.path.join(highdicom_folder,'highdicom_log.txt'),
 ctools.StrList2Txt(conversion_log))

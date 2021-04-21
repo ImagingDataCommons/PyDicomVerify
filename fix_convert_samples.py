@@ -6,7 +6,7 @@ import shutil
 import common.common_tools as ctools
 import common.parallelization as pl
 import conversion as convtool
-from anatomy_query import (
+from query_anatomy import (
     # FUNCTIONS
     query_anatomy_from_tables,
 )
@@ -39,10 +39,10 @@ from rightdicom.dcmvfy.verify import (
     # FUNCTIONS
     verify_dicom,
 )
-from local_fix_convert import (
+from local_fix_vfy import (
     fix_file_verify_write,
     verify_with_dciodvfy_and_pyvfy)
-from ref_query import QueryReferencedStudySequence
+from query_reference import QueryReferencedStudySequence
 from dicom_fix_issue_info import (
     # CLASSES
     DicomFileInfo

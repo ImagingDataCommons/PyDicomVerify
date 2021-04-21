@@ -185,10 +185,15 @@ class IndentAdapter(logging.LoggerAdapter):
 def get_human_readable_string(input_: float, binary: bool = True) -> str:
     input_suffix = ['f', 'p', 'n', 'µ', 'm', ' ', 'K', 'M', 'G', 'T', 'P', 'E']
     # 1024^5 = 1125899906842624
-    if binary:
-        input_ *= 1125899906842624
+    if input_ < 1:
+        offset = 0
+        if binary:
+            input_ *= 1125899906842624
+        else:
+            input_ *= 1e15
     else:
-        input_ *= 1e15
+        offset = 5
+    
     if input_ < 1:
         return '{:6.2e} {}'.format(input_, input_suffix[0])
     if not isinstance(input_, int):
@@ -203,7 +208,7 @@ def get_human_readable_string(input_: float, binary: bool = True) -> str:
         bin_.append(value % divisor)
         value = (value // divisor)
     bin_.append(value)
-    suff = input_suffix[len(bin_)-1]
+    suff = input_suffix[len(bin_)-1 + offset]
     if len(bin_) > 1:
         input_str = '{:06.2f} {}'.format(
             bin_[-1] + float(bin_[-2]) / divisor, suff)

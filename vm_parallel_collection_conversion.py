@@ -88,13 +88,13 @@ from typing import (
     Tuple,
 )
 from multiprocessing import Manager
-from anatomy_query import (
+from query_anatomy import (
     # FUNCTIONS
     query_anatomy_from_tables,
     fix_SOPReferencedMacro,
 )
-from ref_query import QueryReferencedStudySequence
-from local_fix_convert import fix_file_verify_write_dciodvfy, verify_dciodvfy
+from query_reference import QueryReferencedStudySequence
+from local_fix_vfy import fix_file_verify_write_dciodvfy, verify_dciodvfy
 # ---------------- Global Vars --------------------------:
 max_number_of_study_processes = 1
 max_number_of_fix_processes = MAX_NUMBER_OF_THREADS

@@ -1,6 +1,6 @@
 import argparse
 import sys
-import local_fix_convert as fx
+import local_fix_vfy as fx
 def main(argv):
     parser = argparse.ArgumentParser(
         description ="Dicom file fix. Specify the input file (-i) "

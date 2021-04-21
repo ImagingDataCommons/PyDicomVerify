@@ -28,7 +28,7 @@ class code_item:
 
 
 def query_anatomy_from_tables(dicom_bq_tableview: str) -> dict:
-    anatomy_query = r"""
+    query_anatomy = r"""
 WITH 
         ARS AS (
             SELECT 
@@ -66,8 +66,8 @@ WITH
                     AND (CodeValue_COUNT  < 2 OR CodeValue_COUNT IS NULL)
         )SELECT * FROM ANATOMY
     """.format(dicom_bq_tableview)
-    # print(anatomy_query)
-    anatomies = query_string_with_result(anatomy_query, project_name='idc-tcia')
+    # print(query_anatomy)
+    anatomies = query_string_with_result(query_anatomy, project_name='idc-tcia')
     anatomy_info = {}
     for row in anatomies:
         st_uid = row.StudyInstanceUID
