@@ -35,7 +35,7 @@ from dicom_fix_issue_info import (
     ProcessPerformance,
     table_quota
 )
-from gcloud.BigQueryStuff import (
+from gcloud.bigquery_tools import (
     # FUNCTIONS
     create_all_tables,
     create_bq_dataset,
@@ -48,7 +48,7 @@ from gcloud.BigQueryStuff import (
     schema_originated_from,
     stream_insert_with_ids,
 )
-from gcloud.DicomStoreStuff import (
+from gcloud.dcmstore_tools import (
     # FUNCTIONS
     recreate_dicom_store,
     exists_dataset,
@@ -56,7 +56,7 @@ from gcloud.DicomStoreStuff import (
     export_dicom_instance_bigquery,
     import_dicom_bucket,
 )
-from gcloud.StorageBucketStuff import (
+from gcloud.storage_tools import (
     # FUNCTIONS
     create_bucket,
     download_blob,

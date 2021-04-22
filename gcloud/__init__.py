@@ -1,6 +1,5 @@
 __all__ = [
-    "BigQueryStuff"
-    "DicomStoreStuff"
-    "DicomWebStuff"
-    "StorageBucketStuff"
+    "bigquery_tools"
+    "dcmstore_tools"
+    "storage_tools"
 ]

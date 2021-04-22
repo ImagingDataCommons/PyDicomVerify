@@ -7,11 +7,11 @@ import common.common_tools as ctools
 import common.parallelization as pl
 
 
-from gcloud.BigQueryStuff import (
+from gcloud.bigquery_tools import (
     # FUNCTIONS
     query_string_with_result,
 )
-from gcloud.StorageBucketStuff import (
+from gcloud.storage_tools import (
     # FUNCTIONS
     download_blob,
     list_blobs,

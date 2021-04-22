@@ -10,11 +10,11 @@ from query_anatomy import (
     # FUNCTIONS
     query_anatomy_from_tables,
 )
-from gcloud.BigQueryStuff import (
+from gcloud.bigquery_tools import (
     # FUNCTIONS
     query_string_with_result,
 )
-from gcloud.StorageBucketStuff import (
+from gcloud.storage_tools import (
     # FUNCTIONS
     download_blob,
     list_blobs,

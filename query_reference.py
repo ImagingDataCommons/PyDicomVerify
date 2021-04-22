@@ -3,7 +3,7 @@ import logging.config
 import os
 import shutil
 from rightdicom.dcmfix.study_dependent_patches import *
-from gcloud.BigQueryStuff import *
+from gcloud.bigquery_tools import *
 def QueryReferencedStudySequence(source_table: str):
     q = """
     WITH UIDTABLE AS (

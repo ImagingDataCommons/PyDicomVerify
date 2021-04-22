@@ -2,7 +2,7 @@ import logging
 import logging.config
 import os
 import shutil
-from gcloud.BigQueryStuff import *
+from gcloud.bigquery_tools import *
 from query_reference import QueryReferencedStudySequence
 import json
 

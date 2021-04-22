@@ -1,9 +1,9 @@
-from gcloud.BigQueryStuff import (
+from gcloud.bigquery_tools import (
     create_all_tables,
     query_string,
     query_string_with_result
 )
-from gcloud.StorageBucketStuff import (
+from gcloud.storage_tools import (
     download_blob,
     upload_blob,
     exists_bucket,

@@ -9,7 +9,7 @@ import common.common_tools as ct
 from datetime import timedelta
 from pydicom import Dataset
 from pydicom.charset import python_encoding
-from gcloud.BigQueryStuff import *
+from gcloud.bigquery_tools import *
 git_url = 'https://github.com/afshinmessiah/PyDicomVerify/{}'
 current_dir = os.path.dirname(os.path.abspath(__file__))
 repo = git.Repo(current_dir)
