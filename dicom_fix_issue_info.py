@@ -1,14 +1,16 @@
-import git
-import pydicom.datadict as Dic
-from pydicom.multival import MultiValue
-from pydicom import uid
 import re
 import os
 from typing import List
-import common.common_tools as ct
-from datetime import timedelta
+import git
+
+import pydicom.datadict as Dic
+from pydicom.multival import MultiValue
 from pydicom import Dataset
 from pydicom.charset import python_encoding
+from pydicom import uid
+
+import common.common_tools as ct
+from datetime import timedelta
 from gcloud.bigquery_tools import *
 git_url = 'https://github.com/afshinmessiah/PyDicomVerify/{}'
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -453,19 +455,6 @@ class DicomFileInfo:
             "dicom_ds", self.dicom_ds if
             self.dicom_ds is None else 'Exists but hidden')
         return out.format(content)
-
-    @staticmethod
-    def get_charset_val_from_dataset(ds: Dataset = None) -> str:
-        python_char_set = 'ascii'
-        if isinstance(ds, Dataset) and ds is not None:
-            if "SpecificCharacterSet" in ds:
-                dicom_char_set = ds.SpecificCharacterSet
-                if isinstance(dicom_char_set, MultiValue):
-                    dicom_char_set = dicom_char_set[-1]
-                if isinstance(dicom_char_set, str):
-                    if dicom_char_set in python_encoding:
-                        python_char_set = python_encoding[dicom_char_set]
-        return python_char_set
 
 
 

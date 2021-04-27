@@ -4,6 +4,9 @@ import inspect
 import os
 import pydicom
 import pydicom.filebase
+from pydicom.multival import MultiValue
+from pydicom import Dataset
+from pydicom.charset import python_encoding
 import re
 import subprocess
 import traceback
@@ -287,3 +290,16 @@ def retry_if_failes(function, args, max_retries: int = 30,
             else:
                 raise err
     return output
+
+
+def get_charset_val_from_dataset(ds: Dataset = None) -> str:
+        python_char_set = 'ascii'
+        if isinstance(ds, Dataset) and ds is not None:
+            if "SpecificCharacterSet" in ds:
+                dicom_char_set = ds.SpecificCharacterSet
+                if isinstance(dicom_char_set, MultiValue):
+                    dicom_char_set = dicom_char_set[-1]
+                if isinstance(dicom_char_set, str):
+                    if dicom_char_set in python_encoding:
+                        python_char_set = python_encoding[dicom_char_set]
+        return python_char_set

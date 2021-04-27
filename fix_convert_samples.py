@@ -219,7 +219,7 @@ def fix_convert_series(attribute:str , value):
                         os.path.join(out_folder, 'pre' + base_wo_ext +"_vfy.txt"),
                         os.path.join(out_folder, 'post' + base_wo_ext +"_vfy.txt"),
                         )
-                    char_set = DicomFileInfo.get_charset_val_from_dataset(
+                    char_set = ctools.get_charset_val_from_dataset(
                         fix_output[0])
                 else:
                     fix_output = fix_file_verify_write(

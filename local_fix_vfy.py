@@ -4,12 +4,7 @@ import os
 import pydicom
 import shutil
 import common.common_tools as ctools
-import common.parallelization as pl
 import conversion as convtool
-from query_anatomy import (
-    # FUNCTIONS
-    query_anatomy_from_tables,
-)
 from pydicom.charset import (
     # VARIABLES
     python_encoding,
@@ -27,10 +22,7 @@ from rightdicom.dcmvfy.verify import (
     # FUNCTIONS
     verify_dicom,
 )
-from dicom_fix_issue_info import (
-    # CLASSES
-    DicomFileInfo
-)
+
 
 iod_names = [
         "CRImage",
@@ -157,6 +149,7 @@ iod_names = [
     ]
 
 
+
 def organize_dcmvfy_errors(issues: list, output: list = []):
     prev_line = None
     for line_ in issues:
@@ -253,7 +246,7 @@ def fix_file_verify_write(
         dicom_fixed_file,
         anatomy, reference,
         dicom_fix_report_file)
-    char_set = DicomFileInfo.get_charset_val_from_dataset(ds)
+    char_set = ctools.get_charset_val_from_dataset(ds)
     pre_rawlog, pre_orglog, pre_pylog = verify_with_dciodvfy_and_pyvfy(
         dicom_file, char_set, pre_fix_vfy_file)
     post_rawlog, post_orglog, post_pylog = verify_with_dciodvfy_and_pyvfy(
@@ -276,7 +269,7 @@ def fix_file_verify_write_dciodvfy(
         dicom_fixed_file,
         anatomy, reference,
         dicom_fix_report_file)
-    char_set = DicomFileInfo.get_charset_val_from_dataset(ds)
+    char_set = ctools.get_charset_val_from_dataset(ds)
     pre_rawlog, pre_orglog = verify_dciodvfy(
         dicom_file, char_set, pre_fix_vfy_file)
     post_rawlog, post_orglog = verify_dciodvfy(

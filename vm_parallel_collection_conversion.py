@@ -515,7 +515,7 @@ def download_fix_convert_upload_one_series(
             flaw_queries.append(f_query)
     else:
         mf_study_uid = single_frames[0].study_uid
-        char_set = DicomFileInfo.get_charset_val_from_dataset(single_frames[0])
+        char_set = ctools.get_charset_val_from_dataset(single_frames[0])
         for fset in fsets:
             # remove ds from single frome for multi_processing purpose
             for bl_f in single_frames:

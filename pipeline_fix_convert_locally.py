@@ -523,7 +523,7 @@ def fix_convert_one_series(
             flaw_queries.append(f_query)
     else:
         mf_study_uid = fx_study_uid
-        char_set = DicomFileInfo.get_charset_val_from_dataset(single_frames[0])
+        char_set = ctools.get_charset_val_from_dataset(single_frames[0])
         for fset in fsets:
             frameset_sop_uids = fset.get_sop_instance_uid_list()
             frameset_sop_uids.sort()
