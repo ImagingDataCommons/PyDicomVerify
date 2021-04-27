@@ -110,8 +110,9 @@ def put_attribute_in_path(ds: Dataset, path: list, a: DataElementX):
                 
 
 
-def subfix_LookUpRegexInLog(regexp:str, log:list, appendIfNone = False,
-DefaultErrorMsg=''):
+def subfix_LookUpRegexInLog(
+        regexp:str, log:list, appendIfNone = False,
+        DefaultErrorMsg=''):
     index = []
     for i in range(0, len(log)):
         if re.match(regexp, log[i]) is not None:

@@ -155,6 +155,9 @@ def fix_VRForLongitudinalTemporalInformationModified(ds: Dataset,
                 msg1 = msg.getWholeMessage()
                 log[i] =  msg1
             fixed = True
+    if not fixed:
+        for i in idx:
+            log.pop(i)
     return fixed
 
 
@@ -164,10 +167,10 @@ def fix_RemoveFOVDimensionsWhenZero(ds: Dataset, log: list) -> bool:
     Error_regex = ".*Value is zero for.*attribute.*Field.*View.*Dimension.*"
     msg = mesgtext_cc.ErrorInfo()
     idx = subfix_LookUpRegexInLog(Error_regex, log)
-    if len(idx) == 0:
-        idx.append(-1)
-        log.append("Error - bad value (=0) for {}".format(kw))
     if kw in ds:
+        if len(idx) == 0:
+            idx.append(-1)
+            log.append("Error - bad value (=0) for {}".format(kw))
         tag = Dictionary.tag_for_keyword(kw)
         elem = ds[tag]
         for i in elem.value:
@@ -181,6 +184,9 @@ def fix_RemoveFOVDimensionsWhenZero(ds: Dataset, log: list) -> bool:
                 msg.fix = "fixed by removing the attribute"
                 msg1 = msg.getWholeMessage()
                 log[i] =  msg1
+        else:
+                for i in idx:
+                    log.pop(i)
     return fixed
 
 
