@@ -190,7 +190,7 @@ def DownloadAndFixOneInstance(kw, value):
     log = []
     log_ver = []
     fix_: bool = True
-    download_ : bool = True
+    download_ : bool = False
     ref_info = QueryReferencedStudySequence(
         'canceridc-data.idc_views.dicom_all')
     anatomy_info = query_anatomy_from_tables(
@@ -244,7 +244,7 @@ def DownloadAndFixOneInstance(kw, value):
 
 if __name__ == '__main__':
     sopuids = [
-        '1.3.6.1.4.1.14519.5.2.1.5382.4002.221158056780752728899154700639', 
+        '1.3.6.1.4.1.14519.5.2.1.6279.6001.879222027105273061862253080133', 
     ]
     for i, uid in enumerate(sopuids, 1):
         print('{}/{}) {}'.format(i, len(sopuids), uid))

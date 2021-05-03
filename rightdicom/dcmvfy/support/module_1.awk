@@ -461,7 +461,7 @@ NR==1	{
 			indentcode(sequencenestingdepth)
 			print "\telse: "
 			indentcode(sequencenestingdepth)
-			print "\t\tpartial_success = verifyVM(ds"get_suffix_for_seq(seq_depth_counter)"[\"name\"], "
+			print "\t\tpartial_success = verifyVM(ds"get_suffix_for_seq(seq_depth_counter)"[\""name"\"], "
 			indentcode(sequencenestingdepth)
 			print "\t\t\t\"" module "\", \"" name "\", log, fix_trivials, "vmmin ", "vmmax ", \"" condition "\")"	# use condition as source
 			if (length(condition) > 0) 

@@ -1,3 +1,4 @@
+import os, json
 import pydicom
 import rightdicom.dcmvfy.mesgtext_cc as mesgtext_cc
 import rightdicom.dcmvfy.validate_vr as validate_vr
@@ -208,6 +209,8 @@ def generalfix_CheckAndFixModality(ds:Dataset, log:list) -> bool:
     if 'SOPClassUID' in ds:
         sop_class = ds['SOPClassUID'].value 
     else:
+        return False
+    if sop_class not in modality_sop:
         return False
     mod_tg = tag_for_keyword('Modality')
     if mod_tg in ds:
@@ -442,6 +445,9 @@ def generalfix_RealWorldValueMappingSequence(ds, log):
 
 def generalfix_MisplacedAttributes(ds: Dataset, log: list):
     paths = {}
+    current_folder = os.path.dirname(__file__)
+    with open(os.path.join(current_folder, 'config.json')) as json_file:
+        fix_config = json.load(json_file)
     get_all_kw_paths(ds, [], paths)
     standard_ds = get_full_attrib_list(ds)
     not_in_std = {}
@@ -462,6 +468,9 @@ def generalfix_MisplacedAttributes(ds: Dataset, log: list):
                     else:
                         misplaced[kw].append((parent, path, correct_path))
     for kw, val in misplaced.items():
+        if not fix_config["MisplacedAttributes"][
+                "DisplaceIfAttributeIsInWrongPath"]:
+            break
         for parent, path, correct_path in val:
             # print(parent, path, correct_path)
             delem = parent[kw]
@@ -497,6 +506,9 @@ def generalfix_MisplacedAttributes(ds: Dataset, log: list):
                     "an attribute in correct place")
             log.append(msg.getWholeMessage())
     for kw, val in not_in_std.items():
+        if not fix_config["MisplacedAttributes"][
+                "RemoveIfAttributeIsNotInIOD"]:
+            break
         for parent, path in val:
             if kw in parent:
                 del parent[kw]

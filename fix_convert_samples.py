@@ -261,8 +261,8 @@ def fix_convert_series(attribute:str , value):
 if __name__ == '__main__':
     freeze_support()
     sopuids = [
-        '1.3.6.1.4.1.14519.5.2.1.8421.4010.516731121903255199504736458533', 
+        '1.3.6.1.4.1.14519.5.2.1.6279.6001.837810280808122125183730411210', 
     ]
     for i, uid in enumerate(sopuids, 1):
         print('{}/{}) {}'.format(i, len(sopuids), uid))
-        fix_convert_series('SOPINSTANCEUID', uid)
+        fix_convert_series('SERIESINSTANCEUID', uid)

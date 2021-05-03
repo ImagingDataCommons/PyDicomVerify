@@ -1,0 +1,6 @@
+{
+    "MisplacedAttributes": {
+        "RemoveIfAttributeIsNotInIOD": false,
+        "DisplaceIfAttributeIsInWrongPath": false
+    }
+}

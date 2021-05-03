@@ -421,10 +421,10 @@ def verifyVR(elem: DataElement, module: str, element: str, verbose: bool,
     vre = elem.VR
     vrds = []
     vre_equlas_vrd = False
-    if len(vrd) > 2:
+    if len(vrd) > 2 and len(vre) == 2:
         vrds = vrd.split(' or ')
-        for elem in vrds:
-            if elem == vre:
+        for dic_vr in vrds:
+            if dic_vr == vre:
                 vre_equlas_vrd = True
                 break
     else:
@@ -435,6 +435,7 @@ def verifyVR(elem: DataElement, module: str, element: str, verbose: bool,
             and not(vrd == "XL" and vre == "UL" or vre == "SL"):
         mssg = EMsgDC("BadValueRepresentation") \
                + " " + vre + " (" + vrd + " " + MMsgDC("Required") + ")"
+        # print(vrds,'<-->' ,vrd,'<-->', vre, '<-->', elem)
         if len(element) != 0:
             mssg += MMsgDC("Element") + "=<" + element + ">"
         if len(module) != 0:

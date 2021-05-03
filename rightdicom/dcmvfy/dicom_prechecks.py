@@ -1661,14 +1661,14 @@ def validatePrivate(ds: Dataset, log: list) -> bool:
 def validateRetired(ds: Dataset, log: list) -> bool:
     success = True
     for(key, a) in ds.items():
-        success = success and loopOverListsInSequencesWithLog(a, log,
-                                                              validateRetired)
+        success = success and loopOverListsInSequencesWithLog(
+            a, log, validateRetired)
         g = a.tag.group
         e = a.tag.element
         if Dictionary.dictionary_has_tag(a.tag):
             if Dictionary.dictionary_is_retired(a.tag):
                 msg = "{} - {}".format(
-                    EMsgDC("RetiredAttribute"), validate_vr.tag2str(a.tag))
+                    WMsgDC("RetiredAttribute"), validate_vr.tag2str(a.tag))
                 log.append(msg)
                 success = False
     return success
