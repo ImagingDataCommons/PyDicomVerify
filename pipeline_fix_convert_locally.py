@@ -71,7 +71,7 @@ from gcloud.storage_tools import (
 )
 from highdicom.legacy.sop import (
     # CLASSES
-    FrameSetCollection,
+    _FrameSetCollection,
 )
 from pydicom.uid import (
     # FUNCTIONS
@@ -356,7 +356,7 @@ def frameset_for_one_series(single_frame_file_path: List[str],
     for f_bl in single_frame_file_path:
         ds_list.append(pydicom.read_file(f_bl))
     try:
-        fs_collection = FrameSetCollection(ds_list)
+        fs_collection = _FrameSetCollection(ds_list)
         fs = fs_collection.frame_sets
     except BaseException as err:
         msg = str(err)

@@ -287,13 +287,13 @@ def generalfix_CT_RescaleType(ds, log):
             return fixed
         if ds['RescaleType'] == 'HU':
             return fixed
-        containes_localizer = False
+        contains_localizer = False
         ImageType_v = [] if 'ImageType' not in ds else ds['ImageType'].value
         for i in ImageType_v:
             if i == 'LOCALIZER':
-                containes_localizer = True
+                contains_localizer = True
                 break
-        if not containes_localizer:
+        if not contains_localizer:
             oldval = ds['RescaleType'].value
             ds['RescaleType'].value = "HU"
             msg = mesgtext_cc.ErrorInfo()

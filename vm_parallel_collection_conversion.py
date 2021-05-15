@@ -69,7 +69,7 @@ from gcloud.storage_tools import (
 )
 from highdicom.legacy.sop import (
     # CLASSES
-    FrameSetCollection,
+    _FrameSetCollection,
 )
 from pydicom.uid import (
     # FUNCTIONS
@@ -345,7 +345,7 @@ def frameset_for_one_series(file_blob_pairs: List[DicomFileInfo],
     for f_bl in file_blob_pairs:
         ds_list.append(f_bl.dicom_ds)
     try:
-        fs_collection = FrameSetCollection(ds_list)
+        fs_collection = _FrameSetCollection(ds_list)
         fs = fs_collection.frame_sets
     except BaseException as err:
         msg = str(err)

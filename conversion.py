@@ -6,8 +6,8 @@ import re
 import common.common_tools as ctools
 from highdicom.legacy.sop import(
     # CLASSES
-    FrameSet,
-    FrameSetCollection,
+    _FrameSet,
+    _FrameSetCollection,
     LegacyConvertedEnhancedCTImage,
     LegacyConvertedEnhancedMRImage,
     LegacyConvertedEnhancedPETImage,
@@ -302,7 +302,7 @@ def GetFrameSetsFromFiles(single_frame_folder_or_list):
     return all_ds
 
 
-def ConvertFrameset(frameset: FrameSet, OutputFileName: str,
+def ConvertFrameset(frameset: _FrameSet, OutputFileName: str,
                     multi_frame_study_instance_uid: str = None,
                     multi_frame_series_instance_uid: str = None,
                     multi_frame_sop_instance_uid: str=None):
@@ -350,7 +350,7 @@ def ConvertFrameset(frameset: FrameSet, OutputFileName: str,
 def ConvertByHighDicomNew(single_frame_folder_or_list,
                           OutputPrefix) -> list:
     all_datasets = GetFrameSetsFromFiles(single_frame_folder_or_list)
-    framesets = FrameSetCollection(all_datasets).frame_sets
+    framesets = _FrameSetCollection(all_datasets).frame_sets
     multi_frame_study_instance_uid = all_datasets[0].StudyInstanceUID
     parent_child_uids = []
     multi_frame_series_instance_uid = generate_uid()
