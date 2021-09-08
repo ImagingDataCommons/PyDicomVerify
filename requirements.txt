@@ -1,7 +1,7 @@
 gitdb==4.0.5
 GitPython==3.1.2
 numpy==1.18.4
-Pillow==8.1.1
+Pillow==8.3.2
 pydicom==2.0.0
 smmap==3.0.4
 XlsxWriter==1.2.8
